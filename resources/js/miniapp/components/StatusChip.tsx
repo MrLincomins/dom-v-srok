@@ -21,7 +21,7 @@ export function StatusChip({
     const tone = statusTone(status, overdue);
     return (
         <span
-            className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[13px] font-medium ${TONE_CLASS[tone]}`}
+            className={`inline-flex items-center rounded-lg px-8 py-2 text-[13px] font-medium ${TONE_CLASS[tone]}`}
         >
             {label ?? STATUS_LABEL[status]}
         </span>

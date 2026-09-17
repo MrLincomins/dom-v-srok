@@ -1,11 +1,10 @@
-/** текст для чипа таймера, считает от текущего момента, сервер отдаёт срок в iso 8601 */
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-export interface DeadlineView {
+interface DeadlineView {
     text: string;
     overdue: boolean;
-    urgent: boolean; // меньше 4 часов до срока
+    urgent: boolean;
 }
 
 export function describeDeadline(
@@ -22,11 +21,7 @@ export function describeDeadline(
     return { text: `осталось ${humanSpan(diff)}`, overdue: false, urgent: diff < 4 * HOUR };
 }
 
-export function isOverdue(deadlineIso: string | null | undefined, now: Date = new Date()): boolean {
-    return describeDeadline(deadlineIso, now).overdue;
-}
-
-export function humanSpan(ms: number): string {
+function humanSpan(ms: number): string {
     if (ms < HOUR) {
         const minutes = Math.max(1, Math.round(ms / 60_000));
         return `${minutes} ${plural(minutes, 'минуту', 'минуты', 'минут')}`;

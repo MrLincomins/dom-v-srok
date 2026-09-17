@@ -7,8 +7,9 @@
     <meta name="demo-login" content="{{ config('demo.accounts_enabled') ? '1' : '0' }}">
     <meta name="app-name" content="{{ config('app.name') }}">
     <title>{{ config('app.name') }} — кабинет</title>
-    {{-- бридж маха: window.WebApp с initData, platform, BackButton, в обычном браузере его нет --}}
+    {{-- В обычном браузере bridge не загрузит сессию, и приложение покажет демо-вход. --}}
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/miniapp/main.tsx'])
 </head>
 <body>

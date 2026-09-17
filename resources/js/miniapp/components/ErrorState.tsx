@@ -1,6 +1,6 @@
 import { Button, Typography } from '@maxhub/max-ui';
-import { ApiError } from '@/api/client';
 import { texts } from '@/app/texts';
+import { describeError } from '@/lib/describeError';
 
 interface Props {
     error?: unknown;
@@ -9,12 +9,11 @@ interface Props {
     fullscreen?: boolean;
 }
 
-/** ошибка объясняет причину и даёт кнопку повторить */
 export function ErrorState({ error, message, onRetry, fullscreen = false }: Props) {
-    const text = message ?? describe(error);
+    const text = message ?? describeError(error);
     return (
         <div
-            className={`flex flex-col items-center justify-center gap-3 px-4 py-10 text-center ${fullscreen ? 'min-h-screen' : ''}`}
+            className={`enter flex flex-col items-center justify-center gap-12 rounded-card px-24 py-40 text-center ${fullscreen ? 'app-shell min-h-dvh' : 'border border-divider bg-surface shadow-card'}`}
             role="alert"
         >
             <Typography.Title variant="small-strong">{text}</Typography.Title>
@@ -25,13 +24,4 @@ export function ErrorState({ error, message, onRetry, fullscreen = false }: Prop
             )}
         </div>
     );
-}
-
-export function describe(error: unknown): string {
-    if (error instanceof ApiError) {
-        if (error.isNetwork) return texts.errors.network;
-        if (error.isForbidden) return texts.errors.forbidden;
-        return error.message;
-    }
-    return texts.errors.generic;
 }

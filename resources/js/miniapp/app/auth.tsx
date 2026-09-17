@@ -1,25 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loginWithInitData, loginWithPassword, logout as apiLogout, me } from '@/api/auth';
-import { ApiError, hasToken, setToken } from '@/api/client';
+import { ApiError, hasToken, setToken, UNAUTHORIZED_EVENT } from '@/api/client';
 import type { User } from '@/api/types';
 import { getInitData, isInsideMax } from '@/bridge/maxWebApp';
-
-type AuthStatus = 'loading' | 'ready' | 'anonymous' | 'error';
-
-interface AuthState {
-    status: AuthStatus;
-    user: User | null;
-    error: string | null;
-    loginDemo: (login: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
-    refresh: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthState | null>(null);
+import { AuthContext, type AuthState } from './authContext';
 const SESSION_KEY = ['session'] as const;
 
-/** сессия как обычный запрос: есть токен - /me, внутри маха - initData, иначе null и экран «откройте из max» */
+/** В браузере восстанавливаем сохранённую сессию, а внутри MAX обмениваем initData на токен. */
 async function loadSession(): Promise<User | null> {
     try {
         if (hasToken()) return await me();
@@ -42,6 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         retry: false,
         staleTime: Infinity,
     });
+    const clearSession = useCallback(() => {
+        client.setQueryData(SESSION_KEY, null);
+        client.removeQueries({ queryKey: ['requests'] });
+        client.removeQueries({ queryKey: ['my-requests'] });
+        client.removeQueries({ queryKey: ['request'] });
+    }, [client]);
+
+    useEffect(() => {
+        window.addEventListener(UNAUTHORIZED_EVENT, clearSession);
+        return () => window.removeEventListener(UNAUTHORIZED_EVENT, clearSession);
+    }, [clearSession]);
 
     const loginDemo = useCallback(
         async (login: string, password: string) => {
@@ -52,17 +51,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const logout = useCallback(async () => {
-        await apiLogout();
-        client.setQueryData(SESSION_KEY, null);
-        client.removeQueries({ queryKey: ['requests'] });
-    }, [client]);
+        try {
+            await apiLogout();
+        } finally {
+            clearSession();
+        }
+    }, [clearSession]);
 
+    const refetchSession = session.refetch;
     const refresh = useCallback(async () => {
-        await session.refetch();
-    }, [session]);
+        await refetchSession();
+    }, [refetchSession]);
 
     const value = useMemo<AuthState>(() => {
-        const status: AuthStatus = session.isPending
+        const status: AuthState['status'] = session.isPending
             ? 'loading'
             : session.isError
               ? 'error'
@@ -78,10 +80,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [session.isPending, session.isError, session.data, session.error, loginDemo, logout, refresh]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthState {
-    const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error('useAuth вне AuthProvider');
-    return ctx;
 }

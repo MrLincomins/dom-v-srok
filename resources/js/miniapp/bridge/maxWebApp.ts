@@ -1,35 +1,22 @@
-/** обёртка над бриджем маха (window.WebApp), никогда не бросает исключений, в обычном браузере объекта нет */
-export type Platform = 'ios' | 'android' | 'desktop' | 'web';
+/** Доступ к MAX Bridge всегда идёт через безопасные функции: в обычном браузере window.WebApp нет. */
+type Platform = 'ios' | 'android' | 'desktop' | 'web';
 
-export interface MaxBackButton {
+interface MaxBackButton {
     show?: () => void;
     hide?: () => void;
     onClick?: (handler: () => void) => void;
     offClick?: (handler: () => void) => void;
 }
 
-export interface MaxWebApp {
+interface MaxWebApp {
     initData?: string;
-    initDataUnsafe?: {
-        user?: {
-            id: number;
-            first_name?: string;
-            last_name?: string;
-            username?: string;
-            language_code?: string;
-        };
-        start_param?: string;
-        auth_date?: number;
-    };
     platform?: string;
-    version?: string;
     colorScheme?: 'light' | 'dark';
     ready?: () => void;
-    close?: () => void;
     openLink?: (url: string) => void;
+    onEvent?: (event: 'themeChanged', handler: () => void) => void;
+    offEvent?: (event: 'themeChanged', handler: () => void) => void;
     BackButton?: MaxBackButton;
-    onEvent?: (event: string, handler: (...args: unknown[]) => void) => void;
-    offEvent?: (event: string, handler: (...args: unknown[]) => void) => void;
 }
 
 declare global {
@@ -38,13 +25,14 @@ declare global {
     }
 }
 
-export function getWebApp(): MaxWebApp | null {
+function getWebApp(): MaxWebApp | null {
     if (typeof window === 'undefined') return null;
     return window.WebApp ?? null;
 }
 
 export function isInsideMax(): boolean {
-    return typeof getWebApp()?.initData === 'string' && (getWebApp()?.initData ?? '') !== '';
+    const initData = getWebApp()?.initData;
+    return typeof initData === 'string' && initData.length > 0;
 }
 
 export function getInitData(): string {
@@ -64,24 +52,45 @@ export function getColorScheme(): 'light' | 'dark' {
     return 'light';
 }
 
+export function subscribeColorScheme(handler: (scheme: 'light' | 'dark') => void): () => void {
+    const app = getWebApp();
+    const notify = () => handler(getColorScheme());
+    if (app?.onEvent) {
+        app.onEvent('themeChanged', notify);
+        return () => app.offEvent?.('themeChanged', notify);
+    }
+
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    media?.addEventListener('change', notify);
+    return () => media?.removeEventListener('change', notify);
+}
+
+export function openExternalLink(url: string): void {
+    let target: URL;
+    try {
+        target = new URL(url, window.location.origin);
+    } catch {
+        return;
+    }
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
+
+    const app = getWebApp();
+    if (app?.openLink) {
+        app.openLink(target.href);
+        return;
+    }
+    window.open(target.href, '_blank', 'noopener,noreferrer');
+}
+
 export function signalReady(): void {
     try {
         getWebApp()?.ready?.();
     } catch {
-        /* в вебе метода может не быть */
+        // Старые клиенты MAX могут объявить bridge без рабочего ready().
     }
 }
 
-export function openExternalLink(url: string): void {
-    const app = getWebApp();
-    if (app?.openLink) {
-        app.openLink(url);
-        return;
-    }
-    window.open(url, '_blank', 'noopener');
-}
-
-/** нативная кнопка назад на мобилках, в вебе и десктопе false и экран рисует свою */
+/** На desktop и в браузере оставляем кнопку в header, потому что нативной там нет. */
 export function useNativeBackButton(): boolean {
     const button = getWebApp()?.BackButton;
     return Boolean(button?.show && button?.onClick) && getPlatform() !== 'web';

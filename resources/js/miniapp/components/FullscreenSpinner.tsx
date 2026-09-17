@@ -4,8 +4,10 @@ import { texts } from '@/app/texts';
 export function FullscreenSpinner({ label = texts.auth.loading }: { label?: string }) {
     return (
         <div
-            className="flex min-h-screen flex-col items-center justify-center gap-3 p-4 text-muted"
+            className="app-shell flex min-h-dvh flex-col items-center justify-center gap-12 p-16 text-muted"
             role="status"
+            aria-live="polite"
+            aria-busy="true"
         >
             <Spinner size={28} appearance="themed" />
             <span className="text-[15px]">{label}</span>

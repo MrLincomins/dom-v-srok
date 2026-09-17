@@ -1,24 +1,34 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import '@maxhub/max-ui/dist/styles.css';
-import { getColorScheme, getPlatform } from '@/bridge/maxWebApp';
+import { getColorScheme, getPlatform, subscribeColorScheme } from '@/bridge/maxWebApp';
 import { AuthProvider } from './auth';
 
-// один клиент запросов на приложение, get повторяется один раз, мутации никогда
+// Повторяем только чтение: автоматический повтор мутации может дважды изменить заявку.
 const queryClient = new QueryClient({
     defaultOptions: {
-        queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: true },
+        queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: false },
         mutations: { retry: 0 },
     },
 });
 
 export function Providers({ children }: { children: ReactNode }) {
-    // max ui умеет только ios и android, десктоп и веб рисуем как android
+    // У MAX UI нет отдельной темы для desktop/web, поэтому там используем Android-вариант.
     const platform = getPlatform() === 'ios' ? 'ios' : 'android';
+    const [colorScheme, setColorScheme] = useState(getColorScheme);
+
+    useEffect(
+        () =>
+            subscribeColorScheme((scheme) => {
+                document.documentElement.dataset.colorScheme = scheme;
+                setColorScheme(scheme);
+            }),
+        [],
+    );
 
     return (
-        <MaxUI platform={platform} colorScheme={getColorScheme()}>
+        <MaxUI platform={platform} colorScheme={colorScheme}>
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>{children}</AuthProvider>
             </QueryClientProvider>
