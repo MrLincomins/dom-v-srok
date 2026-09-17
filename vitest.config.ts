@@ -1,0 +1,14 @@
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'node:path';
+
+export default defineConfig({
+    plugins: [react()],
+    resolve: { alias: { '@': path.resolve(import.meta.dirname, 'resources/js/miniapp') } },
+    test: {
+        environment: 'jsdom',
+        globals: true,
+        include: ['resources/js/**/*.test.{ts,tsx}'],
+        setupFiles: ['resources/js/miniapp/test-setup.ts'],
+    },
+});

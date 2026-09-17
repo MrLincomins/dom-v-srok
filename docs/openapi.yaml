@@ -1,0 +1,692 @@
+openapi: 3.1.0
+info:
+  title: Дом в срок — API мини-приложения
+  version: 0.1.0
+  description: |
+    REST API кабинета диспетчера и карточки жителя. Контракт пишется первым: из него генерируются типы
+    фронта (openapi-typescript) и им проверяются ответы в тестах (Spectator).
+    Все ответы — объекты `{ data }` или `{ data, meta }`. Ошибки — `{ error: { code, message, details } }`.
+servers:
+  - url: /api/v1
+    description: тот же домен, что и мини-приложение
+tags:
+  - name: auth
+  - name: me
+  - name: catalog
+  - name: requests
+  - name: attachments
+  - name: demo
+security:
+  - bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Токен Sanctum из POST /auth/max или POST /auth/login
+  responses:
+    Unauthenticated:
+      description: Нет или просрочен токен
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Не та роль или не та организация
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Validation:
+      description: Ошибка валидации; поля в details.fields
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Недопустимый переход статуса
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, examples: [invalid_transition] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+            request_id: { type: string }
+    RequestStatus:
+      type: string
+      enum: [new, assigned, in_progress, done, confirmed, returned, redirected]
+    Role:
+      type: string
+      enum: [resident, dispatcher, admin]
+    Organization:
+      type: object
+      required: [id, name, type, phone_ads, direct_contracts, is_demo]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { type: string, enum: [uk, tsj, jsk] }
+        phone_ads: { type: string }
+        phone_dispatch: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+        reception_hours: { type: [string, 'null'] }
+        reception_address: { type: [string, 'null'] }
+        direct_contracts:
+          type: object
+          required: [cold_water, hot_water, heat, power, tko]
+          properties:
+            cold_water: { type: boolean }
+            hot_water: { type: boolean }
+            heat: { type: boolean }
+            power: { type: boolean }
+            tko: { type: boolean }
+        is_demo: { type: boolean }
+    House:
+      type: object
+      required: [id, address, entrances, qr_token, chat_bound]
+      properties:
+        id: { type: integer }
+        address: { type: string }
+        entrances: { type: integer }
+        qr_token: { type: string }
+        chat_bound: { type: boolean }
+    User:
+      type: object
+      required: [id, name, role, is_demo]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        organization:
+          oneOf:
+            - $ref: '#/components/schemas/Organization'
+            - type: 'null'
+        house:
+          oneOf:
+            - $ref: '#/components/schemas/House'
+            - type: 'null'
+        entrance: { type: [integer, 'null'] }
+        flat: { type: [string, 'null'] }
+        is_demo: { type: boolean }
+    AuthToken:
+      type: object
+      required: [token, expires_at, user]
+      properties:
+        token: { type: string }
+        expires_at: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/User' }
+    Deadline:
+      type: object
+      required: [value, unit]
+      properties:
+        value: { type: integer }
+        unit: { type: string, enum: [hours, days, working_days] }
+    Category:
+      type: object
+      required: [id, slug, name, is_emergency, verify]
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        is_emergency: { type: boolean }
+        responsible_type: { type: [string, 'null'] }
+        deadline_fix:
+          oneOf:
+            - $ref: '#/components/schemas/Deadline'
+            - type: 'null'
+        deadline_reply:
+          oneOf:
+            - $ref: '#/components/schemas/Deadline'
+            - type: 'null'
+        basis: { type: [string, 'null'] }
+        advice: { type: [string, 'null'] }
+        verify: { type: boolean, description: 'строка справочника помечена «сверить с первоисточником»' }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/Category' }
+    Executor:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        specialty: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+    RequestListItem:
+      type: object
+      required: [id, status, status_label, category, description, address, responsible_name, is_sure, is_overdue, participants_count, created_at]
+      properties:
+        id: { type: integer, description: 'номер заявки' }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        status_label: { type: string }
+        category: { type: string }
+        description: { type: string }
+        address: { type: string }
+        entrance: { type: [integer, 'null'] }
+        flat: { type: [string, 'null'] }
+        responsible_name: { type: string }
+        is_sure: { type: boolean }
+        deadline_fix_at: { type: [string, 'null'], format: date-time }
+        deadline_reply_at: { type: [string, 'null'], format: date-time }
+        is_overdue: { type: boolean }
+        executor:
+          oneOf:
+            - $ref: '#/components/schemas/Executor'
+            - type: 'null'
+        participants_count: { type: integer }
+        created_at: { type: string, format: date-time }
+    RequestEvent:
+      type: object
+      required: [id, type, actor_role, created_at]
+      properties:
+        id: { type: integer }
+        type:
+          type: string
+          enum: [created, assigned, status_changed, redirected, returned, confirmed, comment, photo_added, participant_joined, notification, reminder]
+        from_status: { type: [string, 'null'] }
+        to_status: { type: [string, 'null'] }
+        actor_role: { type: string, enum: [resident, dispatcher, system] }
+        actor_name: { type: [string, 'null'] }
+        comment: { type: [string, 'null'] }
+        payload: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+    Attachment:
+      type: object
+      required: [id, kind, mime, created_at]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [resident, closing] }
+        mime: { type: string }
+        url: { type: [string, 'null'], description: 'подписанная ссылка на 15 минут' }
+        created_at: { type: string, format: date-time }
+    RequestCard:
+      type: object
+      required: [id, status, status_label, allowed_transitions, category, description, house, responsible, basis, is_overdue, closed_late, returned_count, participants_count, origin, created_at]
+      properties:
+        id: { type: integer }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        status_label: { type: string }
+        allowed_transitions:
+          type: array
+          items: { $ref: '#/components/schemas/RequestStatus' }
+        category:
+          type: object
+          required: [id, name, slug]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            slug: { type: string }
+        description: { type: string }
+        house: { $ref: '#/components/schemas/House' }
+        entrance: { type: [integer, 'null'] }
+        flat: { type: [string, 'null'] }
+        responsible:
+          type: object
+          required: [kind, name, is_sure]
+          properties:
+            kind: { type: string, enum: [organization, party, unknown] }
+            name: { type: string }
+            phone: { type: [string, 'null'] }
+            is_sure: { type: boolean }
+            party_id: { type: [integer, 'null'] }
+        deadline_fix_at: { type: [string, 'null'], format: date-time }
+        deadline_reply_at: { type: [string, 'null'], format: date-time }
+        basis: { type: string }
+        is_overdue: { type: boolean }
+        closed_late: { type: boolean }
+        executor:
+          oneOf:
+            - $ref: '#/components/schemas/Executor'
+            - type: 'null'
+        first_reaction_at: { type: [string, 'null'], format: date-time }
+        done_at: { type: [string, 'null'], format: date-time }
+        confirmed_at: { type: [string, 'null'], format: date-time }
+        confirmed_by: { type: [string, 'null'], enum: [resident, auto, dispatcher, null] }
+        closed_at: { type: [string, 'null'], format: date-time }
+        returned_count: { type: integer }
+        redirected_to:
+          type: object
+          properties:
+            party:
+              oneOf:
+                - type: object
+                  required: [id, name]
+                  properties:
+                    id: { type: integer }
+                    name: { type: string }
+                    phone: { type: [string, 'null'] }
+                - type: 'null'
+            note: { type: [string, 'null'] }
+        participants_count: { type: integer }
+        origin: { type: string, enum: [qr, chat, direct, api] }
+        rating: { type: [integer, 'null'] }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/RequestEvent' }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/Attachment' }
+        created_at: { type: string, format: date-time }
+    Counters:
+      type: object
+      required: [new, in_progress, overdue, closed]
+      properties:
+        new: { type: integer }
+        in_progress: { type: integer }
+        overdue: { type: integer }
+        closed: { type: integer }
+    PaginationMeta:
+      type: object
+      required: [current_page, last_page, per_page, total]
+      properties:
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        counters: { $ref: '#/components/schemas/Counters' }
+    RequestCardResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/RequestCard' }
+    RequestListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RequestListItem' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        links: { type: object, additionalProperties: true }
+paths:
+  /auth/max:
+    post:
+      tags: [auth]
+      operationId: authMax
+      security: []
+      summary: Вход из мини-приложения по initData MAX
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [init_data]
+              properties:
+                init_data: { type: string, description: 'window.WebApp.initData как есть' }
+      responses:
+        '200':
+          description: Токен и профиль
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/AuthToken' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: authLogin
+      security: []
+      summary: Вход тестовой учётки (только DEMO_ACCOUNTS_ENABLED)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Токен и профиль
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/AuthToken' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: authLogout
+      summary: Отозвать текущий токен
+      responses:
+        '200':
+          description: Готово
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /me:
+    get:
+      tags: [me]
+      operationId: me
+      summary: Профиль, организация, дом
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /catalog/categories:
+    get:
+      tags: [catalog]
+      operationId: listCategories
+      security: []
+      summary: Дерево категорий со сроками и основаниями
+      responses:
+        '200':
+          description: Корни с детьми
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Category' }
+  /requests:
+    get:
+      tags: [requests]
+      operationId: listRequests
+      summary: Очередь организации диспетчера
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, closed, new, assigned, in_progress, done, confirmed, returned, redirected]
+        - in: query
+          name: overdue
+          schema: { type: boolean }
+        - in: query
+          name: house_id
+          schema: { type: integer }
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Страница очереди и счётчики вкладок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}:
+    get:
+      tags: [requests]
+      operationId: getRequest
+      summary: Карточка заявки
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /requests/{id}/status:
+    patch:
+      tags: [requests]
+      operationId: changeStatus
+      summary: Смена статуса по таблице переходов
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/RequestStatus' }
+                comment: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}/assign:
+    post:
+      tags: [requests]
+      operationId: assignExecutor
+      summary: Назначить исполнителя
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [executor_id]
+              properties:
+                executor_id: { type: integer }
+                comment: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}/close:
+    post:
+      tags: [requests]
+      operationId: closeRequest
+      summary: Закрыть с фото — статус «Выполнено», запрос подтверждения у жителя
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                comment: { type: string, maxLength: 1000 }
+                photos:
+                  type: array
+                  maxItems: 5
+                  items: { type: string, format: binary }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}/redirect:
+    post:
+      tags: [requests]
+      operationId: redirectRequest
+      summary: Переадресовать с контактом (терминальный статус)
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                responsible_party_id: { type: [integer, 'null'] }
+                name: { type: [string, 'null'], maxLength: 200 }
+                phone: { type: [string, 'null'], maxLength: 32 }
+                note: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}/comments:
+    post:
+      tags: [requests]
+      operationId: addComment
+      summary: Комментарий диспетчера в ленту без смены статуса
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /requests/{id}/confirm:
+    post:
+      tags: [requests]
+      operationId: confirmRequest
+      summary: Житель подтверждает решение или возвращает заявку в работу
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolved]
+              properties:
+                resolved: { type: boolean }
+                comment: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /my/requests:
+    get:
+      tags: [requests]
+      operationId: myRequests
+      summary: Заявки жителя
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /attachments/{id}:
+    get:
+      tags: [attachments]
+      operationId: getAttachment
+      security: []
+      summary: Файл по подписанной ссылке (expires, signature в query)
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+        - { in: query, name: expires, required: true, schema: { type: integer } }
+        - { in: query, name: signature, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Файл
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /demo/reset:
+    post:
+      tags: [demo]
+      operationId: demoReset
+      summary: Сброс демо-данных (только сотрудник демо-организации)
+      responses:
+        '200':
+          description: Готово
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }

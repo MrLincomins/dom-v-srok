@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: dom_test, POSTGRES_USER: dom, POSTGRES_PASSWORD: dom }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U dom" --health-interval 5s --health-retries 20
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_DATABASE: dom_test
+      DB_USERNAME: dom
+      DB_PASSWORD: dom
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, intl, gd, zip, redis
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate
+      - run: vendor/bin/pint --test
+      - run: sh scripts/check-comments.sh
+      - run: vendor/bin/phpstan analyse --memory-limit=1G
+      - run: vendor/bin/pest --ci
+      - run: composer audit || true
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test -- --run
+      - run: npm run api:types && git diff --exit-code resources/js/miniapp/api/schema.d.ts
+      - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build php image and measure time
+        run: |
+          start=$(date +%s)
+          docker build -f docker/Dockerfile --target php -t dom-v-srok:ci .
+          echo "build took $(( $(date +%s) - start )) s (limit 300)"
+      - name: Secrets scan
+        run: |
+          if git grep -nE "(MAX_BOT_TOKEN|PASSWORD|SECRET)=[A-Za-z0-9]{8,}" -- ':!*.md' ':!.env.example'; then
+            echo "удали сикрет в репо"; exit 1; fi

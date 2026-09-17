@@ -1,0 +1,101 @@
+# Проверки API для платформы оценки (кейс, стр. 10, девять элементов).
+# Формат схемы уточняется у организаторов; структура ниже покрывает все обязательные поля.
+schema_version: "1.0"
+solution: "Дом в срок"
+team: "<идентификатор команды>"
+base_url: "https://<домен>/api/v1"
+openapi: docs/openapi.yaml
+
+auth:
+  type: bearer
+  login:
+    method: POST
+    path: /auth/login
+    body: { login: "{{account.login}}", password: "{{account.password}}" }
+    token_path: data.token
+  accounts:
+    dispatcher: { login: demo_dispatcher, password: "<DEMO_DISPATCHER_PASSWORD со служебного слайда>" }
+    resident: { login: demo_resident, password: "<DEMO_RESIDENT_PASSWORD со служебного слайда>" }
+
+test_data:
+  reset: { method: POST, path: /demo/reset, role: dispatcher }
+  request_new_id: 1          # заявка в статусе «Принято»
+  request_done_id: 6         # заявка «Выполнено», ждёт подтверждения
+  request_confirmed_id: 7    # терминальный статус для проверки 409
+
+checks:
+  - id: auth-login
+    method: POST
+    path: /auth/login
+    role: none
+    body: { login: "{{accounts.dispatcher.login}}", password: "{{accounts.dispatcher.password}}" }
+    expect: { status: [200], content_type: application/json, required: [data.token, data.user.role] }
+
+  - id: me
+    method: GET
+    path: /me
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.id, data.role, data.organization.name] }
+
+  - id: catalog
+    method: GET
+    path: /catalog/categories
+    role: none
+    expect: { status: [200], content_type: application/json, required: [data] }
+
+  - id: queue-open
+    method: GET
+    path: /requests?status=open
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data, meta.total, meta.counters.overdue] }
+
+  - id: queue-overdue
+    method: GET
+    path: /requests?overdue=1
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.0.is_overdue] }
+
+  - id: queue-forbidden-for-resident
+    method: GET
+    path: /requests
+    role: resident
+    expect: { status: [403], content_type: application/json, required: [error.code] }
+
+  - id: request-card
+    method: GET
+    path: /requests/{{test_data.request_new_id}}
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.id, data.status, data.responsible.name, data.basis, data.events] }
+
+  - id: request-take-in-progress
+    method: PATCH
+    path: /requests/{{test_data.request_new_id}}/status
+    role: dispatcher
+    body: { status: in_progress, comment: "Проверка" }
+    expect: { status: [200], content_type: application/json, required: [data.status] }
+
+  - id: request-invalid-transition
+    method: PATCH
+    path: /requests/{{test_data.request_confirmed_id}}/status
+    role: dispatcher
+    body: { status: in_progress }
+    expect: { status: [409], content_type: application/json, required: [error.code] }
+
+  - id: resident-confirm
+    method: POST
+    path: /requests/{{test_data.request_done_id}}/confirm
+    role: resident
+    body: { resolved: true }
+    expect: { status: [200], content_type: application/json, required: [data.status, data.confirmed_by] }
+
+  - id: my-requests
+    method: GET
+    path: /my/requests
+    role: resident
+    expect: { status: [200], content_type: application/json, required: [data] }
+
+  - id: unauthenticated
+    method: GET
+    path: /me
+    role: none
+    expect: { status: [401], content_type: application/json, required: [error.code] }

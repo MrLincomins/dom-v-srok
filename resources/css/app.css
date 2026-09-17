@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+@source '../js/miniapp/**/*.{ts,tsx}';
+
+/* свои токены только для статусов, фон, текст и акцент берём из переменных max ui */
+@theme {
+    --color-accent: var(--text-themed, #2d5bff);
+    --color-surface: var(--background-card, #ffffff);
+    --color-page: var(--background-secondary, #f5f6f8);
+    --color-ink: var(--text-primary, #16181d);
+    --color-muted: var(--text-secondary, #6b7280);
+    --color-faint: var(--text-tertiary, #9ca3af);
+    --color-negative: var(--text-negative, #d92d20);
+    --color-work: #0e7490;
+    --color-late: #d92d20;
+    --color-done: #12805c;
+    --color-fresh: #2d5bff;
+    --font-sans: var(--family-base, -apple-system, 'SF Pro', Roboto, 'Segoe UI', sans-serif);
+}
+
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* табличные цифры для номеров и таймеров */
+.tabular {
+    font-variant-numeric: tabular-nums;
+}
