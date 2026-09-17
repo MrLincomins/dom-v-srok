@@ -1,0 +1,4 @@
+resources/js/miniapp/api/schema.d.ts
+public/build
+vendor
+node_modules

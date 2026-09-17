@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    '/auth/max': {
+    "/auth/max": {
         parameters: {
             query?: never;
             header?: never;
@@ -14,14 +14,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Вход из мини-приложения по initData MAX */
-        post: operations['authMax'];
+        post: operations["authMax"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/auth/login': {
+    "/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -31,14 +31,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Вход тестовой учётки (только DEMO_ACCOUNTS_ENABLED) */
-        post: operations['authLogin'];
+        post: operations["authLogin"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/auth/logout': {
+    "/auth/logout": {
         parameters: {
             query?: never;
             header?: never;
@@ -48,14 +48,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Отозвать текущий токен */
-        post: operations['authLogout'];
+        post: operations["authLogout"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/me': {
+    "/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -63,7 +63,7 @@ export interface paths {
             cookie?: never;
         };
         /** Профиль, организация, дом */
-        get: operations['me'];
+        get: operations["me"];
         put?: never;
         post?: never;
         delete?: never;
@@ -72,7 +72,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/catalog/categories': {
+    "/catalog/categories": {
         parameters: {
             query?: never;
             header?: never;
@@ -80,7 +80,7 @@ export interface paths {
             cookie?: never;
         };
         /** Дерево категорий со сроками и основаниями */
-        get: operations['listCategories'];
+        get: operations["listCategories"];
         put?: never;
         post?: never;
         delete?: never;
@@ -89,7 +89,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/requests': {
+    "/requests": {
         parameters: {
             query?: never;
             header?: never;
@@ -97,7 +97,7 @@ export interface paths {
             cookie?: never;
         };
         /** Очередь организации диспетчера */
-        get: operations['listRequests'];
+        get: operations["listRequests"];
         put?: never;
         post?: never;
         delete?: never;
@@ -106,7 +106,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}': {
+    "/requests/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -114,7 +114,7 @@ export interface paths {
             cookie?: never;
         };
         /** Карточка заявки */
-        get: operations['getRequest'];
+        get: operations["getRequest"];
         put?: never;
         post?: never;
         delete?: never;
@@ -123,7 +123,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}/status': {
+    "/requests/{id}/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -137,10 +137,10 @@ export interface paths {
         options?: never;
         head?: never;
         /** Смена статуса по таблице переходов */
-        patch: operations['changeStatus'];
+        patch: operations["changeStatus"];
         trace?: never;
     };
-    '/requests/{id}/assign': {
+    "/requests/{id}/assign": {
         parameters: {
             query?: never;
             header?: never;
@@ -150,14 +150,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Назначить исполнителя */
-        post: operations['assignExecutor'];
+        post: operations["assignExecutor"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}/close': {
+    "/requests/{id}/close": {
         parameters: {
             query?: never;
             header?: never;
@@ -167,14 +167,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Закрыть с фото — статус «Выполнено», запрос подтверждения у жителя */
-        post: operations['closeRequest'];
+        post: operations["closeRequest"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}/redirect': {
+    "/requests/{id}/redirect": {
         parameters: {
             query?: never;
             header?: never;
@@ -184,14 +184,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Переадресовать с контактом (терминальный статус) */
-        post: operations['redirectRequest'];
+        post: operations["redirectRequest"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}/comments': {
+    "/requests/{id}/comments": {
         parameters: {
             query?: never;
             header?: never;
@@ -201,14 +201,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Комментарий диспетчера в ленту без смены статуса */
-        post: operations['addComment'];
+        post: operations["addComment"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/requests/{id}/confirm': {
+    "/requests/{id}/confirm": {
         parameters: {
             query?: never;
             header?: never;
@@ -218,14 +218,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Житель подтверждает решение или возвращает заявку в работу */
-        post: operations['confirmRequest'];
+        post: operations["confirmRequest"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/my/requests': {
+    "/my/requests": {
         parameters: {
             query?: never;
             header?: never;
@@ -233,7 +233,7 @@ export interface paths {
             cookie?: never;
         };
         /** Заявки жителя */
-        get: operations['myRequests'];
+        get: operations["myRequests"];
         put?: never;
         post?: never;
         delete?: never;
@@ -242,7 +242,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/attachments/{id}': {
+    "/attachments/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -250,7 +250,7 @@ export interface paths {
             cookie?: never;
         };
         /** Файл по подписанной ссылке (expires, signature в query) */
-        get: operations['getAttachment'];
+        get: operations["getAttachment"];
         put?: never;
         post?: never;
         delete?: never;
@@ -259,7 +259,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/demo/reset': {
+    "/demo/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -269,7 +269,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Сброс демо-данных (только сотрудник демо-организации) */
-        post: operations['demoReset'];
+        post: operations["demoReset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -292,14 +292,14 @@ export interface components {
             };
         };
         /** @enum {string} */
-        RequestStatus: 'new' | 'assigned' | 'in_progress' | 'done' | 'confirmed' | 'returned' | 'redirected';
+        RequestStatus: "new" | "assigned" | "in_progress" | "done" | "confirmed" | "returned" | "redirected";
         /** @enum {string} */
-        Role: 'resident' | 'dispatcher' | 'admin';
+        Role: "resident" | "dispatcher" | "admin";
         Organization: {
             id: number;
             name: string;
             /** @enum {string} */
-            type: 'uk' | 'tsj' | 'jsk';
+            type: "uk" | "tsj" | "jsk";
             phone_ads: string;
             phone_dispatch?: string | null;
             email?: string | null;
@@ -324,9 +324,9 @@ export interface components {
         User: {
             id: number;
             name: string;
-            role: components['schemas']['Role'];
-            organization?: components['schemas']['Organization'] | null;
-            house?: components['schemas']['House'] | null;
+            role: components["schemas"]["Role"];
+            organization?: components["schemas"]["Organization"] | null;
+            house?: components["schemas"]["House"] | null;
             entrance?: number | null;
             flat?: string | null;
             is_demo: boolean;
@@ -335,12 +335,12 @@ export interface components {
             token: string;
             /** Format: date-time */
             expires_at: string;
-            user: components['schemas']['User'];
+            user: components["schemas"]["User"];
         };
         Deadline: {
             value: number;
             /** @enum {string} */
-            unit: 'hours' | 'days' | 'working_days';
+            unit: "hours" | "days" | "working_days";
         };
         Category: {
             id: number;
@@ -348,13 +348,13 @@ export interface components {
             name: string;
             is_emergency: boolean;
             responsible_type?: string | null;
-            deadline_fix?: components['schemas']['Deadline'] | null;
-            deadline_reply?: components['schemas']['Deadline'] | null;
+            deadline_fix?: components["schemas"]["Deadline"] | null;
+            deadline_reply?: components["schemas"]["Deadline"] | null;
             basis?: string | null;
             advice?: string | null;
             /** @description строка справочника помечена «сверить с первоисточником» */
             verify: boolean;
-            children?: components['schemas']['Category'][];
+            children?: components["schemas"]["Category"][];
         };
         Executor: {
             id: number;
@@ -365,7 +365,7 @@ export interface components {
         RequestListItem: {
             /** @description номер заявки */
             id: number;
-            status: components['schemas']['RequestStatus'];
+            status: components["schemas"]["RequestStatus"];
             status_label: string;
             category: string;
             description: string;
@@ -379,7 +379,7 @@ export interface components {
             /** Format: date-time */
             deadline_reply_at?: string | null;
             is_overdue: boolean;
-            executor?: components['schemas']['Executor'] | null;
+            executor?: components["schemas"]["Executor"] | null;
             participants_count: number;
             /** Format: date-time */
             created_at: string;
@@ -387,22 +387,11 @@ export interface components {
         RequestEvent: {
             id: number;
             /** @enum {string} */
-            type:
-                | 'created'
-                | 'assigned'
-                | 'status_changed'
-                | 'redirected'
-                | 'returned'
-                | 'confirmed'
-                | 'comment'
-                | 'photo_added'
-                | 'participant_joined'
-                | 'notification'
-                | 'reminder';
+            type: "created" | "assigned" | "status_changed" | "redirected" | "returned" | "confirmed" | "comment" | "photo_added" | "participant_joined" | "notification" | "reminder";
             from_status?: string | null;
             to_status?: string | null;
             /** @enum {string} */
-            actor_role: 'resident' | 'dispatcher' | 'system';
+            actor_role: "resident" | "dispatcher" | "system";
             actor_name?: string | null;
             comment?: string | null;
             payload?: {
@@ -414,7 +403,7 @@ export interface components {
         Attachment: {
             id: number;
             /** @enum {string} */
-            kind: 'resident' | 'closing';
+            kind: "resident" | "closing";
             mime: string;
             /** @description подписанная ссылка на 15 минут */
             url?: string | null;
@@ -423,21 +412,21 @@ export interface components {
         };
         RequestCard: {
             id: number;
-            status: components['schemas']['RequestStatus'];
+            status: components["schemas"]["RequestStatus"];
             status_label: string;
-            allowed_transitions: components['schemas']['RequestStatus'][];
+            allowed_transitions: components["schemas"]["RequestStatus"][];
             category: {
                 id: number;
                 name: string;
                 slug: string;
             };
             description: string;
-            house: components['schemas']['House'];
+            house: components["schemas"]["House"];
             entrance?: number | null;
             flat?: string | null;
             responsible: {
                 /** @enum {string} */
-                kind: 'organization' | 'party' | 'unknown';
+                kind: "organization" | "party" | "unknown";
                 name: string;
                 phone?: string | null;
                 is_sure: boolean;
@@ -450,7 +439,7 @@ export interface components {
             basis: string;
             is_overdue: boolean;
             closed_late: boolean;
-            executor?: components['schemas']['Executor'] | null;
+            executor?: components["schemas"]["Executor"] | null;
             /** Format: date-time */
             first_reaction_at?: string | null;
             /** Format: date-time */
@@ -458,7 +447,7 @@ export interface components {
             /** Format: date-time */
             confirmed_at?: string | null;
             /** @enum {string|null} */
-            confirmed_by?: 'resident' | 'auto' | 'dispatcher' | null;
+            confirmed_by?: "resident" | "auto" | "dispatcher" | null;
             /** Format: date-time */
             closed_at?: string | null;
             returned_count: number;
@@ -472,10 +461,10 @@ export interface components {
             };
             participants_count: number;
             /** @enum {string} */
-            origin: 'qr' | 'chat' | 'direct' | 'api';
+            origin: "qr" | "chat" | "direct" | "api";
             rating?: number | null;
-            events?: components['schemas']['RequestEvent'][];
-            attachments?: components['schemas']['Attachment'][];
+            events?: components["schemas"]["RequestEvent"][];
+            attachments?: components["schemas"]["Attachment"][];
             /** Format: date-time */
             created_at: string;
         };
@@ -490,14 +479,14 @@ export interface components {
             last_page: number;
             per_page: number;
             total: number;
-            counters?: components['schemas']['Counters'];
+            counters?: components["schemas"]["Counters"];
         };
         RequestCardResponse: {
-            data: components['schemas']['RequestCard'];
+            data: components["schemas"]["RequestCard"];
         };
         RequestListResponse: {
-            data: components['schemas']['RequestListItem'][];
-            meta: components['schemas']['PaginationMeta'];
+            data: components["schemas"]["RequestListItem"][];
+            meta: components["schemas"]["PaginationMeta"];
             links?: {
                 [key: string]: unknown;
             };
@@ -510,7 +499,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['ErrorResponse'];
+                "application/json": components["schemas"]["ErrorResponse"];
             };
         };
         /** @description Не та роль или не та организация */
@@ -519,7 +508,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['ErrorResponse'];
+                "application/json": components["schemas"]["ErrorResponse"];
             };
         };
         /** @description Не найдено */
@@ -528,7 +517,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['ErrorResponse'];
+                "application/json": components["schemas"]["ErrorResponse"];
             };
         };
         /** @description Ошибка валидации; поля в details.fields */
@@ -537,7 +526,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['ErrorResponse'];
+                "application/json": components["schemas"]["ErrorResponse"];
             };
         };
         /** @description Недопустимый переход статуса */
@@ -546,7 +535,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['ErrorResponse'];
+                "application/json": components["schemas"]["ErrorResponse"];
             };
         };
     };
@@ -566,7 +555,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     /** @description window.WebApp.initData как есть */
                     init_data: string;
                 };
@@ -579,13 +568,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        data: components['schemas']['AuthToken'];
+                    "application/json": {
+                        data: components["schemas"]["AuthToken"];
                     };
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            422: components["responses"]["Validation"];
         };
     };
     authLogin: {
@@ -597,7 +586,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     login: string;
                     password: string;
                 };
@@ -610,14 +599,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        data: components['schemas']['AuthToken'];
+                    "application/json": {
+                        data: components["schemas"]["AuthToken"];
                     };
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            404: components['responses']['NotFound'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
         };
     };
     authLogout: {
@@ -635,14 +624,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
+                    "application/json": {
                         data: {
                             ok: boolean;
                         };
                     };
                 };
             };
-            401: components['responses']['Unauthenticated'];
+            401: components["responses"]["Unauthenticated"];
         };
     };
     me: {
@@ -660,12 +649,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        data: components['schemas']['User'];
+                    "application/json": {
+                        data: components["schemas"]["User"];
                     };
                 };
             };
-            401: components['responses']['Unauthenticated'];
+            401: components["responses"]["Unauthenticated"];
         };
     };
     listCategories: {
@@ -683,8 +672,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        data: components['schemas']['Category'][];
+                    "application/json": {
+                        data: components["schemas"]["Category"][];
                     };
                 };
             };
@@ -693,16 +682,7 @@ export interface operations {
     listRequests: {
         parameters: {
             query?: {
-                status?:
-                    | 'open'
-                    | 'closed'
-                    | 'new'
-                    | 'assigned'
-                    | 'in_progress'
-                    | 'done'
-                    | 'confirmed'
-                    | 'returned'
-                    | 'redirected';
+                status?: "open" | "closed" | "new" | "assigned" | "in_progress" | "done" | "confirmed" | "returned" | "redirected";
                 overdue?: boolean;
                 house_id?: number;
                 q?: string;
@@ -721,12 +701,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestListResponse'];
+                    "application/json": components["schemas"]["RequestListResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
         };
     };
     getRequest: {
@@ -746,12 +726,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     changeStatus: {
@@ -765,8 +745,8 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
-                    status: components['schemas']['RequestStatus'];
+                "application/json": {
+                    status: components["schemas"]["RequestStatus"];
                     comment?: string | null;
                 };
             };
@@ -778,14 +758,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            409: components['responses']['Conflict'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Validation"];
         };
     };
     assignExecutor: {
@@ -799,7 +779,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     executor_id: number;
                     comment?: string | null;
                 };
@@ -812,14 +792,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            409: components['responses']['Conflict'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Validation"];
         };
     };
     closeRequest: {
@@ -833,7 +813,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                'multipart/form-data': {
+                "multipart/form-data": {
                     comment?: string;
                     photos?: string[];
                 };
@@ -846,14 +826,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            409: components['responses']['Conflict'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Validation"];
         };
     };
     redirectRequest: {
@@ -867,7 +847,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     responsible_party_id?: number | null;
                     name?: string | null;
                     phone?: string | null;
@@ -882,14 +862,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            409: components['responses']['Conflict'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Validation"];
         };
     };
     addComment: {
@@ -903,7 +883,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     text: string;
                 };
             };
@@ -915,13 +895,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
         };
     };
     confirmRequest: {
@@ -935,7 +915,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                'application/json': {
+                "application/json": {
                     resolved: boolean;
                     comment?: string | null;
                 };
@@ -948,14 +928,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestCardResponse'];
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
-            409: components['responses']['Conflict'];
-            422: components['responses']['Validation'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Validation"];
         };
     };
     myRequests: {
@@ -973,10 +953,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['RequestListResponse'];
+                    "application/json": components["schemas"]["RequestListResponse"];
                 };
             };
-            401: components['responses']['Unauthenticated'];
+            401: components["responses"]["Unauthenticated"];
         };
     };
     getAttachment: {
@@ -999,13 +979,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'image/jpeg': string;
-                    'image/png': string;
-                    'image/webp': string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
                 };
             };
-            403: components['responses']['Forbidden'];
-            404: components['responses']['NotFound'];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     demoReset: {
@@ -1023,15 +1003,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
+                    "application/json": {
                         data: {
                             ok: boolean;
                         };
                     };
                 };
             };
-            401: components['responses']['Unauthenticated'];
-            403: components['responses']['Forbidden'];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }

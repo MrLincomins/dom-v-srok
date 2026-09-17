@@ -24,7 +24,4 @@ docker compose up -d --build
 ```bash
 composer lint && composer test
 npm run lint && npm run typecheck && npm test -- --run && npm run build
-sh scripts/check-comments.sh
 ```
-
-Полное описание, порядок проверки и ограничения будут дописаны перед сдачей.
