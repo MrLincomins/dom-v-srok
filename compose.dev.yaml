@@ -1,0 +1,31 @@
+# docker compose -f compose.yaml -f compose.dev.yaml up -d
+x-dev-mounts: &dev-mounts
+  - .:/app
+  - /app/vendor
+  - /app/node_modules
+  - /app/bootstrap/cache
+  - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/zz-dev.ini:ro
+
+services:
+  app:
+    volumes: *dev-mounts
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+  worker:
+    volumes: *dev-mounts
+    environment:
+      APP_ENV: local
+  scheduler:
+    volumes: *dev-mounts
+    environment:
+      APP_ENV: local
+  poller:
+    volumes: *dev-mounts
+    environment:
+      APP_ENV: local
+  caddy:
+    volumes:
+      - ./public:/app/public:ro
+      - caddy_data:/data
+      - caddy_config:/config

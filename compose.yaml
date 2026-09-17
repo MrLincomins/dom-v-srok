@@ -1,7 +1,5 @@
 name: dom-v-srok
 
-# внутри компоуза база и редис всегда по именам сервисов, что бы ни стояло в .env для локалки
-# эти значения перекрывают env_file
 x-container-env: &container-env
   DB_HOST: db
   DB_PORT: "5432"
@@ -9,13 +7,13 @@ x-container-env: &container-env
   REDIS_PORT: "6379"
   QUEUE_CONNECTION: redis
   CACHE_STORE: redis
-  MAX_CA_BUNDLE: ""            # сертификат минцифры уже в образе
+  MAX_CA_BUNDLE: ""
 
 services:
   caddy:
     build: { context: ., dockerfile: docker/Dockerfile, target: caddy }
     environment:
-      SERVER_NAME: "${SERVER_NAME:-:80}"   # :80 локально, домен в проде и сертификат сам подтянется
+      SERVER_NAME: "${SERVER_NAME:-:80}"
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes: [caddy_data:/data, caddy_config:/config]
     depends_on:
@@ -27,7 +25,7 @@ services:
       retries: 10
     restart: unless-stopped
 
-  app:                                     # php-fpm
+  app:
     build: { context: ., dockerfile: docker/Dockerfile, target: php }
     env_file: .env
     environment: *container-env
@@ -36,7 +34,6 @@ services:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      # php-fpm слушает 9000, pgrep в busybox сравнивает с полной командной строкой и не подходит
       test: ["CMD-SHELL", "nc -z 127.0.0.1 9000"]
       interval: 5s
       timeout: 3s
@@ -50,7 +47,7 @@ services:
     environment: *container-env
     volumes: [storage:/app/storage]
     depends_on:
-      app: { condition: service_healthy }  # миграции уже прошли
+      app: { condition: service_healthy }
     restart: unless-stopped
 
   scheduler:
@@ -63,7 +60,7 @@ services:
       app: { condition: service_healthy }
     restart: unless-stopped
 
-  poller:                                  # только локалка: docker compose --profile polling up
+  poller:
     profiles: [polling]
     build: { context: ., dockerfile: docker/Dockerfile, target: php }
     command: php artisan bot:poll

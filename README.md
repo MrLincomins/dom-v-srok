@@ -25,3 +25,16 @@ docker compose up -d --build
 composer lint && composer test
 npm run lint && npm run typecheck && npm test -- --run && npm run build
 ```
+
+## Разработка
+
+Токен бота для работы над кабинетом не нужен: вход в браузере идёт тестовой учёткой, данные из демо-сидера.
+
+```bash
+cp .env.example .env                                     # DB_PASSWORD и DEMO_* заполнить, MAX_BOT_TOKEN оставить пустым
+npm ci
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build   # код монтируется с диска, правки PHP видны сразу
+npm run dev                                              # Vite с горячей перезагрузкой для resources/js
+```
+
+Открыть `http://localhost/app`, войти как `demo_dispatcher` с паролем из `.env`. Без запущенного `npm run dev` страница берёт сборку из `public/build`: тогда один раз выполнить `npm run build`.

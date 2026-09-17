@@ -21,6 +21,13 @@ final class DemoResetService
 
             OutboxMessage::query()->whereIn('request_id', $requestIds)->delete();
             ServiceRequest::query()->whereIn('id', $requestIds)->delete(); // события, участники, вложения удаляются каскадом
+
+            // если других заявок нет, номера снова с 1: в CHECK.md и DATA-API.yaml они зафиксированы
+            if (ServiceRequest::query()->count() === 0) {
+                foreach (['requests_id_seq', 'request_events_id_seq', 'attachments_id_seq'] as $sequence) {
+                    DB::statement("ALTER SEQUENCE {$sequence} RESTART WITH 1");
+                }
+            }
         });
 
         (new DemoSeeder)->run();
