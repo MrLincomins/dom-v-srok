@@ -2,20 +2,65 @@
 
 @source '../js/miniapp/**/*.{ts,tsx}';
 
-/* свои токены только для статусов, фон, текст и акцент берём из переменных max ui */
-@theme {
-    --color-accent: var(--text-themed, #2d5bff);
-    --color-surface: var(--background-card, #ffffff);
-    --color-page: var(--background-secondary, #f5f6f8);
-    --color-ink: var(--text-primary, #16181d);
-    --color-muted: var(--text-secondary, #6b7280);
-    --color-faint: var(--text-tertiary, #9ca3af);
-    --color-negative: var(--text-negative, #d92d20);
+@theme inline {
+    /* Здесь 1 spacing unit = 1px: для layout используем шаги 8, 12, 16 и 24. */
+    --spacing: 0.0625rem;
+    --color-accent: var(--accent-primary);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-muted: var(--accent-muted);
+    --color-surface: var(--background-card);
+    --color-page: var(--background-primary);
+    --color-page-secondary: var(--background-secondary);
+    --color-ink: var(--text-primary);
+    --color-muted: var(--text-secondary);
+    --color-faint: var(--text-tertiary);
+    --color-negative: var(--text-negative);
+    --color-positive: var(--text-positive);
+    --color-divider: var(--divider-primary);
     --color-work: #0e7490;
     --color-late: #d92d20;
     --color-done: #12805c;
-    --color-fresh: #2d5bff;
+    --color-fresh: var(--accent-primary);
     --font-sans: var(--family-base, -apple-system, 'SF Pro', Roboto, 'Segoe UI', sans-serif);
+    --radius-card: 14px;
+    --shadow-card: var(--card-shadow);
+}
+
+:root,
+:root[data-color-scheme='light'] {
+    color-scheme: light;
+    --background-primary: #f4f6fa;
+    --background-secondary: #e8edf4;
+    --background-card: #ffffff;
+    --text-primary: #101318;
+    --text-secondary: #5e6878;
+    --text-tertiary: #8c95a3;
+    --text-negative: #d92d20;
+    --text-positive: #12805c;
+    --accent-primary: #0868e8;
+    --accent-strong: #0054c7;
+    --accent-muted: rgb(8 104 232 / 12%);
+    --divider-primary: rgb(16 19 24 / 9%);
+    --card-shadow: 0 1px 2px rgb(26 36 50 / 6%);
+    --shimmer-highlight: rgb(255 255 255 / 70%);
+}
+
+:root[data-color-scheme='dark'] {
+    color-scheme: dark;
+    --background-primary: #0d0f13;
+    --background-secondary: #181b21;
+    --background-card: #1d2129;
+    --text-primary: #f5f7fa;
+    --text-secondary: #b1b7c2;
+    --text-tertiary: #7e8796;
+    --text-negative: #ff6673;
+    --text-positive: #48d39a;
+    --accent-primary: #4c9cff;
+    --accent-strong: #77b4ff;
+    --accent-muted: rgb(76 156 255 / 17%);
+    --divider-primary: rgb(255 255 255 / 9%);
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+    --shimmer-highlight: rgb(255 255 255 / 16%);
 }
 
 html,
@@ -30,9 +75,96 @@ body {
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
 }
 
-/* табличные цифры для номеров и таймеров */
 .tabular {
     font-variant-numeric: tabular-nums;
+}
+
+.app-shell {
+    min-height: 100dvh;
+    background: var(--color-page);
+}
+
+.screen {
+    width: min(100%, 720px);
+    min-height: 100dvh;
+    margin-inline: auto;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.screen-content {
+    padding: var(--page-gutter, 16px) var(--page-gutter, 16px) 0;
+}
+
+.app-card {
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+}
+
+.interactive-card {
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.interactive-card:active {
+    transform: scale(0.985);
+}
+
+.enter {
+    animation: enter 240ms ease-out both;
+}
+
+.enter-list {
+    animation: enter 260ms ease-out both;
+}
+
+.skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: linear-gradient(90deg, transparent, var(--shimmer-highlight), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.4s infinite;
+}
+
+@keyframes enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes shimmer {
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@media (hover: hover) {
+    .interactive-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgb(8 104 232 / 10%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

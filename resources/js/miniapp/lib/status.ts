@@ -30,22 +30,8 @@ export function statusTone(status: RequestStatus, overdue: boolean): StatusTone 
     }
 }
 
-/** что диспетчер может сделать дальше, подпись кнопки и статус, порядок = порядок кнопок */
-export const NEXT_ACTIONS: Record<RequestStatus, Array<{ status: RequestStatus; label: string }>> = {
-    new: [
-        { status: 'in_progress', label: 'Взять в работу' },
-        { status: 'done', label: 'Выполнено' },
-    ],
-    assigned: [
-        { status: 'in_progress', label: 'В работе' },
-        { status: 'done', label: 'Выполнено' },
-    ],
-    in_progress: [{ status: 'done', label: 'Выполнено' }],
-    returned: [
-        { status: 'in_progress', label: 'Снова в работу' },
-        { status: 'done', label: 'Выполнено' },
-    ],
-    done: [],
-    confirmed: [],
-    redirected: [],
-};
+export function transitionLabel(status: RequestStatus, current: RequestStatus): string {
+    if (status === 'in_progress') return current === 'returned' ? 'Снова в работу' : 'Взять в работу';
+    if (status === 'done') return 'Отметить выполненной';
+    return STATUS_LABEL[status];
+}

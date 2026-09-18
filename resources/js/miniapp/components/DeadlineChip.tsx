@@ -1,6 +1,5 @@
 import { describeDeadline } from '@/lib/deadline';
 
-/** чип таймера, при просрочке красный */
 export function DeadlineChip({
     deadline,
     closed = false,
@@ -16,7 +15,7 @@ export function DeadlineChip({
           ? 'bg-work/10 text-work'
           : 'bg-muted/10 text-muted';
     return (
-        <span className={`tabular inline-flex whitespace-nowrap rounded-lg px-2 py-0.5 text-[13px] ${tone}`}>
+        <span className={`tabular inline-flex whitespace-nowrap rounded-lg px-8 py-2 text-[13px] ${tone}`}>
             {view.text}
         </span>
     );

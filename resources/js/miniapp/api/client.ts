@@ -1,4 +1,4 @@
-/** единственная точка обращения к апи. ответ не 2xx превращается в ApiError с кодом из { error }, обрыв сети в ApiError(network) */
+/** Все запросы проходят здесь, чтобы экраны одинаково понимали ошибки API и сети. */
 export class ApiError extends Error {
     constructor(
         public readonly code: string,
@@ -25,6 +25,7 @@ export class ApiError extends Error {
 
 const BASE = '/api/v1';
 const TOKEN_KEY = 'dom.token';
+export const UNAUTHORIZED_EVENT = 'dom:unauthorized';
 
 let token: string | null = readStoredToken();
 
@@ -42,7 +43,7 @@ export function setToken(value: string | null): void {
         if (value) sessionStorage.setItem(TOKEN_KEY, value);
         else sessionStorage.removeItem(TOKEN_KEY);
     } catch {
-        /* приватный режим, токен только в памяти */
+        // Если sessionStorage недоступен, текущая вкладка всё равно сможет работать с токеном в памяти.
     }
 }
 
@@ -71,7 +72,9 @@ async function parseJson(response: Response): Promise<unknown> {
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = new URL(BASE + path, window.location.origin);
     for (const [key, value] of Object.entries(options.query ?? {})) {
-        if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+        if (value !== undefined && value !== null && value !== '') {
+            url.searchParams.set(key, typeof value === 'boolean' ? String(Number(value)) : String(value));
+        }
     }
 
     const headers: Record<string, string> = { Accept: 'application/json' };
@@ -86,7 +89,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
             body: options.formData ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
             signal: options.signal,
         });
-    } catch {
+    } catch (error) {
+        if (options.signal?.aborted) throw error;
         throw new ApiError('network', 'Нет связи с сервером', 0);
     }
 
@@ -98,12 +102,20 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
         const error = (
             json as { error?: { code?: string; message?: string; details?: Record<string, unknown> } } | null
         )?.error;
+        if (response.status === 401) {
+            setToken(null);
+            window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+        }
         throw new ApiError(
             error?.code ?? `http_${response.status}`,
             error?.message ?? `Ошибка ${response.status}`,
             response.status,
             error?.details ?? {},
         );
+    }
+
+    if (json === null) {
+        throw new ApiError('invalid_response', 'Сервер вернул некорректный ответ', response.status);
     }
 
     return json as T;

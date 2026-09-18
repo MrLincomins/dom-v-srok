@@ -22,14 +22,6 @@ export async function changeStatus(
     ).data;
 }
 
-export async function assignExecutor(id: number, executorId: number, comment?: string): Promise<RequestCard> {
-    return (
-        await api<{ data: RequestCard }>(`/requests/${id}/assign`, {
-            body: { executor_id: executorId, comment },
-        })
-    ).data;
-}
-
 export async function closeRequest(id: number, comment: string, photos: File[]): Promise<RequestCard> {
     const formData = new FormData();
     formData.set('comment', comment);
@@ -53,6 +45,9 @@ export async function confirmRequest(id: number, resolved: boolean, comment?: st
         .data;
 }
 
-export function myRequests(signal?: AbortSignal): Promise<Paginated<RequestListItem>> {
-    return api<Paginated<RequestListItem>>('/my/requests', { signal });
+export function myRequests(page: number, signal?: AbortSignal): Promise<Paginated<RequestListItem>> {
+    return api<Paginated<RequestListItem>>('/my/requests', {
+        query: { page, per_page: 30 },
+        signal,
+    });
 }

@@ -7,7 +7,7 @@ export async function loginWithInitData(initData: string): Promise<AuthToken> {
     return result.data;
 }
 
-/** только для тестовых учёток, флаг DEMO_ACCOUNTS_ENABLED */
+/** Этот способ входа backend разрешает только для демо-аккаунтов. */
 export async function loginWithPassword(login: string, password: string): Promise<AuthToken> {
     const result = await api<{ data: AuthToken }>('/auth/login', { body: { login, password } });
     setToken(result.data.token);
