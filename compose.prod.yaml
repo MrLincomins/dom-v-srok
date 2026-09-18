@@ -1,0 +1,18 @@
+x-app-image: &app-image ${IMAGE_PREFIX:-ghcr.io/mrlincomins/dom-v-srok}-app:${APP_TAG:-latest}
+
+services:
+  caddy:
+    image: ${IMAGE_PREFIX:-ghcr.io/mrlincomins/dom-v-srok}-caddy:${APP_TAG:-latest}
+    build: !reset null
+  app:
+    image: *app-image
+    build: !reset null
+  worker:
+    image: *app-image
+    build: !reset null
+  scheduler:
+    image: *app-image
+    build: !reset null
+  poller:
+    image: *app-image
+    build: !reset null

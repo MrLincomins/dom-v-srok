@@ -19,6 +19,22 @@ docker compose up -d --build
 
 После старта: `http://localhost/app` — кабинет, `http://localhost/api/v1` — API (контракт в `docs/openapi.yaml`), `http://localhost/up` — проверка здоровья.
 
+## Прод и выкат
+
+Push в `main` после зелёных проверок собирает образы в GitHub Container Registry и выкатывает их на сервер по SSH (`.github/workflows/ci.yml`, job `deploy`, скрипт `docker/deploy.sh`). На сервере ничего не собирается: `compose.prod.yaml` подменяет сборку готовыми образами.
+
+Один раз на сервере (Ubuntu 24.04, Docker Engine с плагином compose):
+
+```bash
+adduser --disabled-password deploy && usermod -aG docker deploy
+mkdir -p /opt/dom-v-srok && chown deploy:deploy /opt/dom-v-srok
+# в /opt/dom-v-srok/.env: APP_ENV=production, APP_KEY, APP_URL=https://домен, SERVER_NAME=домен,
+# MAX_BOT_TOKEN, MAX_MODE=webhook, MAX_WEBHOOK_SECRET, DB_PASSWORD, DEMO_*
+# публичный ключ выката в ~deploy/.ssh/authorized_keys, A-запись домена на сервер, открыты 80 и 443
+```
+
+Секреты репозитория: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`; необязательные `DEPLOY_PORT` и `DEPLOY_PATH`. Сертификат получает Caddy сам, вебхук бота подписывается при выкате. Откат: `APP_TAG=<sha> sh /opt/dom-v-srok/deploy.sh <sha>`.
+
 ## Проверки
 
 ```bash

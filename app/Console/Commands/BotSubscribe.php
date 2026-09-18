@@ -31,12 +31,23 @@ final class BotSubscribe extends Command
             return self::FAILURE;
         }
 
+        $alive = false;
         foreach ($client->subscriptions() as $subscription) {
             $old = (string) ($subscription['url'] ?? '');
+            if ($old === $url) {
+                $alive = true;
+
+                continue;
+            }
             if ($old !== '') {
                 $client->unsubscribe($old);
                 $this->line('Удалена подписка '.$old);
             }
+        }
+        if ($alive) {
+            $this->info('Уже подписан: '.$url);
+
+            return self::SUCCESS;
         }
 
         $result = $client->subscribe($url, config('max.update_types'), $secret);

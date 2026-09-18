@@ -42,7 +42,7 @@ final class ApiExceptionRenderer
     {
         return match (true) {
             $e instanceof ValidationException => [422, 'validation_failed', 'Проверьте заполненные поля', ['fields' => $e->errors()]],
-            $e instanceof AuthenticationException => [401, 'unauthenticated', 'Нужно войти', []],
+            $e instanceof AuthenticationException => [401, 'unauthenticated', $e->getMessage() !== 'Unauthenticated.' ? $e->getMessage() : 'Нужно войти', []],
             $e instanceof AuthorizationException => [403, 'forbidden', 'Нет доступа', []],
             $e instanceof ModelNotFoundException, $e instanceof NotFoundHttpException => [404, 'not_found', 'Не найдено', []],
             $e instanceof DomainException => [$e->status(), $e->code(), $e->getMessage(), $e->details()],

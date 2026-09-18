@@ -6,7 +6,7 @@ export const texts = {
         openInMax: 'Откройте кабинет из бота в MAX',
         openInMaxHint: 'Мини-приложение работает внутри MAX. Нажмите «Кабинет» в боте.',
         demoTitle: 'Вход для проверки',
-        demoHint: 'Тестовые учётки из служебного слайда. В MAX вход происходит автоматически.',
+        demoHint: 'Логины demo_dispatcher (кабинет) и demo_resident (мои заявки). Пароли — значения DEMO_DISPATCHER_PASSWORD и DEMO_RESIDENT_PASSWORD из .env. В MAX вход происходит автоматически.',
         login: 'Логин',
         password: 'Пароль',
         submit: 'Войти',

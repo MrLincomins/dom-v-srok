@@ -69,3 +69,29 @@ it('grants the dispatcher role by access code', function () {
     $this->assertDatabaseHas('users', ['max_user_id' => 777, 'role' => 'dispatcher']);
     expect(end($fake->sent)['body']['text'])->toContain('ТСЖ «Демо»');
 });
+
+it('answers a button press to the person who pressed it, not to the bot', function () {
+    $this->seed(DatabaseSeeder::class);
+    $fake = new FakeMaxClient;
+    $this->app->instance(MaxClient::class, $fake);
+
+    (new ProcessMaxUpdate(messageUpdate(888, '/start')))->handle(app(UpdateDispatcher::class));
+
+    $press = [
+        'update_type' => 'message_callback',
+        'timestamp' => 1758100001000,
+        'callback' => ['timestamp' => 1758100001000, 'callback_id' => 'cb.1', 'payload' => 'my', 'user' => ['user_id' => 888, 'first_name' => 'Тест', 'is_bot' => false]],
+        'message' => [
+            'sender' => ['user_id' => 405671160, 'first_name' => 'Бот', 'is_bot' => true],
+            'recipient' => ['chat_type' => 'dialog', 'user_id' => 888],
+            'timestamp' => 1758100000500,
+            'body' => ['mid' => 'mid.bot.1', 'seq' => 2, 'text' => 'Что нужно сделать?'],
+        ],
+        'user_locale' => 'ru',
+    ];
+    (new ProcessMaxUpdate($press))->handle(app(UpdateDispatcher::class));
+
+    expect($fake->answered)->toContain('cb.1');
+    expect(end($fake->sent)['id'])->toBe(888);
+    expect(end($fake->sent)['body']['text'])->toContain(app(TextRepository::class)->text('my.empty'));
+});
