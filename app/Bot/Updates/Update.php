@@ -82,7 +82,7 @@ final readonly class Update
     /** @return array<string,mixed>|null объект User из API: user_id, first_name, last_name, username */
     public function user(): ?array
     {
-        $user = $this->raw['message']['sender'] ?? $this->raw['callback']['user'] ?? $this->raw['user'] ?? null;
+        $user = $this->raw['callback']['user'] ?? $this->raw['message']['sender'] ?? $this->raw['user'] ?? null;
 
         return is_array($user) ? $user : null;
     }
