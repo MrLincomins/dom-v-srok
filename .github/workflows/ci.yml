@@ -68,18 +68,37 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build php image and measure time
-        run: |
-          start=$(date +%s)
-          docker buildx build -f docker/Dockerfile --target php -t "$IMAGE_PREFIX-app:${{ github.sha }}" -t "$IMAGE_PREFIX-app:latest" \
-            --cache-from type=gha --cache-to type=gha,mode=max \
-            $([ "$PUSH" = "true" ] && echo --push || echo --load) .
-          echo "build took $(( $(date +%s) - start )) s (limit 300)"
+      - name: Start timer
+        id: timer
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Build php image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: php
+          push: ${{ env.PUSH == 'true' }}
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-app:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}-app:latest
+          cache-from: type=gha,scope=php
+          cache-to: type=gha,scope=php,mode=max
+      - name: Build time
+        run: echo "build took $(( $(date +%s) - ${{ steps.timer.outputs.start }} )) s (limit 300)"
       - name: Build caddy image
-        run: |
-          docker buildx build -f docker/Dockerfile --target caddy -t "$IMAGE_PREFIX-caddy:${{ github.sha }}" -t "$IMAGE_PREFIX-caddy:latest" \
-            --cache-from type=gha \
-            $([ "$PUSH" = "true" ] && echo --push || echo --load) .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: caddy
+          push: ${{ env.PUSH == 'true' }}
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-caddy:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}-caddy:latest
+          cache-from: |
+            type=gha,scope=php
+            type=gha,scope=caddy
+          cache-to: type=gha,scope=caddy,mode=max
       - name: Secrets scan
         run: |
           if git grep -nE "(MAX_BOT_TOKEN|PASSWORD|SECRET)=[A-Za-z0-9]{8,}" -- ':!*.md' ':!.env.example'; then
