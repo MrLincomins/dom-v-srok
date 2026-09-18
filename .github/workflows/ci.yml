@@ -105,10 +105,11 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           ssh-keyscan -p "$SSH_PORT" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-          printf 'Host deploy\n  HostName %s\n  User %s\n  Port %s\n  IdentityFile ~/.ssh/deploy\n' \
+          printf 'Host deploy\n  HostName %s\n  User %s\n  Port %s\n  IdentityFile ~/.ssh/deploy\n  IdentitiesOnly yes\n  BatchMode yes\n' \
             "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_USER }}" "$SSH_PORT" > ~/.ssh/config
+          ssh-keygen -l -f ~/.ssh/deploy
       - name: Copy compose files and deploy script
-        run: scp -q compose.yaml compose.prod.yaml docker/deploy.sh "deploy:$DEPLOY_PATH/"
+        run: scp compose.yaml compose.prod.yaml docker/deploy.sh "deploy:$DEPLOY_PATH/"
       - name: Login to ghcr on the server
         run: printf '%s' "${{ secrets.GITHUB_TOKEN }}" | ssh deploy "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
       - name: Deploy
