@@ -30,17 +30,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         retry: false,
         staleTime: Infinity,
     });
-    const clearSession = useCallback(() => {
-        client.setQueryData(SESSION_KEY, null);
+    const dropData = useCallback(() => {
         client.removeQueries({ queryKey: ['requests'] });
         client.removeQueries({ queryKey: ['my-requests'] });
         client.removeQueries({ queryKey: ['request'] });
     }, [client]);
+    const clearSession = useCallback(() => {
+        client.setQueryData(SESSION_KEY, null);
+        dropData();
+    }, [client, dropData]);
+    const relogin = useCallback(() => {
+        dropData();
+        if (client.isFetching({ queryKey: SESSION_KEY }) > 0) return;
+        void client.refetchQueries({ queryKey: SESSION_KEY });
+    }, [client, dropData]);
 
     useEffect(() => {
-        window.addEventListener(UNAUTHORIZED_EVENT, clearSession);
-        return () => window.removeEventListener(UNAUTHORIZED_EVENT, clearSession);
-    }, [clearSession]);
+        window.addEventListener(UNAUTHORIZED_EVENT, relogin);
+        return () => window.removeEventListener(UNAUTHORIZED_EVENT, relogin);
+    }, [relogin]);
 
     const loginDemo = useCallback(
         async (login: string, password: string) => {

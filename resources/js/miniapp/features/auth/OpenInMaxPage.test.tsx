@@ -2,7 +2,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
-import { AuthProvider, useAuth } from '@/app/auth';
+import { AuthProvider } from '@/app/auth';
+import { useAuth } from '@/app/authContext';
 import { OpenInMaxPage } from '@/features/auth/OpenInMaxPage';
 
 function Probe() {
