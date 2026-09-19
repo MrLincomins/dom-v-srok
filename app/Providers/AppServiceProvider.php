@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Bot\Outbox\OutboxService;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Policies\RequestPolicy;
 use Carbon\CarbonImmutable;
@@ -19,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(OutboxService::class);
     }
 
     public function boot(): void

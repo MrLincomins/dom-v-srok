@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Bot\Models\OutboxMessage;
 use App\Jobs\ProcessMaxUpdate;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
@@ -72,6 +73,7 @@ it('answers a button press to the person who pressed it, not to the bot', functi
     runUpdate(callbackUpdate(888, 'my'));
 
     expect($fake->answered)->toContain('cb.1');
-    expect(end($fake->sent)['id'])->toBe(888);
+    expect(end($fake->sent)['mid'])->toBe('mid.bot.cb.1');
+    expect(OutboxMessage::query()->latest('id')->value('target_id'))->toBe(888);
     expect(lastText($fake))->toContain(botText('my.empty'));
 });

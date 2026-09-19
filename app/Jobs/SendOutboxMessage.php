@@ -72,9 +72,7 @@ final class SendOutboxMessage implements ShouldQueue
         $message->increment('attempts');
 
         try {
-            $result = $message->target_type === OutboxTarget::Chat
-                ? $client->sendToChat($message->target_id, $message->body)
-                : $client->sendToUser($message->target_id, $message->body);
+            $result = $this->deliver($client, $message);
 
             $message->update([
                 'status' => OutboxStatus::Sent,
@@ -94,6 +92,27 @@ final class SendOutboxMessage implements ShouldQueue
             }
             throw $e; // временная ошибка, ретрай по backoff
         }
+    }
+
+    /** @return array<string,mixed> */
+    private function deliver(MaxClient $client, OutboxMessage $message): array
+    {
+        if ($message->edit_message_id !== null) {
+            try {
+                $client->editMessage($message->edit_message_id, $message->body);
+
+                return ['message' => ['body' => ['mid' => $message->edit_message_id]]];
+            } catch (MaxApiException $e) {
+                if (! $e->isPermanent()) {
+                    throw $e;
+                }
+                Log::info('outbox.edit_fallback', ['outbox_id' => $message->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $message->target_type === OutboxTarget::Chat
+            ? $client->sendToChat($message->target_id, $message->body)
+            : $client->sendToUser($message->target_id, $message->body);
     }
 
     public function failed(\Throwable $e): void

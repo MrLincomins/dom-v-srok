@@ -14,6 +14,22 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 final class OutboxService
 {
+    private ?int $replaceUserId = null;
+
+    private ?string $replaceMessageId = null;
+
+    public function replaceNextForUser(int $maxUserId, string $messageId): void
+    {
+        $this->replaceUserId = $maxUserId;
+        $this->replaceMessageId = $messageId;
+    }
+
+    public function clearReplacement(): void
+    {
+        $this->replaceUserId = null;
+        $this->replaceMessageId = null;
+    }
+
     /**
      * @param  array<string,mixed>  $body  {text, keyboard?: list<list<array>>, attachments?: list<array>, format?: string, notify?: bool}
      */
@@ -25,6 +41,7 @@ final class OutboxService
         ?string $dedupeKey = null,
         ?int $requestId = null,
         ?CarbonImmutable $availableAt = null,
+        ?string $editMessageId = null,
     ): ?OutboxMessage {
         try {
             $message = OutboxMessage::query()->create([
@@ -34,6 +51,7 @@ final class OutboxService
                 'body' => $body,
                 'request_id' => $requestId,
                 'dedupe_key' => $dedupeKey,
+                'edit_message_id' => $editMessageId,
                 'status' => OutboxStatus::Pending,
                 'available_at' => $availableAt ?? CarbonImmutable::now(),
             ]);
@@ -51,7 +69,18 @@ final class OutboxService
 
     public function toUser(int $maxUserId, string $kind, array $body, ?string $dedupeKey = null, ?int $requestId = null, ?CarbonImmutable $availableAt = null): ?OutboxMessage
     {
-        return $this->enqueue(OutboxTarget::User, $maxUserId, $kind, $body, $dedupeKey, $requestId, $availableAt);
+        return $this->enqueue(OutboxTarget::User, $maxUserId, $kind, $body, $dedupeKey, $requestId, $availableAt, $this->takeReplacement($maxUserId, $availableAt));
+    }
+
+    private function takeReplacement(int $maxUserId, ?CarbonImmutable $availableAt): ?string
+    {
+        if ($this->replaceUserId !== $maxUserId || ($availableAt !== null && $availableAt->isFuture())) {
+            return null;
+        }
+        $messageId = $this->replaceMessageId;
+        $this->clearReplacement();
+
+        return $messageId;
     }
 
     public function toChat(int $chatId, string $kind, array $body, ?string $dedupeKey = null, ?int $requestId = null): ?OutboxMessage

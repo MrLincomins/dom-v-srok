@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property CarbonImmutable $available_at
  * @property CarbonImmutable|null $sent_at
  * @property string|null $max_message_id
+ * @property string|null $edit_message_id
  * @property string|null $last_error
  */
 class OutboxMessage extends Model

@@ -30,9 +30,9 @@ request.redirected;Заявка № {number} переадресована: {to}.
 request.auto_confirmed;Заявка № {number} закрыта автоматически: три дня без ответа. Если проблема осталась — «Это снова случилось».;[[{"label":"Это снова случилось","action":"again:{number}"}]]
 request.reminder;Срок по заявке № {number} вышел. {escalation};[[{"label":"Это снова случилось","action":"again:{number}"}],[{"label":"Мои заявки","action":"my"}]]
 my.empty;У вас пока нет заявок.;[[{"label":"Сообщить о проблеме","action":"report"}]]
-my.list;Ваши заявки:;
-contacts.card;{name}\nАварийная служба: {phone_ads}\nДиспетчерская: {phone_dispatch}\nПриём: {reception}\n{email};
-contacts.none;У этого дома нет подключённой организации. Телефон — на информационном стенде в подъезде или в домовом чате.;
+my.list;Ваши заявки:;[[{"label":"Меню","action":"menu"}]]
+contacts.card;{name}\nАварийная служба: {phone_ads}\nДиспетчерская: {phone_dispatch}\nПриём: {reception}\n{email};[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Меню","action":"menu"}]]
+contacts.none;У этого дома нет подключённой организации. Телефон — на информационном стенде в подъезде или в домовом чате.;[[{"label":"Меню","action":"menu"}]]
 dispatcher.granted;Вы диспетчер организации «{name}». Заявки — в кабинете.;[[{"label":"Открыть кабинет","action":"cab"}]]
 dispatcher.invalid_code;Код не подошёл. Проверьте и попробуйте ещё раз: /dispatcher КОД;
 delete.done;Ваши данные обезличены, фото удалены. Заявки остаются в журнале организации без имени.;

@@ -232,3 +232,51 @@ it('schedules a reminder for a house without an organization', function () {
         ->and($reminder->available_at->toIso8601String())->toBe($request->deadline_fix_at?->toIso8601String())
         ->and($reminder->body['text'])->toContain('Срок по заявке № '.$request->id);
 });
+
+it('replaces the pressed message on button steps and writes a new one after the resident types', function () {
+    runUpdate(callbackUpdate(555, 'report', 'cb.7'));
+    $edited = end($this->max->sent);
+    expect($edited['target'])->toBe('edit')
+        ->and($edited['mid'])->toBe('mid.bot.cb.7')
+        ->and(lastText($this->max))->toBe(botText('emergency.question'));
+
+    runUpdate(callbackUpdate(555, 'em:no', 'cb.8'));
+    expect(end($this->max->sent)['mid'])->toBe('mid.bot.cb.8')
+        ->and(lastText($this->max))->toBe(botText('report.category'));
+
+    runUpdate(callbackUpdate(555, 'sub:'.flowCategory('entrance.light'), 'cb.9'));
+    runUpdate(messageUpdate(555, 'Темно на этаже', 'mid.20'));
+    $fresh = end($this->max->sent);
+    expect($fresh['target'])->toBe('user')
+        ->and($fresh['id'])->toBe(555)
+        ->and(lastText($this->max))->toBe(botText('report.address'));
+
+    runUpdate(messageUpdate(555, '1, 7', 'mid.21'));
+    runUpdate(callbackUpdate(555, 'send', 'cb.10'));
+    $card = end($this->max->sent);
+    expect($card['target'])->toBe('edit')
+        ->and($card['mid'])->toBe('mid.bot.cb.10')
+        ->and(lastText($this->max))->toContain('Заявка № '.flowLastRequest()->id.' принята');
+});
+
+it('sends a new message when the pressed message cannot be edited', function () {
+    $this->max->failEdits = true;
+
+    runUpdate(callbackUpdate(555, 'report', 'cb.11'));
+
+    $sent = end($this->max->sent);
+    expect($sent['target'])->toBe('user')
+        ->and($sent['id'])->toBe(555)
+        ->and(lastText($this->max))->toBe(botText('emergency.question'))
+        ->and(OutboxMessage::query()->latest('id')->value('edit_message_id'))->toBe('mid.bot.cb.11');
+});
+
+it('does not edit a message from the house chat when answering in the dialog', function () {
+    $update = callbackUpdate(555, 'my', 'cb.12');
+    $update['message']['recipient'] = ['chat_type' => 'chat', 'chat_id' => 9001];
+
+    runUpdate($update);
+
+    expect(end($this->max->sent)['target'])->toBe('user')
+        ->and(lastText($this->max))->toBe(botText('my.empty'));
+});

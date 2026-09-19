@@ -40,18 +40,29 @@ final class CallbackHandler
     {
         $parsed = CallbackAction::parse($update->callbackPayload() ?? '');
         $this->acknowledge($update);
-
-        if ($parsed === null) {
-            $this->ctx->reply($user, 'fallback.hint');
-
-            return;
-        }
+        $this->replacePressedMessage($update, $user);
 
         try {
+            if ($parsed === null) {
+                $this->ctx->reply($user, 'fallback.hint');
+
+                return;
+            }
             $this->route($parsed, $user);
         } catch (DomainException $e) {
             $this->ctx->replyRaw($user, $e->getMessage(), [[['label' => 'Меню', 'action' => 'menu']]]);
+        } finally {
+            $this->ctx->outbox()->clearReplacement();
         }
+    }
+
+    private function replacePressedMessage(Update $update, User $user): void
+    {
+        $messageId = $update->messageId();
+        if ($messageId === null || $user->max_user_id === null || ! $update->isPrivate()) {
+            return;
+        }
+        $this->ctx->outbox()->replaceNextForUser($user->max_user_id, $messageId);
     }
 
     private function route(ParsedCallback $callback, User $user): void
@@ -121,7 +132,7 @@ final class CallbackHandler
             'label' => sprintf('№ %d · %s · %s', $r->id, $r->category->name, $r->status->label()),
             'action' => CallbackAction::Status->payload($r->id),
         ]])->all();
-        $this->ctx->replyRaw($user, $this->ctx->texts()->text('my.list'), $rows);
+        $this->ctx->replyWith($user, 'my.list', [], $rows);
     }
 
     private function status(User $user, ?int $id): void
@@ -133,6 +144,7 @@ final class CallbackHandler
         $rows = $request->status === RequestStatus::Done
             ? [[['label' => 'Да, решено', 'action' => CallbackAction::Resolved->payload($request->id)], ['label' => 'Нет, не решено', 'action' => CallbackAction::NotResolved->payload($request->id)]]]
             : [];
+        $rows[] = [['label' => 'Мои заявки', 'action' => 'my'], ['label' => 'Меню', 'action' => 'menu']];
         $this->ctx->replyRaw($user, $this->card->created($request)."\nСтатус: ".$request->status->label(), $rows);
     }
 
@@ -163,7 +175,7 @@ final class CallbackHandler
             return;
         }
         $this->requests->rate($request, $user, $rating);
-        $this->ctx->replyRaw($user, 'Спасибо за оценку.');
+        $this->ctx->replyRaw($user, 'Спасибо за оценку.', [[['label' => 'Меню', 'action' => 'menu']]]);
     }
 
     private function ownRequest(User $user, ?int $id): ?ServiceRequest

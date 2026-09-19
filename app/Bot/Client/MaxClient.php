@@ -66,6 +66,12 @@ class MaxClient
         return $this->call('POST', '/messages', query: ['chat_id' => $chatId], json: $this->messageBody($body));
     }
 
+    /** @param array<string,mixed> $body */
+    public function editMessage(string $messageId, array $body): array
+    {
+        return $this->call('PUT', '/messages', query: ['message_id' => $messageId], json: ['attachments' => []] + $this->messageBody($body));
+    }
+
     /** ответ на нажатие кнопки, лимит в 2 сек */
     public function answerCallback(string $callbackId, ?string $notification = null, ?array $message = null): array
     {
