@@ -13,6 +13,7 @@ interface MaxWebApp {
     platform?: string;
     colorScheme?: 'light' | 'dark';
     ready?: () => void;
+    close?: () => void;
     openLink?: (url: string) => void;
     onEvent?: (event: 'themeChanged', handler: () => void) => void;
     offEvent?: (event: 'themeChanged', handler: () => void) => void;
@@ -87,6 +88,17 @@ export function signalReady(): void {
         getWebApp()?.ready?.();
     } catch {
         // Старые клиенты MAX могут объявить bridge без рабочего ready().
+    }
+}
+
+export function closeMiniApp(): boolean {
+    try {
+        const close = getWebApp()?.close;
+        if (!close) return false;
+        close();
+        return true;
+    } catch {
+        return false;
     }
 }
 

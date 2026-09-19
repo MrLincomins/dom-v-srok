@@ -11,6 +11,9 @@ import { Screen } from './components/Screen';
 const OpenInMaxPage = lazy(() =>
     import('./features/auth/OpenInMaxPage').then((module) => ({ default: module.OpenInMaxPage })),
 );
+const HomePage = lazy(() =>
+    import('./features/home/HomePage').then((module) => ({ default: module.HomePage })),
+);
 const QueuePage = lazy(() =>
     import('./features/queue/QueuePage').then((module) => ({ default: module.QueuePage })),
 );
@@ -64,17 +67,18 @@ function RouteFallback() {
 
     return (
         <Screen
-            title={pathname.endsWith('/my') ? texts.resident.title : texts.queue.title}
+            title={
+                pathname === '/'
+                    ? texts.home.title
+                    : pathname.endsWith('/my')
+                      ? texts.resident.title
+                      : texts.queue.title
+            }
             right={<LogoutButton />}
         >
             <ListSkeleton />
         </Screen>
     );
-}
-
-function Home() {
-    const { user } = useAuth();
-    return user?.role === 'resident' ? <Navigate to="/my" replace /> : <Navigate to="/queue" replace />;
 }
 
 function StaffOnly() {
@@ -92,7 +96,7 @@ export const router = createBrowserRouter(
         {
             element: <Gate />,
             children: [
-                { index: true, element: <Home /> },
+                { index: true, element: <HomePage /> },
                 { path: 'requests/:id', element: <RequestPage /> },
                 {
                     element: <StaffOnly />,

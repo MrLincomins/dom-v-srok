@@ -25,7 +25,12 @@ export function MyRequestsPage() {
     const requests = useMemo(() => pages?.flatMap((page) => page.data) ?? [], [pages]);
 
     return (
-        <Screen title={texts.resident.title} contentClassName="flex flex-col gap-12" right={<LogoutButton />}>
+        <Screen
+            title={texts.resident.title}
+            backTo="/"
+            contentClassName="flex flex-col gap-12"
+            right={<LogoutButton />}
+        >
             {list.isPending && <ListSkeleton />}
             {list.isError && <ErrorState error={list.error} onRetry={() => void list.refetch()} />}
             {list.data && requests.length === 0 && !list.isError && (

@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { getQueue } from '@/api/requests';
 import type { Paginated, QueueQuery, RequestListItem } from '@/api/types';
 
@@ -26,6 +26,7 @@ export function useQueue(tab: QueueTab, search: string) {
         initialPageParam: 1,
         getNextPageParam: (lastPage) =>
             lastPage.meta.current_page < lastPage.meta.last_page ? lastPage.meta.current_page + 1 : undefined,
+        placeholderData: keepPreviousData,
     });
 }
 

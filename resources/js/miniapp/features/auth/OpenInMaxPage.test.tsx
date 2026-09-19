@@ -28,7 +28,13 @@ describe('форма входа', () => {
         vi.stubGlobal('fetch', async (url: URL | string, init?: RequestInit) => {
             calls.push({ url: String(url), body: String(init?.body ?? '') });
             return new Response(
-                JSON.stringify({ data: { token: 't', expires_at: '2026-09-18T00:00:00Z', user: { id: 1, name: 'Диспетчер Демо', role: 'dispatcher', is_demo: true } } }),
+                JSON.stringify({
+                    data: {
+                        token: 't',
+                        expires_at: '2026-09-18T00:00:00Z',
+                        user: { id: 1, name: 'Диспетчер Демо', role: 'dispatcher', is_demo: true },
+                    },
+                }),
                 { status: 200, headers: { 'Content-Type': 'application/json' } },
             );
         });
@@ -46,9 +52,13 @@ describe('форма входа', () => {
         fireEvent.change(screen.getByPlaceholderText('Логин'), { target: { value: 'demo_dispatcher' } });
         fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'secret' } });
         fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
-        await waitFor(() => expect(calls.some((c) => c.url.includes('/api/v1/auth/login'))).toBe(true), { timeout: 3000 });
+        await waitFor(() => expect(calls.some((c) => c.url.includes('/api/v1/auth/login'))).toBe(true), {
+            timeout: 3000,
+        });
         expect(calls.find((c) => c.url.includes('/auth/login'))?.body).toContain('demo_dispatcher');
-        await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('ready'), { timeout: 3000 });
+        await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('ready'), {
+            timeout: 3000,
+        });
         expect(screen.getByTestId('user').textContent).toBe('Диспетчер Демо');
     });
 });
