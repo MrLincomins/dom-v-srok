@@ -34,11 +34,17 @@ final class CallbackHandler
         private readonly RequestCard $card,
         private readonly ReportFlowHandler $report,
         private readonly SessionStore $sessions,
+        private readonly ChatHandler $chat,
     ) {}
 
     public function handle(Update $update, User $user): void
     {
         $parsed = CallbackAction::parse($update->callbackPayload() ?? '');
+        if ($parsed?->action === CallbackAction::Join) {
+            $this->chat->join($update, $parsed, $user);
+
+            return;
+        }
         $this->acknowledge($update);
         $this->replacePressedMessage($update, $user);
 
@@ -80,7 +86,7 @@ final class CallbackHandler
             CallbackAction::Again => $this->report->start($user, $callback->intArg(0)),
             CallbackAction::Emergency, CallbackAction::Category, CallbackAction::Subcategory, CallbackAction::House,
             CallbackAction::Address, CallbackAction::Send, CallbackAction::Unsure, CallbackAction::Cancel => $this->report->callback($callback, $user),
-            CallbackAction::Join => $this->ctx->reply($user, 'wip'),
+            CallbackAction::Join => null, // ответил ChatHandler::join из handle(), сюда не доходит
         };
     }
 

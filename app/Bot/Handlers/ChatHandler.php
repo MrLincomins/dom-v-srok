@@ -4,21 +4,24 @@ declare(strict_types=1);
 
 namespace App\Bot\Handlers;
 
+use App\Bot\Callbacks\ParsedCallback;
 use App\Bot\Cards\RequestCard;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 use App\Bot\Keyboards\Keyboards;
 use App\Bot\Updates\Update;
+use App\Domain\Catalog\CatalogService;
 use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 /**
  * групповой чат дома.
- * «статус N» (карточка без личных данных).
- * потом сделать «Присоединиться к заявке соседа» и подсказки.
+ * «статус N» (карточка без личных данных), «Присоединиться», подсказка по словам если включена у дома.
  */
 final class ChatHandler
 {
@@ -27,6 +30,8 @@ final class ChatHandler
         private readonly MaxClient $client,
         private readonly DeepLinks $links,
         private readonly RequestCard $card,
+        private readonly RequestService $requests,
+        private readonly CatalogService $catalog,
     ) {}
 
     public function handle(Update $update, ?User $user): void
@@ -45,6 +50,12 @@ final class ChatHandler
 
         if (preg_match('/^(статус|status)\s*№?\s*(\d+)$/iu', $text, $m) === 1) {
             $this->status($chatId, (int) $m[2]);
+
+            return;
+        }
+
+        if (! str_starts_with($text, '/')) {
+            $this->offerByKeywords($chatId, $text);
         }
     }
 
@@ -77,14 +88,77 @@ final class ChatHandler
             return; // если чужая или несуществующая заявка
         }
 
-        $this->ctx->outbox()->toChat($chatId, 'chat.status', [
-            'text' => $this->ctx->texts()->text('chat.status', [
+        $this->ctx->outbox()->toChat($chatId, 'chat.status', $this->statusBody($request), null, $request->id);
+    }
+
+    private function offerByKeywords(int $chatId, string $text): void
+    {
+        $house = House::query()->where('max_chat_id', $chatId)->first();
+        if ($house === null || ! $house->chat_keywords_enabled) {
+            return;
+        }
+        $categoryIds = $this->catalog->suggest($text)->pluck('id')->all();
+        if ($categoryIds === []) {
+            return;
+        }
+        $request = ServiceRequest::query()->with(['category', 'house.region'])
+            ->where('house_id', $house->id)
+            ->whereIn('category_id', $categoryIds)
+            ->open()
+            ->latest('id')
+            ->first();
+        if ($request === null) {
+            return;
+        }
+
+        $this->ctx->outbox()->toChat($chatId, 'chat.join_offer', [
+            'text' => $this->card->chatOffer($request),
+            'keyboard' => Keyboards::fromRows($this->joinRows($request)),
+        ], 'chat.join_offer:'.$request->id.':'.$chatId.':'.CarbonImmutable::now()->format('YmdH'), $request->id);
+    }
+
+    public function join(Update $update, ParsedCallback $callback, User $user): void
+    {
+        $id = $callback->intArg(0);
+        $request = $id === null ? null : ServiceRequest::query()->with(['category', 'house.region'])->find($id);
+        $houseId = $update->isPrivate()
+            ? $user->house_id
+            : House::query()->where('max_chat_id', $update->chatId())->first()?->id;
+        $vars = ['number' => $id];
+
+        if ($request === null || $houseId === null || $request->house_id !== $houseId) {
+            $this->answer($update, 'chat.join_missing', $vars);
+
+            return;
+        }
+        if (! $request->status->isOpen()) {
+            $this->answer($update, 'chat.join_closed', $vars);
+
+            return;
+        }
+        if ($request->resident_user_id === $user->id) {
+            $this->answer($update, 'chat.join_own', $vars);
+
+            return;
+        }
+        if (! $this->requests->join($request, $user)) {
+            $this->answer($update, 'chat.join_already', $vars);
+
+            return;
+        }
+
+        $request->refresh();
+        $started = $user->canBeMessaged();
+        $this->answer($update, $started ? 'chat.joined' : 'chat.join_start', $vars, $this->statusBody($request));
+        Log::info('chat.joined', ['request_id' => $request->id, 'chat_id' => $update->chatId(), 'started' => $started]);
+
+        if ($started) {
+            $this->ctx->reply($user, 'request.joined', [
                 'number' => $request->id,
-                'status' => $request->status->label(),
                 'what' => $this->card->what($request, true),
                 'deadline' => $this->card->deadline($request),
-            ]),
-        ]);
+            ], 'request.joined:'.$request->id.':'.$user->id);
+        }
     }
 
     /** закреп карточки, когда бот админ потом */
@@ -95,5 +169,34 @@ final class ChatHandler
         } catch (MaxApiException $e) {
             Log::info('chat.pin_failed', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * @param  array<string,string|int|null>  $vars
+     * @param  array<string,mixed>|null  $message
+     */
+    private function answer(Update $update, string $key, array $vars, ?array $message = null): void
+    {
+        $callbackId = $update->callbackId();
+        if ($callbackId === null || ! $this->client->isConfigured()) {
+            return;
+        }
+        try {
+            $this->client->answerCallback($callbackId, $this->ctx->texts()->text($key, $vars), $message);
+        } catch (MaxApiException $e) {
+            Log::info('bot.answer_callback_failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** @return array{text:string,keyboard:array<int,mixed>} */
+    private function statusBody(ServiceRequest $request): array
+    {
+        return ['text' => $this->card->chatStatus($request), 'keyboard' => Keyboards::fromRows($this->joinRows($request))];
+    }
+
+    /** @return list<list<array{label:string,action:string}>> */
+    private function joinRows(ServiceRequest $request): array
+    {
+        return $request->status->isOpen() ? $this->ctx->texts()->buttons('chat.join_offer', ['number' => $request->id]) : [];
     }
 }

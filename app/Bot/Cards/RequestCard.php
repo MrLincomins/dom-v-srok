@@ -31,6 +31,33 @@ final class RequestCard
         ]);
     }
 
+    public function chatStatus(ServiceRequest $request): string
+    {
+        $request->loadMissing(['category', 'house.region']);
+        $text = $this->texts->text('chat.status', [
+            'number' => $request->id,
+            'status' => $request->status->label(),
+            'what' => $this->what($request, true),
+            'deadline' => $this->deadline($request),
+        ]);
+        if ($request->participants_count > 0) {
+            $text .= "\n".$this->texts->text('chat.neighbours', ['count' => $request->participants_count]);
+        }
+
+        return $text;
+    }
+
+    public function chatOffer(ServiceRequest $request): string
+    {
+        $request->loadMissing(['category', 'house.region']);
+
+        return $this->texts->text('chat.join_offer', [
+            'number' => $request->id,
+            'what' => $this->what($request, true),
+            'deadline' => $this->deadline($request),
+        ]);
+    }
+
     public function preview(ReportDraft $draft, Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply): string
     {
         $what = $category->name;

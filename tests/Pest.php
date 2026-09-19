@@ -61,6 +61,24 @@ function callbackUpdate(int $userId, string $payload, string $callbackId = 'cb.1
 }
 
 /** @return array<string,mixed> */
+function chatMessageUpdate(int $userId, int $chatId, ?string $text, string $mid = 'mid.chat.1'): array
+{
+    $update = messageUpdate($userId, $text, $mid);
+    $update['message']['recipient'] = ['chat_type' => 'chat', 'chat_id' => $chatId];
+
+    return $update;
+}
+
+/** @return array<string,mixed> */
+function chatCallbackUpdate(int $userId, int $chatId, string $payload, string $callbackId = 'cb.chat.1'): array
+{
+    $update = callbackUpdate($userId, $payload, $callbackId);
+    $update['message']['recipient'] = ['chat_type' => 'chat', 'chat_id' => $chatId];
+
+    return $update;
+}
+
+/** @return array<string,mixed> */
 function startUpdate(int $userId, ?string $payload = null): array
 {
     return [
@@ -108,6 +126,14 @@ function lastButtons(FakeMaxClient $max): array
     }
 
     return $payloads;
+}
+
+/** @return array{id:string,notification:string|null,message:array<string,mixed>|null} */
+function lastAnswer(FakeMaxClient $max): array
+{
+    $last = end($max->answers);
+
+    return $last === false ? ['id' => '', 'notification' => null, 'message' => null] : $last;
 }
 
 /** @param array<string,string|int|null> $vars */

@@ -16,6 +16,9 @@ final class FakeMaxClient extends MaxClient
     /** @var list<string> */
     public array $answered = [];
 
+    /** @var list<array{id:string,notification:string|null,message:array<string,mixed>|null}> */
+    public array $answers = [];
+
     public bool $failEdits = false;
 
     public function isConfigured(): bool
@@ -50,6 +53,7 @@ final class FakeMaxClient extends MaxClient
     public function answerCallback(string $callbackId, ?string $notification = null, ?array $message = null): array
     {
         $this->answered[] = $callbackId;
+        $this->answers[] = ['id' => $callbackId, 'notification' => $notification, 'message' => $message];
 
         return ['success' => true];
     }
