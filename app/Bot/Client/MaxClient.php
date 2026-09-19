@@ -69,7 +69,7 @@ class MaxClient
     /** @param array<string,mixed> $body */
     public function editMessage(string $messageId, array $body): array
     {
-        return $this->call('PUT', '/messages', query: ['message_id' => $messageId], json: ['attachments' => []] + $this->messageBody($body));
+        return $this->call('PUT', '/messages', query: ['message_id' => $messageId], json: $this->messageBody($body) + ['attachments' => []]);
     }
 
     /** ответ на нажатие кнопки, лимит в 2 сек */

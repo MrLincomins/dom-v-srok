@@ -25,7 +25,7 @@ request.created.unsure;Ответственный определён предв�
 request.status;Заявка № {number}: {status}.\n{comment};[[{"label":"Показать заявку","action":"st:{number}"}]]
 request.done_confirm;Заявка № {number} выполнена. {comment}\nПроблема решена?;[[{"label":"Да, решено","action":"ok:{number}"},{"label":"Нет, не решено","action":"no:{number}"}]]
 request.confirmed;Спасибо, заявка № {number} закрыта.;[[{"label":"Оценить","action":"rate:{number}"}]]
-request.returned;Заявка № {number} возвращена в работу. Мы напишем, когда её снова выполнят.;
+request.returned;Заявка № {number} возвращена в работу. Мы напишем, когда её снова выполнят.;[[{"label":"Мои заявки","action":"my"},{"label":"Меню","action":"menu"}]]
 request.redirected;Заявка № {number} переадресована: {to}. Контакт: {phone}. Заявка остаётся у организации для контроля.;
 request.auto_confirmed;Заявка № {number} закрыта автоматически: три дня без ответа. Если проблема осталась — «Это снова случилось».;[[{"label":"Это снова случилось","action":"again:{number}"}]]
 request.reminder;Срок по заявке № {number} вышел. {escalation};[[{"label":"Это снова случилось","action":"again:{number}"}],[{"label":"Мои заявки","action":"my"}]]
