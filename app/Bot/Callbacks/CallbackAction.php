@@ -10,6 +10,7 @@ enum CallbackAction: string
     case Category = 'cat';        // cat:<id>
     case Subcategory = 'sub';     // sub:<id>
     case Address = 'addr';        // addr:same | addr:new
+    case House = 'house';         // house:<id>
     case Send = 'send';
     case Unsure = 'unsure';       // «не уверен - отправить в организацию»
     case Cancel = 'cancel';

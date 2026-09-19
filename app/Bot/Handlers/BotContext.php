@@ -29,6 +29,23 @@ final class BotContext
         ], $dedupeKey);
     }
 
+    /**
+     * текст из таблицы плюс свои кнопки перед кнопками из таблицы
+     *
+     * @param  array<string,string|int|null>  $vars
+     * @param  list<list<array{label:string,action:string}>>  $rows
+     */
+    public function replyWith(User $user, string $key, array $vars = [], array $rows = []): void
+    {
+        if ($user->max_user_id === null) {
+            return;
+        }
+        $this->outbox->toUser($user->max_user_id, 'bot.'.$key, [
+            'text' => $this->texts->text($key, $vars),
+            'keyboard' => Keyboards::fromRows([...$rows, ...$this->texts->buttons($key, $vars)]),
+        ]);
+    }
+
     /** @param list<list<array{label:string,action:string}>> $rows */
     public function replyRaw(User $user, string $text, array $rows = []): void
     {

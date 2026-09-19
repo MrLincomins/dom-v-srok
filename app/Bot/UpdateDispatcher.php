@@ -30,7 +30,7 @@ final class UpdateDispatcher
 
         match (true) {
             $update->type === 'bot_started' => $this->start->handle($update, $this->user($maxUser, true), $update->startPayload()),
-            $update->isCallback() => $this->callbacks->handle($update, $this->user($maxUser, true)),
+            $update->isCallback() => $this->callbacks->handle($update, $this->user($maxUser, $update->isPrivate())),
             $update->isMessage() && $update->isPrivate() => $this->commands->handle($update, $this->user($maxUser, true)),
             $update->isMessage() => $this->chat->handle($update, $this->userIfKnown($maxUser)),
             $update->type === 'bot_stopped', $update->type === 'dialog_removed' => $this->stopped($maxUser),

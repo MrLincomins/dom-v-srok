@@ -9,6 +9,7 @@ use App\Bot\Callbacks\ParsedCallback;
 use App\Bot\Cards\RequestCard;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
+use App\Bot\Fsm\SessionStore;
 use App\Bot\Updates\Update;
 use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Enums\ConfirmedBy;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * кнопки работают всегда, независимо от состояния диалога.
  * на callback сразу answerCallback, чтобы кнопки не висели.
- * сценарии заявки (report, em, cat, sub, addr, send).
+ * сценарий заявки (report, em, cat, sub, house, addr, send, unsure, cancel, again) в ReportFlowHandler.
  */
 final class CallbackHandler
 {
@@ -31,6 +32,8 @@ final class CallbackHandler
         private readonly MaxClient $client,
         private readonly RequestService $requests,
         private readonly RequestCard $card,
+        private readonly ReportFlowHandler $report,
+        private readonly SessionStore $sessions,
     ) {}
 
     public function handle(Update $update, User $user): void
@@ -54,7 +57,7 @@ final class CallbackHandler
     private function route(ParsedCallback $callback, User $user): void
     {
         match ($callback->action) {
-            CallbackAction::Menu => $this->ctx->reply($user, $user->isStaff() ? 'menu.cabinet' : 'menu.main'),
+            CallbackAction::Menu => $this->menu($user),
             CallbackAction::Cabinet => $this->ctx->reply($user, 'menu.cabinet'),
             CallbackAction::Contacts => $this->contacts($user),
             CallbackAction::My => $this->myRequests($user),
@@ -62,7 +65,11 @@ final class CallbackHandler
             CallbackAction::Resolved => $this->confirm($user, $callback->intArg(0), true),
             CallbackAction::NotResolved => $this->confirm($user, $callback->intArg(0), false),
             CallbackAction::Rate => $this->rate($user, $callback->intArg(0), $callback->intArg(1)),
-            default => $this->ctx->reply($user, 'wip'),
+            CallbackAction::Report => $this->report->start($user),
+            CallbackAction::Again => $this->report->start($user, $callback->intArg(0)),
+            CallbackAction::Emergency, CallbackAction::Category, CallbackAction::Subcategory, CallbackAction::House,
+            CallbackAction::Address, CallbackAction::Send, CallbackAction::Unsure, CallbackAction::Cancel => $this->report->callback($callback, $user),
+            CallbackAction::Join => $this->ctx->reply($user, 'wip'),
         };
     }
 
@@ -77,6 +84,12 @@ final class CallbackHandler
         } catch (MaxApiException $e) {
             Log::info('bot.answer_callback_failed', ['error' => $e->getMessage()]);
         }
+    }
+
+    private function menu(User $user): void
+    {
+        $this->sessions->reset((int) $user->max_user_id);
+        $this->ctx->reply($user, $user->isStaff() ? 'menu.cabinet' : 'menu.main');
     }
 
     private function contacts(User $user): void

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Bot\Cards;
 
+use App\Bot\Fsm\ReportDraft;
 use App\Bot\Texts\TextRepository;
+use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Responsible;
+use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
 use Carbon\CarbonImmutable;
 
-/** формат для заявок, для кв без номеров квартир*/
+/** один формат карточки для бота: жителю с подъездом, в чат дома только категория */
 final class RequestCard
 {
     public function __construct(private readonly TextRepository $texts) {}
@@ -27,13 +31,36 @@ final class RequestCard
         ]);
     }
 
+    public function preview(ReportDraft $draft, Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply): string
+    {
+        $what = $category->name;
+        if ($draft->description !== '') {
+            $what .= ': '.mb_strimwidth($draft->description, 0, 120, '…');
+        }
+        if ($draft->entrance !== null) {
+            $what .= ', подъезд '.$draft->entrance;
+        }
+        $hint = (string) $responsible->hint;
+
+        return trim($this->texts->text('report.preview_card', [
+            'what' => $what,
+            'responsible' => $responsible->name.($responsible->phone !== null ? ', '.$responsible->phone : ''),
+            'deadline' => $this->deadlineText($fix, $reply, $house->region->timezone),
+            'basis' => $category->basis ?? '—',
+            'hint' => $responsible->isSure ? $hint : trim('Скорее всего. '.$hint),
+        ]));
+    }
+
     public function what(ServiceRequest $request, bool $forChat): string
     {
+        if ($forChat) {
+            return $request->category->name;
+        }
         $what = $request->category->name;
         if ($request->description !== '') {
             $what .= ': '.mb_strimwidth($request->description, 0, 120, '…');
         }
-        if (! $forChat && $request->entrance !== null) {
+        if ($request->entrance !== null) {
             $what .= ', подъезд '.$request->entrance;
         }
 
@@ -42,13 +69,16 @@ final class RequestCard
 
     public function deadline(ServiceRequest $request): string
     {
-        $timezone = $request->house->region->timezone;
+        return $this->deadlineText($request->deadline_fix_at, $request->deadline_reply_at, $request->house->region->timezone);
+    }
 
-        if ($request->deadline_fix_at !== null) {
-            return 'до '.$this->humanDate($request->deadline_fix_at, $timezone);
+    public function deadlineText(?CarbonImmutable $fix, ?CarbonImmutable $reply, string $timezone): string
+    {
+        if ($fix !== null) {
+            return 'до '.$this->humanDate($fix, $timezone);
         }
-        if ($request->deadline_reply_at !== null) {
-            return 'ответ до '.$this->humanDate($request->deadline_reply_at, $timezone).' (срок ответа по закону)';
+        if ($reply !== null) {
+            return 'ответ до '.$this->humanDate($reply, $timezone).' (срок ответа по закону)';
         }
 
         return 'по договору';

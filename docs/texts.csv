@@ -4,16 +4,21 @@ start.house_known;Ваш дом: {address}. Если это не ваш дом �
 menu.main;Что нужно сделать?;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
 menu.cabinet;Вы диспетчер: заявки вашей организации — в кабинете.;[[{"label":"Открыть кабинет","action":"cab"}]]
 fallback.hint;Не понял сообщение. Нажмите кнопку ниже или напишите /menu.;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Меню","action":"menu"}]]
-echo.reply;Вы написали: {text}. Сценарий заявки появится здесь на следующем этапе.;[[{"label":"Меню","action":"menu"}]]
 wip;Этот раздел ещё в работе. Нажмите «Меню», чтобы вернуться.;[[{"label":"Меню","action":"menu"}]]
 emergency.question;Это авария? Прорыв трубы, запах газа, короткое замыкание, застрявший лифт — это звонок в аварийную службу, а не заявка.;[[{"label":"Да, авария","action":"em:yes"},{"label":"Нет, не авария","action":"em:no"}]]
 emergency.call;Звоните в аварийную службу: {phone}. Ответ — до 5 минут, локализация — до 30 минут (ПП 416 п. 13). Время вашего обращения зафиксировано: {time}.;[[{"label":"Меню","action":"menu"}]]
-report.category;Что случилось? Выберите раздел.;
-report.subcategory;Уточните, что именно.;
+report.house;Какой у вас дом? Отсканируйте QR в подъезде или напишите адрес, например «Демонстрационная 1».;[[{"label":"Отмена","action":"cancel"}]]
+report.house_choose;Выберите дом:;[[{"label":"Отмена","action":"cancel"}]]
+report.house_not_found;Дом не нашёлся. Проверьте адрес или отсканируйте QR в подъезде.;[[{"label":"Отмена","action":"cancel"}]]
+report.category;Что случилось? Выберите раздел.;[[{"label":"Отмена","action":"cancel"}]]
+report.subcategory;Уточните, что именно.;[[{"label":"Другой раздел","action":"cat"},{"label":"Отмена","action":"cancel"}]]
+report.suggest;Похоже, это одно из этого. Выберите подходящее или нажмите «Сообщить о проблеме».;[[{"label":"Сообщить о проблеме","action":"report"}]]
 report.details;Пришлите фото или напишите пару слов. Можно пропустить.;[[{"label":"Дальше без фото","action":"send"}]]
-report.address;Укажите подъезд и квартиру, например «2, 45».;
+report.address;Укажите подъезд и квартиру, например «2, 45».;[[{"label":"Отмена","action":"cancel"}]]
 report.address_same;Адрес как в прошлый раз: подъезд {entrance}, кв. {flat}?;[[{"label":"Да, тот же","action":"addr:same"},{"label":"Другой","action":"addr:new"}]]
+report.preview_card;Что: {what}\nКто отвечает: {responsible}\nСрок: {deadline}\nОснование: {basis}\n{hint};
 report.preview;Проверьте заявку:\n{card}\nОтправить?;[[{"label":"Отправить","action":"send"}],[{"label":"Не уверен, кто отвечает — пусть уточнит организация","action":"unsure"}],[{"label":"Отмена","action":"cancel"}]]
+report.cancelled;Черновик заявки удалён.;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Меню","action":"menu"}]]
 request.created;Заявка № {number} принята\nЧто: {what}\nКто отвечает: {responsible}\nСрок: {deadline}\nОснование: {basis}\n{next}\n;[[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
 request.created.next;Мы напишем, когда назначат исполнителя.;
 request.created.unsure;Ответственный определён предварительно: организация уточнит и при необходимости переадресует.;
@@ -23,6 +28,7 @@ request.confirmed;Спасибо, заявка № {number} закрыта.;[[{"
 request.returned;Заявка № {number} возвращена в работу. Мы напишем, когда её снова выполнят.;
 request.redirected;Заявка № {number} переадресована: {to}. Контакт: {phone}. Заявка остаётся у организации для контроля.;
 request.auto_confirmed;Заявка № {number} закрыта автоматически: три дня без ответа. Если проблема осталась — «Это снова случилось».;[[{"label":"Это снова случилось","action":"again:{number}"}]]
+request.reminder;Срок по заявке № {number} вышел. {escalation};[[{"label":"Это снова случилось","action":"again:{number}"}],[{"label":"Мои заявки","action":"my"}]]
 my.empty;У вас пока нет заявок.;[[{"label":"Сообщить о проблеме","action":"report"}]]
 my.list;Ваши заявки:;
 contacts.card;{name}\nАварийная служба: {phone_ads}\nДиспетчерская: {phone_dispatch}\nПриём: {reception}\n{email};
