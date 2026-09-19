@@ -1,8 +1,8 @@
-{$SERVER_NAME} {
+{$SERVER_NAME}, http://localhost {
     root * /app/public
     encode zstd gzip
     request_body {
-        max_size 40MB
+        max_size 64MB
     }
     header /build/* Cache-Control "public, max-age=31536000, immutable"
     php_fastcgi app:9000

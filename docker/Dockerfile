@@ -20,12 +20,12 @@ RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
 
 # php
 FROM php:8.3-fpm-alpine AS php
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.11.27/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_pgsql redis intl gd zip opcache pcntl
 
 # сертификат минцифры
 COPY docker/certs/russian_trusted_root_ca.crt /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
-RUN apk add --no-cache ca-certificates && update-ca-certificates
+RUN apk add --no-cache ca-certificates postgresql16-client && update-ca-certificates
 COPY docker/php/php.ini      /usr/local/etc/php/conf.d/app.ini
 COPY docker/php/php-fpm.conf /usr/local/etc/php-fpm.d/zz-app.conf
 WORKDIR /app
