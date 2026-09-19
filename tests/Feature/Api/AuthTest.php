@@ -36,6 +36,29 @@ it('validates initData signed with the bot token and creates the user', function
     $this->assertDatabaseHas('users', ['max_user_id' => 424242, 'role' => 'resident']);
 });
 
+it('accepts initData where MAX encodes spaces as plus signs', function () {
+    $initData = InitDataValidator::sign([
+        'auth_date' => (string) time(),
+        'chat' => '{"id":1,"type":"DIALOG"}',
+        'ip' => '127.0.0.1',
+        'user' => json_encode(['id' => 515151, 'first_name' => 'Анна Мария', 'last_name' => 'Иванова Петрова'], JSON_UNESCAPED_UNICODE),
+    ], 'test-bot-token');
+
+    expect($initData)->toContain('+')->not->toContain('%20');
+
+    $this->postJson('/api/v1/auth/max', ['init_data' => $initData])
+        ->assertOk()
+        ->assertJsonPath('data.user.name', 'Анна Мария Иванова Петрова');
+});
+
+it('accepts initData with percent-encoded spaces as well', function () {
+    $params = ['auth_date' => (string) time(), 'user' => '{"id":616161,"first_name":"Пётр Первый"}'];
+    $signed = InitDataValidator::sign($params, 'test-bot-token');
+    $initData = str_replace('+', '%20', $signed);
+
+    $this->postJson('/api/v1/auth/max', ['init_data' => $initData])->assertOk();
+});
+
 it('rejects tampered initData', function () {
     $initData = InitDataValidator::sign(['auth_date' => (string) time(), 'user' => '{"id":1}'], 'other-token');
 

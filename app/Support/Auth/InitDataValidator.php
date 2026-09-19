@@ -29,8 +29,8 @@ final class InitDataValidator
                 continue;
             }
             [$key, $value] = array_pad(explode('=', $chunk, 2), 2, '');
-            $key = rawurldecode($key);
-            $value = rawurldecode($value);
+            $key = urldecode($key);
+            $value = urldecode($value);
             if ($key === 'hash') {
                 if ($hash !== null) {
                     throw new AuthenticationException('initData: hash встречается дважды');
@@ -86,6 +86,6 @@ final class InitDataValidator
         $secret = hash_hmac('sha256', $botToken, 'WebAppData', true);
         $params['hash'] = hash_hmac('sha256', $launchParams, $secret);
 
-        return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        return http_build_query($params, '', '&', PHP_QUERY_RFC1738);
     }
 }
