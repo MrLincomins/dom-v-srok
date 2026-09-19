@@ -43,6 +43,18 @@ checks:
     role: dispatcher
     expect: { status: [200], content_type: application/json, required: [data.id, data.role, data.organization.name] }
 
+  - id: organization
+    method: GET
+    path: /organization
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.name, data.phone_ads, data.direct_contracts] }
+
+  - id: executors
+    method: GET
+    path: /organization/executors
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.0.id, data.0.name] }
+
   - id: catalog
     method: GET
     path: /catalog/categories

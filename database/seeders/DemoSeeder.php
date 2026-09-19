@@ -54,8 +54,8 @@ class DemoSeeder extends Seeder
             'is_demo' => true,
         ]);
 
-        $organization->executors()->firstOrCreate(['name' => 'Сантехник Иванов'], ['specialty' => 'сантехник', 'phone' => '+7 900 000-00-11']);
-        $electrician = $organization->executors()->firstOrCreate(['name' => 'Электрик Петров'], ['specialty' => 'электрик', 'phone' => '+7 900 000-00-12']);
+        $organization->executors()->updateOrCreate(['name' => 'Сантехник Иванов'], ['specialty' => 'сантехник', 'phone' => '+7 900 000-00-11', 'is_active' => true]);
+        $electrician = $organization->executors()->updateOrCreate(['name' => 'Электрик Петров'], ['specialty' => 'электрик', 'phone' => '+7 900 000-00-12', 'is_active' => true]);
         $organization->contractors()->firstOrCreate(['type' => 'intercom', 'name' => 'ООО «Домофон-Сервис»'], ['phone' => '+7 843 000-00-03']);
 
         $accessCode = (string) config('demo.access_code');

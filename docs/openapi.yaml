@@ -14,6 +14,7 @@ tags:
   - name: me
   - name: catalog
   - name: requests
+  - name: organization
   - name: attachments
   - name: demo
 security:
@@ -93,13 +94,15 @@ components:
         is_demo: { type: boolean }
     House:
       type: object
-      required: [id, address, entrances, qr_token, chat_bound]
+      required: [id, address, entrances, qr_token, chat_bound, chat_keywords_enabled, start_url]
       properties:
         id: { type: integer }
         address: { type: string }
         entrances: { type: integer }
         qr_token: { type: string }
-        chat_bound: { type: boolean }
+        chat_bound: { type: boolean, description: 'домовой чат привязан командой /дом <код>' }
+        chat_keywords_enabled: { type: boolean, description: 'бот предлагает присоединиться к открытой заявке, когда в чате пишут о той же проблеме' }
+        start_url: { type: string, description: 'deep link дома для QR-плаката и кнопки в чате' }
     User:
       type: object
       required: [id, name, role, is_demo]
@@ -162,6 +165,81 @@ components:
         name: { type: string }
         specialty: { type: [string, 'null'] }
         phone: { type: [string, 'null'] }
+    OrganizationUpdate:
+      type: object
+      description: 'Частичное обновление: передаются только меняемые поля'
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone_ads: { type: string, maxLength: 32, description: 'аварийная служба, обязательна' }
+        phone_dispatch: { type: [string, 'null'], maxLength: 32 }
+        email: { type: [string, 'null'], maxLength: 254 }
+        reception_hours: { type: [string, 'null'], maxLength: 500 }
+        reception_address: { type: [string, 'null'], maxLength: 500 }
+        direct_contracts:
+          type: object
+          description: 'прямые договоры с РСО: при включённом флаге по коммунальной услуге отвечает поставщик'
+          properties:
+            cold_water: { type: boolean }
+            hot_water: { type: boolean }
+            heat: { type: boolean }
+            power: { type: boolean }
+            tko: { type: boolean }
+    HouseUpdate:
+      type: object
+      properties:
+        entrances: { type: integer, minimum: 1, maximum: 50 }
+        chat_keywords_enabled: { type: boolean }
+    ExecutorInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone: { type: [string, 'null'], maxLength: 32 }
+        specialty: { type: [string, 'null'], maxLength: 64 }
+    ExecutorUpdate:
+      type: object
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone: { type: [string, 'null'], maxLength: 32 }
+        specialty: { type: [string, 'null'], maxLength: 64 }
+    OrganizationResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Organization' }
+    HouseResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/House' }
+    HouseListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/House' }
+    ExecutorResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Executor' }
+    ExecutorListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Executor' }
+    OkResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean }
     RequestListItem:
       type: object
       required: [id, status, status_label, category, description, address, responsible_name, is_sure, is_overdue, participants_count, created_at]
@@ -651,6 +729,145 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RequestListResponse' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+  /organization:
+    get:
+      tags: [organization]
+      operationId: getOrganization
+      summary: Карточка организации диспетчера
+      responses:
+        '200':
+          description: Организация
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [organization]
+      operationId: updateOrganization
+      summary: Контакты организации и флаги прямых договоров с РСО
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrganizationUpdate' }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /organization/houses:
+    get:
+      tags: [organization]
+      operationId: listHouses
+      summary: Дома организации с QR-ссылкой и состоянием домового чата
+      responses:
+        '200':
+          description: Дома
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /organization/houses/{id}:
+    patch:
+      tags: [organization]
+      operationId: updateHouse
+      summary: Подъезды и подсказки по словам в домовом чате
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseUpdate' }
+      responses:
+        '200':
+          description: Обновлённый дом
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /organization/executors:
+    get:
+      tags: [organization]
+      operationId: listExecutors
+      summary: Действующие исполнители организации — список для назначения
+      responses:
+        '200':
+          description: Исполнители по алфавиту
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutorListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [organization]
+      operationId: createExecutor
+      summary: Добавить исполнителя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExecutorInput' }
+      responses:
+        '201':
+          description: Создан
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutorResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /organization/executors/{id}:
+    patch:
+      tags: [organization]
+      operationId: updateExecutor
+      summary: Имя, телефон или специальность исполнителя
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExecutorUpdate' }
+      responses:
+        '200':
+          description: Обновлённый исполнитель
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutorResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+    delete:
+      tags: [organization]
+      operationId: archiveExecutor
+      summary: Убрать исполнителя из списка; заявки, где он назначен, сохраняют историю
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Готово
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /attachments/{id}:
     get:
       tags: [attachments]

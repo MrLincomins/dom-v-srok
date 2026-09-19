@@ -242,6 +242,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Карточка организации диспетчера */
+        get: operations["getOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Контакты организации и флаги прямых договоров с РСО */
+        patch: operations["updateOrganization"];
+        trace?: never;
+    };
+    "/organization/houses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Дома организации с QR-ссылкой и состоянием домового чата */
+        get: operations["listHouses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organization/houses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Подъезды и подсказки по словам в домовом чате */
+        patch: operations["updateHouse"];
+        trace?: never;
+    };
+    "/organization/executors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Действующие исполнители организации — список для назначения */
+        get: operations["listExecutors"];
+        put?: never;
+        /** Добавить исполнителя */
+        post: operations["createExecutor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organization/executors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Убрать исполнителя из списка; заявки, где он назначен, сохраняют историю */
+        delete: operations["archiveExecutor"];
+        options?: never;
+        head?: never;
+        /** Имя, телефон или специальность исполнителя */
+        patch: operations["updateExecutor"];
+        trace?: never;
+    };
     "/attachments/{id}": {
         parameters: {
             query?: never;
@@ -319,7 +407,12 @@ export interface components {
             address: string;
             entrances: number;
             qr_token: string;
+            /** @description домовой чат привязан командой /дом <код> */
             chat_bound: boolean;
+            /** @description бот предлагает присоединиться к открытой заявке, когда в чате пишут о той же проблеме */
+            chat_keywords_enabled: boolean;
+            /** @description deep link дома для QR-плаката и кнопки в чате */
+            start_url: string;
         };
         User: {
             id: number;
@@ -361,6 +454,58 @@ export interface components {
             name: string;
             specialty?: string | null;
             phone?: string | null;
+        };
+        /** @description Частичное обновление: передаются только меняемые поля */
+        OrganizationUpdate: {
+            name?: string;
+            /** @description аварийная служба, обязательна */
+            phone_ads?: string;
+            phone_dispatch?: string | null;
+            email?: string | null;
+            reception_hours?: string | null;
+            reception_address?: string | null;
+            /** @description прямые договоры с РСО: при включённом флаге по коммунальной услуге отвечает поставщик */
+            direct_contracts?: {
+                cold_water?: boolean;
+                hot_water?: boolean;
+                heat?: boolean;
+                power?: boolean;
+                tko?: boolean;
+            };
+        };
+        HouseUpdate: {
+            entrances?: number;
+            chat_keywords_enabled?: boolean;
+        };
+        ExecutorInput: {
+            name: string;
+            phone?: string | null;
+            specialty?: string | null;
+        };
+        ExecutorUpdate: {
+            name?: string;
+            phone?: string | null;
+            specialty?: string | null;
+        };
+        OrganizationResponse: {
+            data: components["schemas"]["Organization"];
+        };
+        HouseResponse: {
+            data: components["schemas"]["House"];
+        };
+        HouseListResponse: {
+            data: components["schemas"]["House"][];
+        };
+        ExecutorResponse: {
+            data: components["schemas"]["Executor"];
+        };
+        ExecutorListResponse: {
+            data: components["schemas"]["Executor"][];
+        };
+        OkResponse: {
+            data: {
+                ok: boolean;
+            };
         };
         RequestListItem: {
             /** @description номер заявки */
@@ -958,6 +1103,216 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+        };
+    };
+    getOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Организация */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Обновлённая карточка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    listHouses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Дома */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateHouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Обновлённый дом */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    listExecutors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Исполнители по алфавиту */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createExecutor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorInput"];
+            };
+        };
+        responses: {
+            /** @description Создан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    archiveExecutor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Готово */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateExecutor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutorUpdate"];
+            };
+        };
+        responses: {
+            /** @description Обновлённый исполнитель */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
         };
     };
     getAttachment: {

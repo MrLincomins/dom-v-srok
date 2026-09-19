@@ -69,7 +69,7 @@ final class RequestController extends Controller
     public function assign(AssignRequest $request, ServiceRequest $serviceRequest): RequestResource
     {
         $this->authorize('manage', $serviceRequest);
-        $executor = Executor::query()->where('organization_id', $request->user()->organization_id)->findOrFail((int) $request->validated('executor_id'));
+        $executor = Executor::query()->where('organization_id', $request->user()->organization_id)->where('is_active', true)->findOrFail((int) $request->validated('executor_id'));
         $updated = $this->service->assign($serviceRequest, $executor, Actor::dispatcher($request->user()), $request->validated('comment'));
 
         return $this->card($updated);
