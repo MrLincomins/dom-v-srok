@@ -1,5 +1,5 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { memo, useCallback, useMemo, useState, type KeyboardEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Button, CellSimple, Counter } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { DeadlineChip } from '@/components/DeadlineChip';
@@ -15,26 +15,59 @@ import { useQueue, type QueueTab } from './useQueue';
 
 const TABS: QueueTab[] = ['new', 'in_progress', 'overdue', 'closed'];
 
+const StableCounter = memo(function StableCounter({
+    value,
+    variant,
+}: {
+    value: number;
+    variant: 'attention' | 'default';
+}) {
+    return <Counter value={value} variant={variant} />;
+});
+
 export function QueuePage() {
-    const [tab, setTab] = useState<QueueTab>('new');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const requestedTab = searchParams.get('tab');
+    const tab = isQueueTab(requestedTab) ? requestedTab : 'new';
     const [search, setSearch] = useState('');
+    const setTab = useCallback(
+        (nextTab: QueueTab) => {
+            setSearchParams(
+                (current) => {
+                    if (nextTab === 'new') current.delete('tab');
+                    else current.set('tab', nextTab);
+                    return current;
+                },
+                { replace: true },
+            );
+        },
+        [setSearchParams],
+    );
     const queue = useQueue(tab, search);
 
     const pages = queue.data?.pages;
     const items = useMemo(() => pages?.flatMap((page) => page.data) ?? [], [pages]);
     const counters = pages?.[0]?.meta.counters;
-    const selectAdjacentTab = (event: KeyboardEvent, current: QueueTab) => {
-        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-        event.preventDefault();
-        const offset = event.key === 'ArrowRight' ? 1 : -1;
-        const next = TABS[(TABS.indexOf(current) + offset + TABS.length) % TABS.length];
-        if (!next) return;
-        setTab(next);
-        document.getElementById(`queue-tab-${next}`)?.focus();
-    };
+    const selectAdjacentTab = useCallback(
+        (event: KeyboardEvent, current: QueueTab) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const offset = event.key === 'ArrowRight' ? 1 : -1;
+            const next = TABS[(TABS.indexOf(current) + offset + TABS.length) % TABS.length];
+            if (!next) return;
+            setTab(next);
+            document.getElementById(`queue-tab-${next}`)?.focus();
+        },
+        [setTab],
+    );
 
     return (
-        <Screen title={texts.queue.title} contentClassName="flex flex-col gap-12" right={<LogoutButton />}>
+        <Screen
+            title={texts.queue.title}
+            backTo="/"
+            contentClassName="flex flex-col gap-12"
+            right={<LogoutButton />}
+        >
             <section className="enter flex flex-col gap-12">
                 <QueueSearch onSearch={setSearch} />
 
@@ -53,11 +86,12 @@ export function QueuePage() {
                             onKeyDown={(event) => selectAdjacentTab(event, t)}
                             role="tab"
                             id={`queue-tab-${t}`}
+                            tabIndex={t === tab ? 0 : -1}
                             aria-selected={t === tab}
                             aria-controls="queue-panel"
                             indicator={
                                 counters && counters[t] > 0 ? (
-                                    <Counter
+                                    <StableCounter
                                         value={counters[t]}
                                         variant={t === 'overdue' ? 'attention' : 'default'}
                                     />
@@ -76,12 +110,14 @@ export function QueuePage() {
                 aria-labelledby={`queue-tab-${tab}`}
                 className="flex flex-col gap-12"
             >
-                {queue.isPending && <ListSkeleton />}
-                {queue.isError && <ErrorState error={queue.error} onRetry={() => void queue.refetch()} />}
-                {queue.data && items.length === 0 && !queue.isError && (
+                {(queue.isPending || queue.isPlaceholderData) && <ListSkeleton rows={3} />}
+                {queue.isError && !queue.isPlaceholderData && (
+                    <ErrorState error={queue.error} onRetry={() => void queue.refetch()} />
+                )}
+                {queue.data && items.length === 0 && !queue.isError && !queue.isPlaceholderData && (
                     <EmptyState text={texts.queue.empty[tab]} />
                 )}
-                {items.length > 0 && !queue.isError && (
+                {items.length > 0 && !queue.isError && !queue.isPlaceholderData && (
                     <ul className="enter-list flex flex-col gap-12" aria-busy={queue.isFetching}>
                         {items.map((item) => (
                             <li key={item.id}>
@@ -90,7 +126,7 @@ export function QueuePage() {
                         ))}
                     </ul>
                 )}
-                {queue.hasNextPage && !queue.isError && (
+                {queue.hasNextPage && !queue.isError && !queue.isPlaceholderData && (
                     <div>
                         <Button
                             variant="secondary"
@@ -158,4 +194,8 @@ function QueueRow({ item }: { item: RequestListItem }) {
             />
         </div>
     );
+}
+
+function isQueueTab(value: string | null): value is QueueTab {
+    return value === 'new' || value === 'in_progress' || value === 'overdue' || value === 'closed';
 }
