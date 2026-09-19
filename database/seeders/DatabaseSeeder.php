@@ -10,13 +10,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            RegionSeeder::class,
-            CalendarSeeder::class,
-            CatalogSeeder::class,
-            ResponsiblePartiesSeeder::class,
-            BotTextsSeeder::class,
-        ]);
+        $this->call(ReferenceSeeder::class);
 
         if (config('demo.seed')) {
             $this->call(DemoSeeder::class);

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Database\Seeders\Support;
 
 use League\Csv\Reader;
+use RuntimeException;
 
-/** читает csv из docs/, разделитель «;», utf-8, первая строка заголовок */
+/** читает csv из docs/, разделитель «;», utf-8, первая строка заголовок. поле с «;» внутри берётся в кавычки */
 final class CsvReader
 {
     /** @return iterable<array<string,string|null>> */
@@ -14,6 +15,7 @@ final class CsvReader
     {
         $reader = Reader::createFromPath(base_path('docs/'.$file));
         $reader->setDelimiter(';');
+        self::assertColumns($reader, $file);
         $reader->setHeaderOffset(0);
 
         return $reader->getRecords();
@@ -36,5 +38,16 @@ final class CsvReader
         $v = trim((string) $value);
 
         return $v === '' ? null : $v;
+    }
+
+    private static function assertColumns(Reader $reader, string $file): void
+    {
+        $expected = null;
+        foreach ($reader->getRecords() as $index => $record) {
+            $expected ??= count($record);
+            if (count($record) !== $expected) {
+                throw new RuntimeException(sprintf('%s: строка %d содержит %d полей вместо %d, поле с «;» нужно взять в кавычки', $file, $index + 1, count($record), $expected));
+            }
+        }
     }
 }

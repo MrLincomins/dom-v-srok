@@ -13,7 +13,7 @@ if [ "$1" = "php-fpm" ]; then
     fi
     php artisan migrate --force
     if [ "${DEMO_SEED:-false}" = "true" ]; then
-        php artisan demo:seed-once --force   # один раз, отметка seeded_at в app_settings
+        php artisan demo:seed-once --force   # справочники из csv каждый раз, демо один раз (seeded_at в app_settings)
     fi
     chown -R www-data:www-data storage bootstrap/cache
 fi
