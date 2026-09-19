@@ -8,6 +8,7 @@ use App\Bot\Models\OutboxMessage;
 use App\Jobs\SendOutboxMessage;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * всё что выходит наружу
@@ -44,7 +45,7 @@ final class OutboxService
         ?string $editMessageId = null,
     ): ?OutboxMessage {
         try {
-            $message = OutboxMessage::query()->create([
+            $message = DB::transaction(fn () => OutboxMessage::query()->create([
                 'target_type' => $target,
                 'target_id' => $targetId,
                 'kind' => $kind,
@@ -54,7 +55,7 @@ final class OutboxService
                 'edit_message_id' => $editMessageId,
                 'status' => OutboxStatus::Pending,
                 'available_at' => $availableAt ?? CarbonImmutable::now(),
-            ]);
+            ]));
         } catch (UniqueConstraintViolationException) {
             return null; // такое сообщение уже поставлено в очередь
         }
