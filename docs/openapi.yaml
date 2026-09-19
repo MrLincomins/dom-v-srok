@@ -427,9 +427,10 @@ paths:
       parameters:
         - in: query
           name: status
+          description: 'группы: open — все незакрытые (new, assigned, in_progress, returned); active — в работе (assigned, in_progress, returned, done); closed — confirmed и redirected'
           schema:
             type: string
-            enum: [open, closed, new, assigned, in_progress, done, confirmed, returned, redirected]
+            enum: [open, active, closed, new, assigned, in_progress, done, confirmed, returned, redirected]
         - in: query
           name: overdue
           schema: { type: boolean }

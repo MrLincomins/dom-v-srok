@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\ApiExceptionRenderer;
+use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\VerifyMaxWebhookSecret;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // caddy перед php-fpm передаёт X-Forwarded-*, без этого url и схема будут http
         $middleware->trustProxies(at: '*');
+        $middleware->prepend(AssignRequestId::class);
+        $middleware->redirectGuestsTo(fn () => null);
 
         // вебхук защищён секретом, csrf ему не нужен
         $middleware->validateCsrfTokens(except: ['max/webhook']);

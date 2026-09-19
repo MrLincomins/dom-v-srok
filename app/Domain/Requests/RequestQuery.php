@@ -21,6 +21,7 @@ final class RequestQuery
         match (true) {
             $status === null, $status === '' => null,
             $status === 'open' => $q->open(),
+            $status === 'active' => $q->active(),
             $status === 'closed' => $q->closed(),
             default => $q->where('status', RequestStatus::from($status)->value),
         };
@@ -53,7 +54,7 @@ final class RequestQuery
 
         return [
             'new' => $base()->where('status', RequestStatus::New->value)->count(),
-            'in_progress' => $base()->whereIn('status', [RequestStatus::Assigned->value, RequestStatus::InProgress->value, RequestStatus::Returned->value, RequestStatus::Done->value])->count(),
+            'in_progress' => $base()->active()->count(),
             'overdue' => $base()->overdue()->count(),
             'closed' => $base()->closed()->count(),
         ];

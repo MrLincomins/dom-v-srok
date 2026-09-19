@@ -42,6 +42,12 @@ it('rejects tampered initData', function () {
     $this->postJson('/api/v1/auth/max', ['init_data' => $initData])->assertStatus(401);
 });
 
+it('answers 401 in the unified format even without an Accept header', function () {
+    $this->get('/api/v1/me')
+        ->assertStatus(401)
+        ->assertJsonPath('error.code', 'unauthenticated');
+});
+
 it('returns the profile for a bearer token', function () {
     $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_resident', 'password' => 'resident-pass'])->json('data.token');
 

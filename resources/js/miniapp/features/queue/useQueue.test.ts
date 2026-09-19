@@ -13,4 +13,8 @@ describe('tabToQuery', () => {
     it('does not send an empty search', () => {
         expect(tabToQuery('closed', '   ')).toEqual({ status: 'closed', q: undefined });
     });
+
+    it('maps the in-progress tab to the active group', () => {
+        expect(tabToQuery('in_progress', '')).toEqual({ status: 'active', q: undefined });
+    });
 });

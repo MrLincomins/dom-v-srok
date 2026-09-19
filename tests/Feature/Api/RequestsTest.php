@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Requests\RequestService;
+use App\Domain\Users\Enums\Role;
+use App\Domain\Users\Models\User;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Http\UploadedFile;
 use Spectator\Spectator;
 
 beforeEach(function () {
@@ -78,6 +83,37 @@ it('redirects a request with a contact', function () {
         ->assertValidResponse(200)
         ->assertJsonPath('data.status', 'redirected')
         ->assertJsonPath('data.redirected_to.note', 'Магистраль');
+});
+
+it('lists the active group as one page', function () {
+    asToken($this->dispatcher)->getJson('/api/v1/requests?status=active')
+        ->assertValidRequest()->assertValidResponse(200)
+        ->assertJsonCount(3, 'data')
+        ->assertJsonPath('meta.counters.in_progress', 3);
+});
+
+it('keeps no closing photos when the transition is rejected', function () {
+    $confirmed = asToken($this->dispatcher)->getJson('/api/v1/requests?status=confirmed')->json('data.0.id');
+
+    asToken($this->dispatcher)->post("/api/v1/requests/{$confirmed}/close", [
+        'comment' => 'Готово',
+        'photos' => [UploadedFile::fake()->image('done.jpg')],
+    ], ['Accept' => 'application/json'])
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'invalid_transition');
+
+    $this->assertDatabaseMissing('attachments', ['request_id' => $confirmed]);
+});
+
+it('shows requests where the resident joined as a participant', function () {
+    $neighbour = User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
+    $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');
+    asToken($token)->getJson('/api/v1/my/requests')->assertOk()->assertJsonCount(0, 'data');
+
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=new')->json('data.0.id');
+    app(RequestService::class)->join(ServiceRequest::query()->findOrFail($id), $neighbour);
+
+    asToken($token)->getJson('/api/v1/my/requests')->assertValidResponse(200)->assertJsonCount(1, 'data');
 });
 
 it('resets the demo organisation on request', function () {

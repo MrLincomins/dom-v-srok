@@ -64,6 +64,12 @@ enum RequestStatus: string
     }
 
     /** @return list<string> */
+    public static function activeValues(): array
+    {
+        return [self::Assigned->value, self::InProgress->value, self::Returned->value, self::Done->value];
+    }
+
+    /** @return list<string> */
     public static function closedValues(): array
     {
         return [self::Confirmed->value, self::Redirected->value];

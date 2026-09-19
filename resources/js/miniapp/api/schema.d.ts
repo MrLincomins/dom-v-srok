@@ -682,7 +682,8 @@ export interface operations {
     listRequests: {
         parameters: {
             query?: {
-                status?: "open" | "closed" | "new" | "assigned" | "in_progress" | "done" | "confirmed" | "returned" | "redirected";
+                /** @description группы: open — все незакрытые (new, assigned, in_progress, returned); active — в работе (assigned, in_progress, returned, done); closed — confirmed и redirected */
+                status?: "open" | "active" | "closed" | "new" | "assigned" | "in_progress" | "done" | "confirmed" | "returned" | "redirected";
                 overdue?: boolean;
                 house_id?: number;
                 q?: string;

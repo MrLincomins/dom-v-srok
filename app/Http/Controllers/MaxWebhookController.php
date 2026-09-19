@@ -24,7 +24,12 @@ final class MaxWebhookController extends Controller
         $inserted = ProcessedUpdate::query()->insertOrIgnore(['update_key' => $update->key(), 'received_at' => now()]);
 
         if ($inserted > 0) {
-            ProcessMaxUpdate::dispatch($raw);
+            try {
+                ProcessMaxUpdate::dispatch($raw);
+            } catch (\Throwable $e) {
+                ProcessedUpdate::query()->whereKey($update->key())->delete();
+                throw $e;
+            }
         }
 
         return response()->json(['ok' => true, 'duplicate' => $inserted === 0]);

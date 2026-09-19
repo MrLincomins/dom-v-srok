@@ -13,7 +13,7 @@ final class QueueRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', 'string', Rule::in(['open', 'closed', ...array_column(RequestStatus::cases(), 'value')])],
+            'status' => ['nullable', 'string', Rule::in(['open', 'active', 'closed', ...array_column(RequestStatus::cases(), 'value')])],
             'overdue' => ['nullable', 'boolean'],
             'house_id' => ['nullable', 'integer'],
             'q' => ['nullable', 'string', 'max:100'],

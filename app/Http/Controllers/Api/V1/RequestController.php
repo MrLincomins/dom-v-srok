@@ -9,6 +9,7 @@ use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Dto\RedirectData;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
+use App\Domain\Requests\Exceptions\InvalidTransition;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestQuery;
 use App\Domain\Requests\RequestService;
@@ -22,6 +23,7 @@ use App\Http\Requests\Api\QueueRequest;
 use App\Http\Requests\Api\RedirectRequest;
 use App\Http\Resources\RequestListResource;
 use App\Http\Resources\RequestResource;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -76,6 +78,9 @@ final class RequestController extends Controller
     public function close(CloseRequest $request, ServiceRequest $serviceRequest): RequestResource
     {
         $this->authorize('manage', $serviceRequest);
+        if (! $serviceRequest->status->canTransitionTo(RequestStatus::Done)) {
+            throw InvalidTransition::between($serviceRequest->status, RequestStatus::Done);
+        }
         foreach ($request->file('photos', []) as $photo) {
             $path = $photo->store('attachments/'.$serviceRequest->id, 'private');
             $serviceRequest->attachments()->create([
@@ -127,8 +132,10 @@ final class RequestController extends Controller
 
     public function my(Request $request): AnonymousResourceCollection
     {
+        $userId = (int) $request->user()->id;
         $page = ServiceRequest::query()->with(['category', 'house', 'executor'])
-            ->where('resident_user_id', $request->user()->id)
+            ->where(fn (Builder $q) => $q->where('resident_user_id', $userId)
+                ->orWhereHas('participants', fn (Builder $p) => $p->where('user_id', $userId)))
             ->latest('id')
             ->paginate(30);
 

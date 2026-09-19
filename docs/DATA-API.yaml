@@ -24,6 +24,12 @@ test_data:
   request_confirmed_id: 7    # терминальный статус для проверки 409
 
 checks:
+  - id: demo-reset
+    method: POST
+    path: /demo/reset
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.ok] }
+
   - id: auth-login
     method: POST
     path: /auth/login

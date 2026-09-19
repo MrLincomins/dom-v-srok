@@ -202,6 +202,15 @@ class ServiceRequest extends Model
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereIn('status', RequestStatus::activeValues());
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeClosed(Builder $query): Builder
     {
         return $query->whereIn('status', RequestStatus::closedValues());

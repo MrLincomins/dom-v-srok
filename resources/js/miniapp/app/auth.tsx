@@ -9,17 +9,16 @@ const SESSION_KEY = ['session'] as const;
 
 /** В браузере восстанавливаем сохранённую сессию, а внутри MAX обмениваем initData на токен. */
 async function loadSession(): Promise<User | null> {
-    try {
-        if (hasToken()) return await me();
-        if (isInsideMax()) return (await loginWithInitData(getInitData())).user;
-        return null;
-    } catch (error) {
-        if (error instanceof ApiError && error.isAuth) {
+    if (hasToken()) {
+        try {
+            return await me();
+        } catch (error) {
+            if (!(error instanceof ApiError && error.isAuth)) throw error;
             setToken(null);
-            if (!isInsideMax()) return null;
         }
-        throw error;
     }
+    if (isInsideMax()) return (await loginWithInitData(getInitData())).user;
+    return null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
