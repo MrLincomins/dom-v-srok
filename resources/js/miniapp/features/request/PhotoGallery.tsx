@@ -1,4 +1,4 @@
-import { Typography } from '@maxhub/max-ui';
+import { CellHeader } from '@maxhub/max-ui';
 import type { Attachment } from '@/api/types';
 import { texts } from '@/app/texts';
 import { openExternalLink } from '@/bridge/maxWebApp';
@@ -12,20 +12,18 @@ export function PhotoGallery({ attachments }: { attachments: Attachment[] | unde
     if (visible.length === 0) return null;
 
     return (
-        <section className="enter">
-            <Typography.Title variant="small-strong" className="mb-8 block">
-                {texts.request.photos}
-            </Typography.Title>
-            <div className="flex snap-x snap-mandatory gap-12 overflow-x-auto scroll-px-12 pb-8">
+        <section className="flex min-w-0 flex-col gap-12">
+            <CellHeader titleStyle="caps">{texts.request.photos}</CellHeader>
+            <div className="flex snap-x snap-mandatory gap-12 overflow-x-auto px-12 pb-8 scroll-px-12">
                 {visible.map((attachment, index) => (
                     <button
                         type="button"
                         key={attachment.id}
-                        className="app-card block shrink-0 snap-start overflow-hidden"
+                        className="block shrink-0 snap-start overflow-hidden rounded-card"
                         onClick={() => openExternalLink(attachment.url)}
                     >
                         <img
-                            src={attachment.url ?? undefined}
+                            src={attachment.url}
                             alt={
                                 attachment.kind === 'closing'
                                     ? `${texts.request.closingPhoto} ${index + 1}`

@@ -1,5 +1,5 @@
-import { Spinner } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
+import { LineLoader } from './LineLoader';
 
 export function FullscreenSpinner({ label = texts.auth.loading }: { label?: string }) {
     return (
@@ -9,7 +9,7 @@ export function FullscreenSpinner({ label = texts.auth.loading }: { label?: stri
             aria-live="polite"
             aria-busy="true"
         >
-            <Spinner size={28} appearance="themed" />
+            <LineLoader />
             <span className="text-[15px]">{label}</span>
         </div>
     );

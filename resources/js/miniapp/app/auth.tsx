@@ -33,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         client.removeQueries({ queryKey: ['requests'] });
         client.removeQueries({ queryKey: ['my-requests'] });
         client.removeQueries({ queryKey: ['request'] });
+        client.removeQueries({ queryKey: ['organization'] });
+        client.removeQueries({ queryKey: ['executors'] });
     }, [client]);
     const clearSession = useCallback(() => {
         client.setQueryData(SESSION_KEY, null);

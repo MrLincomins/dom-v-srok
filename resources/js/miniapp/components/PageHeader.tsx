@@ -1,44 +1,67 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import { Typography } from '@maxhub/max-ui';
-import { bindBackButton, useNativeBackButton } from '@/bridge/maxWebApp';
 import { texts } from '@/app/texts';
+import { useScreenBack } from '@/lib/navigation';
 
 interface Props {
     title: string;
     backTo?: string;
     right?: React.ReactNode;
+    titleLevel?: 1 | 2;
 }
 
-export function PageHeader({ title, backTo, right }: Props) {
-    const navigate = useNavigate();
-    const native = useNativeBackButton();
+export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
+    const { goBack, showHeaderBack } = useScreenBack(backTo);
 
-    useEffect(() => {
-        if (!backTo || !native) return undefined;
-        return bindBackButton(() => navigate(backTo));
-    }, [backTo, native, navigate]);
-
-    return (
-        <header className="sticky top-0 z-20 border-b border-divider bg-page/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
-            <div className="grid min-h-[56px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-8 px-16 py-10">
-                {backTo && !native ? (
+    if (showHeaderBack) {
+        return (
+            <header className="page-header">
+                <div className="grid min-h-[44px] grid-cols-[44px_minmax(0,1fr)_44px] items-center py-8">
                     <button
                         type="button"
-                        className="flex h-44 w-44 items-center justify-center rounded-full text-[24px] text-ink transition-colors hover:bg-page-secondary active:bg-page-secondary"
-                        onClick={() => navigate(backTo)}
+                        className="flex h-44 w-44 items-center justify-start text-white active:opacity-60"
+                        onClick={goBack}
                         aria-label={texts.app.back}
                     >
-                        ←
+                        <BackChevron />
                     </button>
+                    <Typography.Headline
+                        variant="small"
+                        className="min-w-0 truncate text-center"
+                        role="heading"
+                        aria-level={titleLevel}
+                    >
+                        {title}
+                    </Typography.Headline>
+                    <div className="flex min-w-0 items-center justify-end">{right}</div>
+                </div>
+            </header>
+        );
+    }
+
+    return (
+        <header className="page-header">
+            <div className="flex min-h-[44px] items-end justify-between pb-8 pt-8">
+                {titleLevel === 2 ? (
+                    <h2 className="ios-title-24 min-w-0 truncate">{title}</h2>
                 ) : (
-                    <span aria-hidden />
+                    <h1 className="ios-large-title min-w-0 truncate">{title}</h1>
                 )}
-                <Typography.Headline variant="small" className="min-w-0 truncate font-semibold">
-                    {title}
-                </Typography.Headline>
                 <div className="flex shrink-0 items-center justify-end">{right}</div>
             </div>
         </header>
+    );
+}
+
+function BackChevron() {
+    return (
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
+            <path
+                d="M17.5 6.5 9.5 14l8 7.5"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
     );
 }

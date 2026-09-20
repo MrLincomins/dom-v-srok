@@ -17,7 +17,7 @@ export function describeDeadline(
     if (Number.isNaN(deadline)) return { text: 'срок не задан', overdue: false, urgent: false };
 
     const diff = deadline - now.getTime();
-    if (diff < 0) return { text: `просрочено на ${humanSpan(-diff)}`, overdue: true, urgent: false };
+    if (diff < 0) return { text: `срок вышел на ${humanSpan(-diff)}`, overdue: true, urgent: false };
     return { text: `осталось ${humanSpan(diff)}`, overdue: false, urgent: diff < 4 * HOUR };
 }
 

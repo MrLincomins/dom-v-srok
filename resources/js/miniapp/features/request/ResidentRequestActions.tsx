@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Textarea, Typography } from '@maxhub/max-ui';
+import { Button, CellHeader, Textarea } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { MutationError } from './MutationError';
 import { useResidentRequestActions } from './useRequest';
@@ -11,16 +11,16 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
     const busy = actions.confirm.isPending;
 
     return (
-        <section className="app-card enter flex flex-col gap-12 p-16">
-            <Typography.Title variant="small-strong">{texts.request.resolvedTitle}</Typography.Title>
+        <section className="flex min-w-0 flex-col gap-16">
+            <CellHeader titleStyle="caps">{texts.request.resolvedTitle}</CellHeader>
             <Textarea
                 placeholder={texts.request.returnComment}
                 aria-label={texts.request.returnComment}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                rows={2}
+                rows={3}
             />
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-12">
                 <Button
                     size="large"
                     variant="primary"
