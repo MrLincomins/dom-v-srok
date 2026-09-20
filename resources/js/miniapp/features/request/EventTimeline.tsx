@@ -1,42 +1,78 @@
-import { Typography } from '@maxhub/max-ui';
+import { CellHeader } from '@maxhub/max-ui';
 import type { RequestEvent, RequestStatus } from '@/api/types';
 import { texts } from '@/app/texts';
 import { formatDateTime } from '@/lib/dates';
 import { STATUS_LABEL } from '@/lib/status';
 
 export function EventTimeline({ events }: { events: RequestEvent[] | undefined }) {
+    const items = events ?? [];
+
     return (
-        <section className="app-card enter p-16">
-            <Typography.Title variant="small-strong" className="mb-16 block">
-                {texts.request.history}
-            </Typography.Title>
-            {!events?.length ? (
-                <Typography.Body variant="small" className="text-muted">
-                    {texts.request.historyEmpty}
-                </Typography.Body>
-            ) : (
-                <ol className="flex flex-col">
-                    {events.map((event, index) => (
-                        <li key={event.id} className="relative flex gap-12 pb-16 last:pb-0">
-                            <span className="mt-6 h-8 w-8 shrink-0 rounded-full bg-accent" />
-                            {index < events.length - 1 && (
-                                <span className="absolute top-16 bottom-0 left-[3px] w-px bg-divider" />
-                            )}
-                            <span className="min-w-0">
-                                <span className="block text-[15px] leading-snug">{eventLine(event)}</span>
-                                <span className="mt-2 block text-[13px] text-muted">
-                                    {formatDateTime(event.created_at)}
-                                    {event.actor_name ? ` · ${event.actor_name}` : ''}
-                                </span>
-                            </span>
-                        </li>
-                    ))}
-                </ol>
-            )}
+        <section className="flex min-w-0 flex-col gap-12">
+            <CellHeader titleStyle="caps">{texts.request.history}</CellHeader>
+            <div className="history-card">
+                {items.length === 0 ? (
+                    <p className="history-empty">{texts.request.historyEmpty}</p>
+                ) : (
+                    items.map((event, index) => {
+                        const last = index === items.length - 1;
+                        const tone = eventTone(event);
+                        return (
+                            <div key={event.id} className="history-step">
+                                <div className="history-rail" aria-hidden>
+                                    <span
+                                        className={`history-dot${tone === 'done' ? ' is-done' : ''}${tone === 'late' ? ' is-late' : ''}${last && tone === 'work' ? ' is-current' : ''}`}
+                                    />
+                                    {last ? null : (
+                                        <span className="history-arrow">
+                                            <span className="history-arrow-line" />
+                                            <ArrowDown />
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="history-body">
+                                    <p
+                                        className={`history-title${tone === 'done' ? ' text-done' : ''}${tone === 'late' ? ' text-late' : ''}`}
+                                    >
+                                        {eventLine(event)}
+                                    </p>
+                                    <p className="history-meta">
+                                        {formatDateTime(event.created_at)}
+                                        {event.actor_name ? ` · ${event.actor_name}` : ''}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
         </section>
     );
 }
 
+function ArrowDown() {
+    return (
+        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+            <path
+                d="M2 3.5 6 7.5 10 3.5"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function eventTone(event: RequestEvent): 'done' | 'late' | 'work' {
+    if (event.type === 'confirmed' || event.to_status === 'confirmed') {
+        return 'done';
+    }
+    if (event.type === 'returned' || event.to_status === 'returned') {
+        return 'late';
+    }
+    return 'work';
+}
 function eventLine(event: RequestEvent): string {
     const comment = event.comment ? ` — ${event.comment}` : '';
     switch (event.type) {

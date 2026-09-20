@@ -49,8 +49,8 @@ describe('форма входа', () => {
             </MaxUI>,
         );
         await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
-        fireEvent.change(screen.getByPlaceholderText('Логин'), { target: { value: 'demo_dispatcher' } });
-        fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'secret' } });
+        fireEvent.change(screen.getByLabelText('Логин'), { target: { value: 'demo_dispatcher' } });
+        fireEvent.change(screen.getByLabelText('Пароль'), { target: { value: 'secret' } });
         fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
         await waitFor(() => expect(calls.some((c) => c.url.includes('/api/v1/auth/login'))).toBe(true), {
             timeout: 3000,

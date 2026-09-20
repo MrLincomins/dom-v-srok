@@ -1,50 +1,30 @@
-import { Typography } from '@maxhub/max-ui';
+import { CellSimple } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
+import { Section } from '@/components/Section';
 import { formatDateTime } from '@/lib/dates';
 
 export function ResponsibleSection({ card }: { card: RequestCard }) {
-    return (
-        <section className="app-card enter p-16">
-            <Typography.Title variant="small-strong" className="mb-12 block">
-                {texts.request.execution}
-            </Typography.Title>
-            <Row
-                label={texts.request.responsible}
-                value={`${card.responsible.name}${card.responsible.phone ? ` · ${card.responsible.phone}` : ''}`}
-            />
-            {!card.responsible.is_sure && (
-                <Typography.Body variant="small" className="mb-12 block text-work">
-                    {texts.request.unsure}
-                </Typography.Body>
-            )}
-            <Row label={texts.request.deadline} value={formatDateTime(card.deadline_fix_at)} />
-            {card.deadline_reply_at && (
-                <Row label={texts.request.replyDeadline} value={formatDateTime(card.deadline_reply_at)} />
-            )}
-            <Row label={texts.request.basis} value={card.basis || '—'} />
-            <Row label={texts.request.executor} value={card.executor?.name ?? texts.request.noExecutor} />
-            {card.redirected_to && (
-                <Row
-                    label={texts.request.redirected}
-                    value={[
-                        card.redirected_to.party?.name,
-                        card.redirected_to.party?.phone,
-                        card.redirected_to.note,
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                />
-            )}
-        </section>
-    );
-}
+    const responsible = `${card.responsible.name}${card.responsible.phone ? ` · ${card.responsible.phone}` : ''}`;
+    const redirected = card.redirected_to
+        ? [card.redirected_to.party?.name, card.redirected_to.party?.phone, card.redirected_to.note]
+              .filter(Boolean)
+              .join(' · ')
+        : null;
 
-function Row({ label, value }: { label: string; value: string }) {
     return (
-        <div className="mb-12 last:mb-0">
-            <span className="mb-2 block text-[13px] text-muted">{label}</span>
-            <span className="block text-[16px] leading-snug">{value}</span>
-        </div>
+        <Section title={texts.request.execution}>
+            <CellSimple
+                title={texts.request.responsible}
+                subtitle={card.responsible.is_sure ? responsible : `${responsible}. ${texts.request.unsure}`}
+            />
+            <CellSimple title={texts.request.deadline} subtitle={formatDateTime(card.deadline_fix_at)} />
+            {card.deadline_reply_at && (
+                <CellSimple title={texts.request.replyDeadline} subtitle={formatDateTime(card.deadline_reply_at)} />
+            )}
+            <CellSimple title={texts.request.basis} subtitle={card.basis || '—'} />
+            <CellSimple title={texts.request.executor} subtitle={card.executor?.name ?? texts.request.noExecutor} />
+            {redirected && <CellSimple title={texts.request.redirected} subtitle={redirected} />}
+        </Section>
     );
 }

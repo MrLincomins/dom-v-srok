@@ -1,8 +1,8 @@
 import { useParams } from 'react-router';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
+import { DelayedSkeleton } from '@/components/DelayedSkeleton';
 import { ErrorState } from '@/components/ErrorState';
-import { ListSkeleton } from '@/components/ListSkeleton';
 import { Screen } from '@/components/Screen';
 import { EventTimeline } from './EventTimeline';
 import { PhotoGallery } from './PhotoGallery';
@@ -16,7 +16,7 @@ export function RequestPage() {
     const id = Number(params.id);
     const { user } = useAuth();
     const request = useRequest(id);
-    const backTo = user?.role === 'resident' ? '/my' : '/queue';
+    const backTo = '/';
 
     if (!Number.isFinite(id) || id <= 0) {
         return (
@@ -26,32 +26,25 @@ export function RequestPage() {
         );
     }
 
-    if (request.isPending) {
-        return (
-            <Screen title={texts.request.title(id)} backTo={backTo}>
-                <ListSkeleton rows={4} />
-            </Screen>
-        );
-    }
-    if (request.isError) {
-        return (
-            <Screen title={texts.request.title(id)} backTo={backTo}>
-                <ErrorState error={request.error} onRetry={() => void request.refetch()} />
-            </Screen>
-        );
-    }
-
     return (
         <Screen
             title={texts.request.title(id)}
             backTo={backTo}
-            contentClassName="enter-list flex flex-col gap-12"
+            contentClassName="flex min-w-0 flex-col gap-16"
         >
-            <RequestSummary card={request.data} />
-            <ResponsibleSection card={request.data} />
-            <PhotoGallery attachments={request.data.attachments} />
-            <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />
-            <EventTimeline events={request.data.events} />
+            <DelayedSkeleton loading={request.isPending} rows={4} />
+            {request.isError && (
+                <ErrorState error={request.error} onRetry={() => void request.refetch()} />
+            )}
+            {request.data && (
+                <>
+                    <RequestSummary card={request.data} />
+                    <ResponsibleSection card={request.data} />
+                    <PhotoGallery attachments={request.data.attachments} />
+                    <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />
+                    <EventTimeline events={request.data.events} />
+                </>
+            )}
         </Screen>
     );
 }

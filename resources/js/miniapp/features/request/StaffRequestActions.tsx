@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Button, Input, Textarea, Typography } from '@maxhub/max-ui';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Button, CellHeader, CellInput, Textarea } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
+import { Section } from '@/components/Section';
 import { transitionLabel } from '@/lib/status';
+import { AssignExecutor } from './AssignExecutor';
 import { MutationError } from './MutationError';
 import { useStaffRequestActions, type StaffRequestActionMutations } from './useRequest';
 
@@ -12,38 +14,46 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
     const [redirectOpen, setRedirectOpen] = useState(false);
     const busy =
         actions.status.isPending ||
+        actions.assign.isPending ||
         actions.redirect.isPending ||
         actions.close.isPending ||
         actions.addComment.isPending;
+    const canAssign =
+        card.status === 'new' ||
+        card.status === 'assigned' ||
+        card.status === 'in_progress' ||
+        card.status === 'returned';
+    // assigned только через POST /assign, не PATCH /status
     const directTransitions = card.allowed_transitions.filter((status) => status === 'in_progress');
 
     return (
-        <section className="app-card enter flex flex-col gap-12 p-16">
-            <Typography.Title variant="small-strong">{texts.request.actionTitle}</Typography.Title>
+        <section className="flex min-w-0 flex-col gap-16">
+            {canAssign && (
+                <AssignExecutor currentName={card.executor?.name} action={actions.assign} disabled={busy} />
+            )}
 
             {directTransitions.length > 0 && (
-                <>
-                    <div className="flex flex-wrap gap-8">
-                        {directTransitions.map((status) => (
-                            <Button
-                                key={status}
-                                size="medium"
-                                variant="secondary"
-                                loading={actions.status.isPending}
-                                disabled={busy}
-                                onClick={() =>
-                                    actions.status.mutate(
-                                        { status, comment: comment.trim() || undefined },
-                                        { onSuccess: () => setComment('') },
-                                    )
-                                }
-                            >
-                                {transitionLabel(status, card.status)}
-                            </Button>
-                        ))}
-                    </div>
+                <div className="flex min-w-0 flex-col gap-12">
+                    {directTransitions.map((status) => (
+                        <Button
+                            key={status}
+                            size="large"
+                            variant="primary"
+                            stretched
+                            loading={actions.status.isPending}
+                            disabled={busy}
+                            onClick={() =>
+                                actions.status.mutate(
+                                    { status, comment: comment.trim() || undefined },
+                                    { onSuccess: () => setComment('') },
+                                )
+                            }
+                        >
+                            {transitionLabel(status, card.status)}
+                        </Button>
+                    ))}
                     <MutationError error={actions.status.error} />
-                </>
+                </div>
             )}
 
             {card.allowed_transitions.includes('done') && (
@@ -51,10 +61,11 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
             )}
 
             {card.allowed_transitions.includes('redirected') && (
-                <>
+                <div className="flex min-w-0 flex-col gap-12">
                     <Button
-                        size="medium"
-                        variant="ghost"
+                        size="large"
+                        variant="secondary"
+                        stretched
                         disabled={busy}
                         onClick={() => setRedirectOpen((open) => !open)}
                         aria-expanded={redirectOpen}
@@ -68,26 +79,32 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                             onSuccess={() => setRedirectOpen(false)}
                         />
                     )}
-                </>
+                </div>
             )}
 
-            <Textarea
-                placeholder={texts.request.commentPlaceholder}
-                aria-label={texts.request.commentPlaceholder}
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                rows={2}
-            />
-            <Button
-                size="small"
-                variant="ghost"
-                disabled={busy || comment.trim() === ''}
-                loading={actions.addComment.isPending}
-                onClick={() => actions.addComment.mutate(comment.trim(), { onSuccess: () => setComment('') })}
-            >
-                {texts.request.actions.comment}
-            </Button>
-            <MutationError error={actions.addComment.error} />
+            <div className="flex min-w-0 flex-col gap-12">
+                <CellHeader titleStyle="caps">{texts.request.actions.comment}</CellHeader>
+                <Textarea
+                    placeholder={texts.request.commentPlaceholder}
+                    aria-label={texts.request.commentPlaceholder}
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    rows={3}
+                />
+                <Button
+                    size="large"
+                    variant="secondary"
+                    stretched
+                    disabled={busy || comment.trim() === ''}
+                    loading={actions.addComment.isPending}
+                    onClick={() =>
+                        actions.addComment.mutate(comment.trim(), { onSuccess: () => setComment('') })
+                    }
+                >
+                    {texts.request.actions.comment}
+                </Button>
+                <MutationError error={actions.addComment.error} />
+            </div>
         </section>
     );
 }
@@ -102,6 +119,7 @@ function CloseRequestForm({
     const [comment, setComment] = useState('');
     const [photos, setPhotos] = useState<File[]>([]);
     const [photoError, setPhotoError] = useState<string | null>(null);
+    const photoInput = useRef<HTMLInputElement>(null);
     const previews = usePhotoPreviews(photos);
 
     const selectPhotos = (event: ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +131,7 @@ function CloseRequestForm({
 
     return (
         <form
-            className="flex flex-col gap-12 rounded-xl bg-page-secondary p-12"
+            className="flex flex-col gap-16"
             onSubmit={(event) => {
                 event.preventDefault();
                 action.mutate(
@@ -128,68 +146,66 @@ function CloseRequestForm({
                 );
             }}
         >
-            <Typography.Body variant="small" className="font-medium">
-                {texts.request.finishTitle}
-            </Typography.Body>
+            <CellHeader titleStyle="caps">{texts.request.finishTitle}</CellHeader>
             <Textarea
                 placeholder={texts.request.finishComment}
                 aria-label={texts.request.finishComment}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                rows={2}
+                rows={3}
             />
-            <label className="cursor-pointer rounded-xl border border-divider bg-surface px-12 py-8 text-center text-[14px] font-medium text-accent">
+            <input
+                ref={photoInput}
+                className="sr-only"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={selectPhotos}
+            />
+            <Button
+                size="large"
+                variant="secondary"
+                stretched
+                type="button"
+                onClick={() => photoInput.current?.click()}
+            >
                 {texts.request.addPhoto}
-                <input
-                    className="sr-only"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    onChange={selectPhotos}
-                />
-            </label>
+            </Button>
             {photoError && (
-                <Typography.Body variant="small" className="text-negative" role="alert">
-                    {photoError}
-                </Typography.Body>
+                <MutationError error={photoError} />
             )}
             {previews.length > 0 && (
-                <>
-                    <Typography.Body variant="small" className="text-muted">
-                        {texts.request.selectedPhotos(previews.length)}
-                    </Typography.Body>
-                    <div
-                        className="flex snap-x snap-mandatory gap-8 overflow-x-auto scroll-px-8"
-                        aria-label="Выбранные фотографии"
-                    >
-                        {previews.map((preview, index) => (
-                            <div key={preview.url} className="relative shrink-0 snap-start">
-                                <img
-                                    src={preview.url}
-                                    alt={preview.name}
-                                    className="h-80 w-80 rounded-lg object-cover"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute top-2 right-2 flex h-24 w-24 items-center justify-center rounded-full bg-black/70 text-[16px] text-white"
-                                    onClick={() =>
-                                        setPhotos((current) =>
-                                            current.filter((_, currentIndex) => currentIndex !== index),
-                                        )
-                                    }
-                                    aria-label={texts.request.removePhoto(preview.name)}
-                                >
-                                    ×
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </>
+                <div
+                    className="flex snap-x snap-mandatory gap-12 overflow-x-auto scroll-px-16"
+                    aria-label="Выбранные фотографии"
+                >
+                    {previews.map((preview, index) => (
+                        <div key={preview.url} className="relative shrink-0 snap-start">
+                            <img
+                                src={preview.url}
+                                alt={preview.name}
+                                className="h-128 w-128 rounded-card object-cover"
+                            />
+                            <button
+                                type="button"
+                                className="absolute top-8 right-8 flex h-32 w-32 items-center justify-center rounded-full bg-black/70 text-[16px] text-white"
+                                onClick={() =>
+                                    setPhotos((current) =>
+                                        current.filter((_, currentIndex) => currentIndex !== index),
+                                    )
+                                }
+                                aria-label={texts.request.removePhoto(preview.name)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                </div>
             )}
             <Button
                 type="submit"
                 variant="primary"
-                size="medium"
+                size="large"
                 stretched
                 loading={action.isPending}
                 disabled={disabled}
@@ -227,32 +243,35 @@ function RedirectRequestForm({
     };
 
     return (
-        <form className="flex flex-col gap-8" onSubmit={submit}>
-            <Input
-                placeholder={texts.request.redirectName}
-                aria-label={texts.request.redirectName}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-            />
-            <Input
-                placeholder={texts.request.redirectPhone}
-                aria-label={texts.request.redirectPhone}
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                inputMode="tel"
-            />
+        <form className="flex flex-col gap-16" onSubmit={submit}>
+            <Section>
+                <CellInput
+                    before={texts.request.redirectName}
+                    aria-label={texts.request.redirectName}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    required
+                />
+                <CellInput
+                    before={texts.request.redirectPhone}
+                    aria-label={texts.request.redirectPhone}
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    inputMode="tel"
+                />
+            </Section>
             <Textarea
                 placeholder={texts.request.redirectNote}
                 aria-label={texts.request.redirectNote}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
-                rows={2}
+                rows={3}
             />
             <Button
                 type="submit"
-                size="medium"
+                size="large"
                 variant="destructive"
+                stretched
                 loading={action.isPending}
                 disabled={disabled || name.trim() === ''}
             >

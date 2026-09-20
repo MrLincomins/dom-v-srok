@@ -18,7 +18,7 @@ describe('describeDeadline', () => {
 
     it('shows overdue days', () => {
         expect(describeDeadline('2026-09-15T12:00:00Z', now)).toEqual({
-            text: 'просрочено на 2 дня',
+            text: 'срок вышел на 2 дня',
             overdue: true,
             urgent: false,
         });

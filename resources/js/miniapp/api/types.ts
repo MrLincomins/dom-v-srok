@@ -8,6 +8,11 @@ export type RequestEvent = components['schemas']['RequestEvent'];
 export type Attachment = components['schemas']['Attachment'];
 export type RequestStatus = components['schemas']['RequestStatus'];
 export type AuthToken = components['schemas']['AuthToken'];
+export type Organization = components['schemas']['Organization'];
+export type OrganizationUpdate = components['schemas']['OrganizationUpdate'];
+export type House = components['schemas']['House'];
+export type Executor = components['schemas']['Executor'];
+export type ExecutorUpdate = components['schemas']['ExecutorUpdate'];
 export type QueueQuery = NonNullable<operations['listRequests']['parameters']['query']>;
 type Counters = components['schemas']['Counters'];
 

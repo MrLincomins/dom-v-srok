@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthState } from '@/app/authContext';
@@ -36,18 +37,21 @@ beforeEach(() => {
 });
 
 describe('главный экран по роли', () => {
-    it('показывает диспетчеру разделы очереди', () => {
+    it('показывает диспетчеру очередь заявок', async () => {
         renderHome({ ...baseUser, role: 'dispatcher' });
 
-        expect(screen.getByRole('heading', { name: 'Разделы заявок' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Просрочено/ })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Заявки' })).toBeInTheDocument();
+        expect(screen.getByText('Просрочено')).toBeInTheDocument();
+        expect(screen.getByLabelText('Организация')).toBeInTheDocument();
+        expect(screen.queryByText('Выйти')).not.toBeInTheDocument();
     });
 
-    it('показывает жителю создание и список заявок', () => {
+    it('показывает жителю только свои заявки', async () => {
         renderHome({ ...baseUser, role: 'resident' });
 
-        expect(screen.getByRole('button', { name: /Сообщить о проблеме/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Мои заявки/ })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Мои заявки' })).toBeInTheDocument();
+        expect(screen.queryByText('Сообщить о проблеме')).not.toBeInTheDocument();
+        expect(screen.queryByText('Выйти')).not.toBeInTheDocument();
     });
 });
 
@@ -63,12 +67,14 @@ function renderHome(user: User) {
     };
 
     return render(
-        <MemoryRouter>
-            <QueryClientProvider client={client}>
-                <AuthContext.Provider value={auth}>
-                    <HomePage />
-                </AuthContext.Provider>
-            </QueryClientProvider>
-        </MemoryRouter>,
+        <MaxUI platform="android" colorScheme="light">
+            <MemoryRouter>
+                <QueryClientProvider client={client}>
+                    <AuthContext.Provider value={auth}>
+                        <HomePage />
+                    </AuthContext.Provider>
+                </QueryClientProvider>
+            </MemoryRouter>
+        </MaxUI>,
     );
 }

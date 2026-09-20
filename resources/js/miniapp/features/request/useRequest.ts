@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     addComment,
+    assignExecutor,
     changeStatus,
     closeRequest,
     confirmRequest,
@@ -34,6 +35,10 @@ export function useStaffRequestActions(id: number) {
             changeStatus(id, status, comment),
         onSuccess: syncCardAndLists,
     });
+    const assign = useMutation({
+        mutationFn: (executorId: number) => assignExecutor(id, executorId),
+        onSuccess: syncCardAndLists,
+    });
     const redirect = useMutation({
         mutationFn: (data: { name: string; phone?: string; note?: string }) => redirectRequest(id, data),
         onSuccess: syncCardAndLists,
@@ -48,7 +53,7 @@ export function useStaffRequestActions(id: number) {
         onSuccess: syncCard,
     });
 
-    return { status, redirect, close, addComment: addCommentMutation };
+    return { status, assign, redirect, close, addComment: addCommentMutation };
 }
 
 export function useResidentRequestActions(id: number) {

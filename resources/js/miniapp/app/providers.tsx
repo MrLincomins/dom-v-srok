@@ -14,8 +14,8 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: ReactNode }) {
-    // У MAX UI нет отдельной темы для desktop/web, поэтому там используем Android-вариант.
-    const platform = getPlatform() === 'ios' ? 'ios' : 'android';
+    // На вебе и iOS берём iOS-ячейки MAX — они ближе к мессенджеру, чем android-пилюли.
+    const platform = getPlatform() === 'android' ? 'android' : 'ios';
     const [colorScheme, setColorScheme] = useState(getColorScheme);
 
     useEffect(
@@ -28,7 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
     );
 
     return (
-        <MaxUI platform={platform} colorScheme={colorScheme}>
+        <MaxUI platform={platform} colorScheme={colorScheme} className="max-root">
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>{children}</AuthProvider>
             </QueryClientProvider>
