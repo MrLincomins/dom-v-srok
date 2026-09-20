@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
@@ -18,8 +18,10 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const requestedTab = searchParams.get('tab');
     const tab = isQueueTab(requestedTab) ? requestedTab : 'new';
     const [search, setSearch] = useState('');
+    const [slideFrom, setSlideFrom] = useState<'left' | 'right'>('right');
     const setTab = useCallback(
         (nextTab: QueueTab) => {
+            setSlideFrom(TABS.indexOf(nextTab) >= TABS.indexOf(tab) ? 'right' : 'left');
             setSearchParams(
                 (current) => {
                     if (nextTab === 'new') current.delete('tab');
@@ -29,7 +31,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                 { replace: true },
             );
         },
-        [setSearchParams],
+        [setSearchParams, tab],
     );
     const queue = useQueue(tab, search);
 
@@ -37,10 +39,6 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const items = useMemo(() => pages?.flatMap((page) => page.data) ?? [], [pages]);
     const counters = pages?.[0]?.meta.counters;
     const ready = Boolean(queue.data) && !queue.isPlaceholderData;
-    const tabIndex = TABS.indexOf(tab);
-    const lastTabIndex = useRef(tabIndex);
-    const slideFrom = tabIndex >= lastTabIndex.current ? 'right' : 'left';
-    lastTabIndex.current = tabIndex;
 
     return (
         <Screen
