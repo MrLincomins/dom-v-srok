@@ -7,20 +7,23 @@ import {
     getOrganization,
     listExecutors,
     listHouses,
-    resetDemo,
     updateExecutor,
     updateHouse,
     updateOrganization,
 } from '@/api/organization';
 import type { Executor, House, Organization } from '@/api/types';
 import { texts } from '@/app/texts';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DelayedSkeleton } from '@/components/DelayedSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { Notice } from '@/components/Notice';
+import { PhoneField } from '@/components/PhoneField';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { SettingsField } from '@/components/SettingsField';
-import { openExternalLink } from '@/bridge/maxWebApp';
+import { copyToClipboard } from '@/lib/clipboard';
+import { isCompletePhone, localPhoneDigits, toStoredPhone } from '@/lib/phone';
 import { MutationError } from '@/features/request/MutationError';
 
 const CONTRACTS = ['cold_water', 'hot_water', 'heat', 'power', 'tko'] as const;
@@ -60,7 +63,6 @@ export function OrganizationPage() {
                     <ContractsCard organization={organization.data} />
                     <HousesCard houses={houses.data ?? []} />
                     <ExecutorsCard />
-                    {organization.data.is_demo && <DemoResetButton />}
                 </>
             )}
         </Screen>
@@ -75,6 +77,7 @@ function ContactsCard({ organization }: { organization: Organization }) {
     const [email, setEmail] = useState(organization.email ?? '');
     const [hours, setHours] = useState(organization.reception_hours ?? '');
     const [address, setAddress] = useState(organization.reception_address ?? '');
+    const [notice, setNotice] = useState<string | null>(null);
     const save = useMutation({
         mutationFn: () =>
             updateOrganization({
@@ -85,30 +88,33 @@ function ContactsCard({ organization }: { organization: Organization }) {
                 reception_hours: hours.trim() || null,
                 reception_address: address.trim() || null,
             }),
-        onSuccess: (data) => client.setQueryData(['organization'], data),
+        onSuccess: (data) => {
+            client.setQueryData(['organization'], data);
+            setNotice(texts.organization.saved);
+        },
     });
 
     return (
         <form
             className="flex min-w-0 flex-col gap-16"
+            noValidate
             onSubmit={(event) => {
                 event.preventDefault();
                 save.mutate();
             }}
         >
-            <Section title={texts.organization.types[organization.type]} className="settings-card">
+            <div className="request-block flex min-w-0 flex-col gap-8">
+                <h3 className="request-block-title">{texts.organization.types[organization.type]}</h3>
                 <SettingsField
                     label={texts.organization.name}
                     value={name}
                     onChange={(event) => setName(event.target.value)}
-                    required
                 />
                 <SettingsField
                     label={texts.organization.phoneAds}
                     value={phoneAds}
                     onChange={(event) => setPhoneAds(event.target.value)}
                     inputMode="tel"
-                    required
                 />
                 <SettingsField
                     label={texts.organization.phoneDispatch}
@@ -132,11 +138,12 @@ function ContactsCard({ organization }: { organization: Organization }) {
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
                 />
-            </Section>
+            </div>
             <Button type="submit" variant="primary" size="large" stretched loading={save.isPending}>
                 {texts.organization.save}
             </Button>
             <MutationError error={save.error} />
+            <Notice text={notice} onGone={() => setNotice(null)} />
         </form>
     );
 }
@@ -146,6 +153,17 @@ function ContractsCard({ organization }: { organization: Organization }) {
     const save = useMutation({
         mutationFn: (direct_contracts: Organization['direct_contracts']) =>
             updateOrganization({ direct_contracts }),
+        onMutate: async (direct_contracts) => {
+            await client.cancelQueries({ queryKey: ['organization'] });
+            const previous = client.getQueryData<Organization>(['organization']);
+            client.setQueryData(['organization'], (current: Organization | undefined) =>
+                current ? { ...current, direct_contracts } : current,
+            );
+            return { previous };
+        },
+        onError: (_error, _next, context) => {
+            if (context?.previous) client.setQueryData(['organization'], context.previous);
+        },
         onSuccess: (data) => client.setQueryData(['organization'], data),
     });
 
@@ -159,8 +177,7 @@ function ContractsCard({ organization }: { organization: Organization }) {
                         title={texts.organization.contractsLabels[key]}
                         after={
                             <Switch
-                                checked={organization.direct_contracts[key]}
-                                disabled={save.isPending}
+                                checked={Boolean(organization.direct_contracts[key])}
                                 aria-label={texts.organization.contractsLabels[key]}
                                 onChange={(event) =>
                                     save.mutate({
@@ -183,6 +200,7 @@ function ContractsCard({ organization }: { organization: Organization }) {
 
 function HousesCard({ houses }: { houses: House[] }) {
     const client = useQueryClient();
+    const [notice, setNotice] = useState<string | null>(null);
     const save = useMutation({
         mutationFn: ({
             id,
@@ -193,6 +211,25 @@ function HousesCard({ houses }: { houses: House[] }) {
             chat_keywords_enabled?: boolean;
             entrances?: number;
         }) => updateHouse(id, { chat_keywords_enabled, entrances }),
+        onMutate: async ({ id, chat_keywords_enabled, entrances }) => {
+            await client.cancelQueries({ queryKey: ['organization', 'houses'] });
+            const previous = client.getQueryData<House[]>(['organization', 'houses']);
+            client.setQueryData(['organization', 'houses'], (current: House[] | undefined) =>
+                (current ?? []).map((item) =>
+                    item.id === id
+                        ? {
+                              ...item,
+                              ...(chat_keywords_enabled === undefined ? {} : { chat_keywords_enabled }),
+                              ...(entrances === undefined ? {} : { entrances }),
+                          }
+                        : item,
+                ),
+            );
+            return { previous };
+        },
+        onError: (_error, _next, context) => {
+            if (context?.previous) client.setQueryData(['organization', 'houses'], context.previous);
+        },
         onSuccess: (house) => {
             client.setQueryData(['organization', 'houses'], (current: House[] | undefined) =>
                 (current ?? []).map((item) => (item.id === house.id ? house : item)),
@@ -215,33 +252,13 @@ function HousesCard({ houses }: { houses: House[] }) {
                                     : texts.organization.houseNoChat
                             }
                         />
-                        <SettingsField
-                            key={house.entrances}
-                            label={texts.organization.entrances}
-                            defaultValue={String(house.entrances)}
-                            inputMode="numeric"
-                            disabled={save.isPending}
-                            onBlur={(event) => {
-                                const next = Number(event.currentTarget.value);
-                                if (
-                                    !Number.isInteger(next) ||
-                                    next < 1 ||
-                                    next > 50 ||
-                                    next === house.entrances
-                                ) {
-                                    event.currentTarget.value = String(house.entrances);
-                                    return;
-                                }
-                                save.mutate({ id: house.id, entrances: next });
-                            }}
-                        />
                         <CellSimple
                             separator
                             title={texts.organization.joinInChat}
                             after={
                                 <Switch
                                     checked={house.chat_keywords_enabled}
-                                    disabled={save.isPending || !house.chat_bound}
+                                    disabled={!house.chat_bound}
                                     aria-label={texts.organization.joinInChat}
                                     onChange={(event) =>
                                         save.mutate({
@@ -253,17 +270,42 @@ function HousesCard({ houses }: { houses: House[] }) {
                             }
                         />
                         <CellSimple
-                            showChevron
                             title={texts.organization.openHouse}
-                            onClick={() => openExternalLink(house.start_url)}
+                            subtitle={house.start_url}
+                            onClick={() => {
+                                void copyToClipboard(house.start_url).then((ok) => {
+                                    if (ok) setNotice(texts.organization.houseLinkCopied);
+                                });
+                            }}
                         />
                     </Section>
+                    <SettingsField
+                        key={house.entrances}
+                        label={texts.organization.entrances}
+                        defaultValue={String(house.entrances)}
+                        inputMode="numeric"
+                        disabled={save.isPending}
+                        onBlur={(event) => {
+                            const next = Number(event.currentTarget.value);
+                            if (
+                                !Number.isInteger(next) ||
+                                next < 1 ||
+                                next > 50 ||
+                                next === house.entrances
+                            ) {
+                                event.currentTarget.value = String(house.entrances);
+                                return;
+                            }
+                            save.mutate({ id: house.id, entrances: next });
+                        }}
+                    />
                     <Typography.Body variant="small" className="settings-hint">
                         {texts.organization.joinInChatHint}
                     </Typography.Body>
                 </div>
             ))}
             <MutationError error={save.error} />
+            <Notice text={notice} onGone={() => setNotice(null)} />
         </div>
     );
 }
@@ -278,18 +320,25 @@ function ExecutorsCard() {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [specialty, setSpecialty] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [pendingArchiveId, setPendingArchiveId] = useState<number | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
 
     const fill = (executor: Executor | null) => {
         setEditing(executor);
         setName(executor?.name ?? '');
-        setPhone(executor?.phone ?? '');
+        setPhone(localPhoneDigits(executor?.phone ?? ''));
         setSpecialty(executor?.specialty ?? '');
+        setNameError('');
+        setPhoneError('');
     };
 
     const create = useMutation({
         mutationFn: createExecutor,
         onSuccess: () => {
             fill(null);
+            setNotice(texts.organization.executorAdded);
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -297,11 +346,12 @@ function ExecutorsCard() {
         mutationFn: (id: number) =>
             updateExecutor(id, {
                 name: name.trim(),
-                phone: phone.trim() || null,
+                phone: toStoredPhone(phone),
                 specialty: specialty.trim() || null,
             }),
         onSuccess: () => {
             fill(null);
+            setNotice(texts.organization.executorSaved);
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -309,6 +359,8 @@ function ExecutorsCard() {
         mutationFn: archiveExecutor,
         onSuccess: () => {
             fill(null);
+            setPendingArchiveId(null);
+            setNotice(texts.organization.executorRemoved);
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -316,14 +368,24 @@ function ExecutorsCard() {
     const submit = (event: FormEvent) => {
         event.preventDefault();
         const trimmed = name.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+            setNameError(texts.organization.executorNameRequired);
+            return;
+        }
+        if (phone.length > 0 && !isCompletePhone(phone)) {
+            setPhoneError(texts.organization.phoneError);
+            return;
+        }
+        setNameError('');
+        setPhoneError('');
+        const storedPhone = toStoredPhone(phone) ?? undefined;
         if (editing) {
             update.mutate(editing.id);
             return;
         }
         create.mutate({
             name: trimmed,
-            phone: phone.trim() || undefined,
+            phone: storedPhone,
             specialty: specialty.trim() || undefined,
         });
     };
@@ -331,7 +393,7 @@ function ExecutorsCard() {
     const busy = create.isPending || update.isPending || archive.isPending;
 
     return (
-        <form className="flex min-w-0 flex-col gap-16" onSubmit={submit}>
+        <form className="flex min-w-0 flex-col gap-16" noValidate onSubmit={submit}>
             <Section title={texts.organization.executors} className="settings-card">
                 {(executors.data ?? []).map((executor) => (
                     <CellSimple
@@ -342,13 +404,14 @@ function ExecutorsCard() {
                         onClick={() => fill(executor)}
                         after={
                             <Button
+                                type="button"
                                 size="small"
                                 variant="ghost"
                                 disabled={busy}
-                                loading={archive.isPending}
                                 onClick={(event) => {
+                                    event.preventDefault();
                                     event.stopPropagation();
-                                    archive.mutate(executor.id);
+                                    setPendingArchiveId(executor.id);
                                 }}
                             >
                                 {texts.organization.archiveExecutor}
@@ -356,24 +419,30 @@ function ExecutorsCard() {
                         }
                     />
                 ))}
-                <SettingsField
-                    label={texts.organization.executorName}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    required
-                />
-                <SettingsField
-                    label={texts.organization.executorPhone}
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    inputMode="tel"
-                />
-                <SettingsField
-                    label={texts.organization.executorSpecialty}
-                    value={specialty}
-                    onChange={(event) => setSpecialty(event.target.value)}
-                />
             </Section>
+            <SettingsField
+                label={texts.organization.executorName}
+                value={name}
+                error={nameError}
+                onChange={(event) => {
+                    setName(event.target.value);
+                    if (nameError) setNameError('');
+                }}
+            />
+            <PhoneField
+                label={texts.organization.executorPhone}
+                value={phone}
+                error={phoneError}
+                onChange={(next) => {
+                    setPhone(next);
+                    if (phoneError) setPhoneError('');
+                }}
+            />
+            <SettingsField
+                label={texts.organization.executorSpecialty}
+                value={specialty}
+                onChange={(event) => setSpecialty(event.target.value)}
+            />
             {executors.data?.length === 0 && <EmptyState text={texts.organization.executorsEmpty} />}
             <Button
                 type="submit"
@@ -381,36 +450,22 @@ function ExecutorsCard() {
                 size="large"
                 stretched
                 loading={create.isPending || update.isPending}
-                disabled={name.trim() === '' || busy}
+                disabled={busy}
             >
                 {editing ? texts.organization.saveExecutor : texts.organization.addExecutor}
             </Button>
             <MutationError error={create.error ?? update.error ?? archive.error} />
+            {pendingArchiveId !== null && (
+                <ConfirmDialog
+                    title={texts.organization.archiveConfirm}
+                    confirm={texts.organization.archiveYes}
+                    cancel={texts.organization.cancel}
+                    loading={archive.isPending}
+                    onCancel={() => setPendingArchiveId(null)}
+                    onConfirm={() => archive.mutate(pendingArchiveId)}
+                />
+            )}
+            <Notice text={notice} onGone={() => setNotice(null)} />
         </form>
-    );
-}
-
-function DemoResetButton() {
-    const client = useQueryClient();
-    const reset = useMutation({
-        mutationFn: resetDemo,
-        onSuccess: () => {
-            void client.invalidateQueries();
-        },
-    });
-
-    return (
-        <div className="flex min-w-0 flex-col gap-12">
-            <Button
-                variant="destructive"
-                size="large"
-                stretched
-                loading={reset.isPending}
-                onClick={() => reset.mutate()}
-            >
-                {texts.organization.demoReset}
-            </Button>
-            <MutationError error={reset.error} />
-        </div>
     );
 }

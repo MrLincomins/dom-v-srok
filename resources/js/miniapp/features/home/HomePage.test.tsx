@@ -42,15 +42,30 @@ describe('главный экран по роли', () => {
 
         expect(await screen.findByRole('heading', { name: 'Заявки' })).toBeInTheDocument();
         expect(screen.getByText('Просрочено')).toBeInTheDocument();
-        expect(screen.getByLabelText('Организация')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Организация' })).toBeInTheDocument();
         expect(screen.queryByText('Выйти')).not.toBeInTheDocument();
     });
 
-    it('показывает жителю только свои заявки', async () => {
-        renderHome({ ...baseUser, role: 'resident' });
+    it('показывает жителю кабинет', async () => {
+        renderHome({
+            ...baseUser,
+            role: 'resident',
+            house: {
+                id: 1,
+                address: 'ул. Мира, 12',
+                entrances: 2,
+                qr_token: 'qr',
+                chat_bound: true,
+                chat_keywords_enabled: false,
+                start_url: 'https://max.ru/start',
+            },
+        });
 
-        expect(await screen.findByRole('heading', { name: 'Мои заявки' })).toBeInTheDocument();
-        expect(screen.queryByText('Сообщить о проблеме')).not.toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Кабинет' })).toBeInTheDocument();
+        expect(screen.getByText('Сообщить о проблеме')).toBeInTheDocument();
+        expect(screen.getByText('Мои заявки')).toBeInTheDocument();
+        expect(screen.getByText('Прошлые заявки')).toBeInTheDocument();
+        expect(screen.getByText('Дом и контакты')).toBeInTheDocument();
         expect(screen.queryByText('Выйти')).not.toBeInTheDocument();
     });
 });

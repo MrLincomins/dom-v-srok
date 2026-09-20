@@ -1,15 +1,32 @@
-import { CellHeader } from '@maxhub/max-ui';
 import type { RequestEvent, RequestStatus } from '@/api/types';
 import { texts } from '@/app/texts';
 import { formatDateTime } from '@/lib/dates';
-import { STATUS_LABEL } from '@/lib/status';
+import { STATUS_LABEL, type StatusTone } from '@/lib/status';
+
+const TONE_TEXT: Record<StatusTone, string> = {
+    fresh: ' text-fresh',
+    accepted: ' text-accepted-blue',
+    work: ' text-work',
+    done: ' text-done',
+    late: ' text-late',
+    muted: ' text-muted',
+};
+
+const TONE_DOT: Record<StatusTone, string> = {
+    fresh: ' is-fresh',
+    accepted: ' is-current',
+    work: ' is-current',
+    done: ' is-done',
+    late: ' is-late',
+    muted: '',
+};
 
 export function EventTimeline({ events }: { events: RequestEvent[] | undefined }) {
     const items = events ?? [];
 
     return (
-        <section className="flex min-w-0 flex-col gap-12">
-            <CellHeader titleStyle="caps">{texts.request.history}</CellHeader>
+        <section className="request-block flex min-w-0 flex-col gap-8">
+            <h3 className="request-block-title">{texts.request.history}</h3>
             <div className="history-card">
                 {items.length === 0 ? (
                     <p className="history-empty">{texts.request.historyEmpty}</p>
@@ -21,7 +38,7 @@ export function EventTimeline({ events }: { events: RequestEvent[] | undefined }
                             <div key={event.id} className="history-step">
                                 <div className="history-rail" aria-hidden>
                                     <span
-                                        className={`history-dot${tone === 'done' ? ' is-done' : ''}${tone === 'late' ? ' is-late' : ''}${last && tone === 'work' ? ' is-current' : ''}`}
+                                        className={`history-dot${last ? TONE_DOT[tone] : ''}`}
                                     />
                                     {last ? null : (
                                         <span className="history-arrow">
@@ -31,15 +48,8 @@ export function EventTimeline({ events }: { events: RequestEvent[] | undefined }
                                     )}
                                 </div>
                                 <div className="history-body">
-                                    <p
-                                        className={`history-title${tone === 'done' ? ' text-done' : ''}${tone === 'late' ? ' text-late' : ''}`}
-                                    >
-                                        {eventLine(event)}
-                                    </p>
-                                    <p className="history-meta">
-                                        {formatDateTime(event.created_at)}
-                                        {event.actor_name ? ` · ${event.actor_name}` : ''}
-                                    </p>
+                                    <p className={`history-title${TONE_TEXT[tone]}`}>{eventLine(event)}</p>
+                                    <p className="history-meta">{formatDateTime(event.created_at)}</p>
                                 </div>
                             </div>
                         );
@@ -64,13 +74,10 @@ function ArrowDown() {
     );
 }
 
-function eventTone(event: RequestEvent): 'done' | 'late' | 'work' {
-    if (event.type === 'confirmed' || event.to_status === 'confirmed') {
-        return 'done';
-    }
-    if (event.type === 'returned' || event.to_status === 'returned') {
-        return 'late';
-    }
+function eventTone(event: RequestEvent): StatusTone {
+    if (event.type === 'confirmed' || event.to_status === 'confirmed') return 'done';
+    if (event.type === 'returned' || event.to_status === 'returned') return 'late';
+    if (event.type === 'redirected' || event.to_status === 'redirected') return 'muted';
     return 'work';
 }
 function eventLine(event: RequestEvent): string {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Button, CellHeader, Textarea } from '@maxhub/max-ui';
+import { Button } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
+import { CompactNote } from '@/components/CompactNote';
 import { MutationError } from './MutationError';
 import { useResidentRequestActions } from './useRequest';
 
@@ -11,20 +12,18 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
     const busy = actions.confirm.isPending;
 
     return (
-        <section className="flex min-w-0 flex-col gap-16">
-            <CellHeader titleStyle="caps">{texts.request.resolvedTitle}</CellHeader>
-            <Textarea
+        <section className="request-actions flex min-w-0 flex-col gap-8">
+            <CompactNote
+                label={texts.request.resolvedTitle}
                 placeholder={texts.request.returnComment}
-                aria-label={texts.request.returnComment}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                rows={3}
             />
-            <div className="grid grid-cols-2 gap-12">
+            <div className="request-action-row">
                 <Button
-                    size="large"
+                    size="medium"
                     variant="primary"
-                    stretched
+                    className="btn-done"
                     loading={busy && choice === 'yes'}
                     disabled={busy}
                     onClick={() => {
@@ -35,9 +34,8 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                     {texts.request.confirmYes}
                 </Button>
                 <Button
-                    size="large"
+                    size="medium"
                     variant="secondary"
-                    stretched
                     loading={busy && choice === 'no'}
                     disabled={busy}
                     onClick={() => {

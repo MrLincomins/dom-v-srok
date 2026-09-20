@@ -3,6 +3,7 @@ import { STATUS_LABEL, statusTone, type StatusTone } from '@/lib/status';
 
 const TONE_CLASS: Record<StatusTone, string> = {
     fresh: 'bg-fresh/15 text-fresh',
+    accepted: 'bg-accepted-blue/15 text-accepted-blue',
     work: 'bg-work/15 text-work',
     done: 'bg-done/15 text-done',
     late: 'bg-late/15 text-late',

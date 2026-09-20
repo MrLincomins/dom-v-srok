@@ -57,6 +57,13 @@ export async function confirmRequest(id: number, resolved: boolean, comment?: st
         .data;
 }
 
+export async function createRequest(body: {
+    category_id: number;
+    description: string;
+}): Promise<RequestCard> {
+    return (await api<{ data: RequestCard }>('/requests', { body })).data;
+}
+
 export function myRequests(page: number, signal?: AbortSignal): Promise<Paginated<RequestListItem>> {
     return api<Paginated<RequestListItem>>('/my/requests', {
         query: { page },
