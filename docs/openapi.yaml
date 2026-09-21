@@ -15,6 +15,7 @@ tags:
   - name: catalog
   - name: requests
   - name: organization
+  - name: journal
   - name: attachments
   - name: demo
 security:
@@ -94,15 +95,17 @@ components:
         is_demo: { type: boolean }
     House:
       type: object
-      required: [id, address, entrances, qr_token, chat_bound, chat_keywords_enabled, start_url]
+      required: [id, address, entrances, qr_token, chat_bound, chat_pinned, chat_keywords_enabled, start_url, qr_url]
       properties:
         id: { type: integer }
         address: { type: string }
         entrances: { type: integer }
         qr_token: { type: string }
         chat_bound: { type: boolean, description: 'домовой чат привязан командой /дом <код>' }
+        chat_pinned: { type: boolean, description: 'карточка дома закреплена в чате; для этого бот должен быть администратором чата' }
         chat_keywords_enabled: { type: boolean, description: 'бот предлагает присоединиться к открытой заявке, когда в чате пишут о той же проблеме' }
         start_url: { type: string, description: 'deep link дома для QR-плаката и кнопки в чате' }
+        qr_url: { type: string, description: 'подписанная ссылка на PNG с QR-кодом deep link дома, без срока действия; для плаката в подъезде добавьте &entrance=N' }
     User:
       type: object
       required: [id, name, role, is_demo]
@@ -202,6 +205,22 @@ components:
         name: { type: string, maxLength: 200 }
         phone: { type: [string, 'null'], maxLength: 32 }
         specialty: { type: [string, 'null'], maxLength: 64 }
+    Contractor:
+      type: object
+      required: [id, type, type_label, name]
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [lift, intercom, tko, other] }
+        type_label: { type: string }
+        name: { type: string }
+        phone: { type: [string, 'null'] }
+    ContractorInput:
+      type: object
+      required: [type, name]
+      properties:
+        type: { type: string, enum: [lift, intercom, tko, other], description: 'подрядчик этого типа перекрывает региональную сторону при расчёте ответственного' }
+        name: { type: string, maxLength: 200 }
+        phone: { type: [string, 'null'], maxLength: 32 }
     OrganizationResponse:
       type: object
       required: [data]
@@ -231,6 +250,18 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/Executor' }
+    ContractorResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Contractor' }
+    ContractorListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Contractor' }
     OkResponse:
       type: object
       required: [data]
@@ -385,6 +416,71 @@ components:
           type: array
           items: { $ref: '#/components/schemas/RequestListItem' }
         meta: { $ref: '#/components/schemas/PaginationMeta' }
+        links: { type: object, additionalProperties: true }
+    JournalRow:
+      type: object
+      required: [id, created_at, address, resident_name, category, description, responsible_name, basis, status, status_label, is_overdue, closed_late, returned_count, participants_count]
+      properties:
+        id: { type: integer, description: 'номер заявки' }
+        created_at: { type: string, format: date-time }
+        address: { type: string }
+        entrance: { type: [integer, 'null'] }
+        flat: { type: [string, 'null'] }
+        resident_name: { type: string, description: 'после /delete_me — «Житель (удалён)»' }
+        category: { type: string }
+        description: { type: string }
+        responsible_name: { type: string }
+        responsible_phone: { type: [string, 'null'] }
+        deadline_fix_at: { type: [string, 'null'], format: date-time }
+        basis: { type: string }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        status_label: { type: string }
+        executor_name: { type: [string, 'null'] }
+        first_reaction_at: { type: [string, 'null'], format: date-time }
+        done_at: { type: [string, 'null'], format: date-time }
+        closed_at: { type: [string, 'null'], format: date-time }
+        is_overdue: { type: boolean }
+        closed_late: { type: boolean, description: 'выполнена после срока' }
+        confirmed_by: { type: [string, 'null'], enum: [resident, auto, dispatcher, null] }
+        returned_count: { type: integer }
+        redirected_to: { type: [string, 'null'] }
+        participants_count: { type: integer }
+    JournalSummary:
+      type: object
+      required: [total, open, overdue, closed, on_time, late, returned, redirected, first_reaction_minutes]
+      properties:
+        total: { type: integer, description: 'заявок принято за период' }
+        open: { type: integer }
+        overdue: { type: integer, description: 'открытые, у которых срок уже вышел' }
+        closed: { type: integer, description: 'подтверждено или переадресовано' }
+        on_time: { type: integer, description: 'выполнено до срока' }
+        late: { type: integer, description: 'выполнено после срока' }
+        returned: { type: integer, description: 'заявок, которые житель хотя бы раз вернул' }
+        redirected: { type: integer }
+        first_reaction_minutes: { type: [integer, 'null'], description: 'среднее время до первого действия диспетчера; null, если действий не было' }
+    JournalMeta:
+      type: object
+      required: [current_page, last_page, per_page, total, period, summary]
+      properties:
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        period:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        summary: { $ref: '#/components/schemas/JournalSummary' }
+    JournalResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/JournalRow' }
+        meta: { $ref: '#/components/schemas/JournalMeta' }
         links: { type: object, additionalProperties: true }
 paths:
   /auth/max:
@@ -798,6 +894,23 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+  /organization/houses/{id}/qr.png:
+    get:
+      tags: [organization]
+      operationId: houseQr
+      security: []
+      summary: PNG с QR-кодом deep link дома по подписанной ссылке qr_url из карточки дома
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+        - { in: query, name: signature, required: true, schema: { type: string } }
+        - { in: query, name: entrance, schema: { type: integer, minimum: 1, maximum: 50 }, description: 'подъезд для плаката; в подпись не входит, добавляется к qr_url как есть' }
+      responses:
+        '200':
+          description: Картинка
+          content:
+            image/png: { schema: { type: string, format: binary } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /organization/executors:
     get:
       tags: [organization]
@@ -868,6 +981,105 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /organization/contractors:
+    get:
+      tags: [organization]
+      operationId: listContractors
+      summary: Подрядчики организации по договору (лифтовая, домофонная, ТКО) — перекрывают региональные стороны
+      responses:
+        '200':
+          description: Подрядчики
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [organization]
+      operationId: createContractor
+      summary: Добавить подрядчика; новые заявки его типа пойдут ему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContractorInput' }
+      responses:
+        '201':
+          description: Создан
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /organization/contractors/{id}:
+    delete:
+      tags: [organization]
+      operationId: deleteContractor
+      summary: Убрать подрядчика; заявки хранят снимок ответственного и не меняются
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Готово
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /organizations/{id}:
+    get:
+      tags: [organization]
+      operationId: getOrganizationCard
+      summary: Карточка организации для жителя — контакты и прямые договоры, без персональных данных
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Организация
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /journal:
+    get:
+      tags: [journal]
+      operationId: journal
+      summary: Журнал заявок организации за период со сводкой
+      parameters:
+        - { in: query, name: from, schema: { type: string, format: date }, description: 'дата приёма с, по зоне региона; по умолчанию первое число текущего месяца' }
+        - { in: query, name: to, schema: { type: string, format: date }, description: 'дата приёма по, включительно; по умолчанию сегодня; период не длиннее года' }
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        '200':
+          description: Строки журнала по номеру заявки и сводка за период
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JournalResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /journal.csv:
+    get:
+      tags: [journal]
+      operationId: journalCsv
+      summary: Журнал заявок за период в CSV по форме журнала АДС — разделитель «;», BOM для Excel
+      parameters:
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Файл
+          content:
+            text/csv: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
   /attachments/{id}:
     get:
       tags: [attachments]

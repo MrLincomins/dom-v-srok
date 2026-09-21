@@ -21,6 +21,11 @@ final class FakeMaxClient extends MaxClient
 
     public bool $failEdits = false;
 
+    /** @var list<array{chat:int,mid:string}> */
+    public array $pinned = [];
+
+    public bool $failPins = false;
+
     public function isConfigured(): bool
     {
         return true;
@@ -46,6 +51,16 @@ final class FakeMaxClient extends MaxClient
             throw new MaxApiException('PUT /messages → 400: message not found', 400, 'PUT /messages');
         }
         $this->sent[] = ['target' => 'edit', 'id' => 0, 'mid' => $messageId, 'body' => $body];
+
+        return ['success' => true];
+    }
+
+    public function pinMessage(int $chatId, string $messageId, bool $notify = true): array
+    {
+        if ($this->failPins) {
+            throw new MaxApiException('PUT /chats/pin → 403: bot is not an admin', 403, 'PUT /chats/pin');
+        }
+        $this->pinned[] = ['chat' => $chatId, 'mid' => $messageId];
 
         return ['success' => true];
     }

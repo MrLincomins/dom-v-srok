@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Requests;
 
+use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\ServiceRequest;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,6 +46,17 @@ final class RequestQuery
         }
 
         return $q->orderByRaw('deadline_fix_at ASC NULLS LAST')->orderBy('created_at');
+    }
+
+    /** @return Builder<ServiceRequest> */
+    public function newlyOverdue(): Builder
+    {
+        return ServiceRequest::query()
+            ->overdue()
+            ->whereDoesntHave('events', fn (Builder $events) => $events
+                ->where('type', EventType::Reminder->value)
+                ->where('payload->kind', 'overdue'))
+            ->orderBy('id');
     }
 
     /** счётчики для вкладок */

@@ -19,6 +19,7 @@ use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\ParticipantJoined;
 use App\Domain\Requests\Events\RequestCreated;
+use App\Domain\Requests\Events\RequestOverdue;
 use App\Domain\Requests\Events\RequestStatusChanged;
 use App\Domain\Requests\Exceptions\EmergencyCategory;
 use App\Domain\Requests\Exceptions\InvalidTransition;
@@ -212,6 +213,27 @@ final class RequestService
         }
 
         return $joined;
+    }
+
+    public function markOverdue(ServiceRequest $request): ?RequestEvent
+    {
+        $event = DB::transaction(function () use ($request): ?RequestEvent {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if (! $locked->isOverdue() || $locked->hasOverdueMark()) {
+                return null;
+            }
+
+            return $this->log($locked, EventType::Reminder, Actor::system(), null, [
+                'kind' => 'overdue',
+                'deadline_fix_at' => $locked->deadline_fix_at?->toIso8601String(),
+            ]);
+        });
+
+        if ($event !== null) {
+            event(new RequestOverdue($request->refresh(), $event));
+        }
+
+        return $event;
     }
 
     public function rate(ServiceRequest $request, User $user, int $rating, ?string $comment = null): ServiceRequest

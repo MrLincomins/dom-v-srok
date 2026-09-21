@@ -69,6 +69,7 @@ final class ChatHandler
         }
 
         $house->max_chat_id = $chatId;
+        $house->chat_pinned_message_id = null;
         $house->save();
 
         $rows = [[['label' => 'Сообщить о проблеме', 'action' => 'url:'.$this->links->houseStartUrl($house)]]];
@@ -76,7 +77,7 @@ final class ChatHandler
             'text' => $this->ctx->texts()->text('chat.card', ['address' => $house->address]),
             'keyboard' => Keyboards::fromRows($rows),
         ], 'chat.card:'.$house->id.':'.$chatId);
-        // закреп карточки после отправки, когда известен message_id: команда bot:pin-house-card позже
+        // закреп сделает PinHouseCardInChat, когда мах вернёт mid карточки
         Log::info('chat.bound', ['house_id' => $house->id, 'chat_id' => $chatId]);
     }
 
@@ -161,14 +162,19 @@ final class ChatHandler
         }
     }
 
-    /** закреп карточки, когда бот админ потом */
-    public function pin(int $chatId, string $messageId): void
+    /** закреп карточки дома, получится только если бот админ чата */
+    public function pin(House $house, string $messageId): void
     {
         try {
-            $this->client->pinMessage($chatId, $messageId);
+            $this->client->pinMessage((int) $house->max_chat_id, $messageId);
         } catch (MaxApiException $e) {
-            Log::info('chat.pin_failed', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
+            Log::info('chat.pin_failed', ['house_id' => $house->id, 'error' => $e->getMessage()]);
+
+            return;
         }
+        $house->chat_pinned_message_id = $messageId;
+        $house->save();
+        Log::info('chat.pinned', ['house_id' => $house->id]);
     }
 
     /**

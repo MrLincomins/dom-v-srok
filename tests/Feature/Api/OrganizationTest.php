@@ -74,8 +74,10 @@ it('lists houses with the QR link and toggles keyword hints in the chat', functi
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.qr_token', DemoSeeder::HOUSE_QR_TOKEN)
         ->assertJsonPath('data.0.chat_bound', false)
+        ->assertJsonPath('data.0.chat_pinned', false)
         ->assertJsonPath('data.0.chat_keywords_enabled', false);
-    expect($response->json('data.0.start_url'))->toContain('start=h_'.DemoSeeder::HOUSE_QR_TOKEN);
+    expect($response->json('data.0.start_url'))->toContain('start=h_'.DemoSeeder::HOUSE_QR_TOKEN)
+        ->and($response->json('data.0.qr_url'))->toContain('/qr.png?signature=');
     $id = $response->json('data.0.id');
 
     asToken($this->dispatcher)->patchJson("/api/v1/organization/houses/{$id}", ['chat_keywords_enabled' => true, 'entrances' => 4])

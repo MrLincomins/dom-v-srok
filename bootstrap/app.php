@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->prepend(AssignRequestId::class);
         $middleware->redirectGuestsTo(fn () => null);
+        $middleware->validateSignatures(except: ['entrance']);
 
         // вебхук защищён секретом, csrf ему не нужен
         $middleware->validateCsrfTokens(except: ['max/webhook']);

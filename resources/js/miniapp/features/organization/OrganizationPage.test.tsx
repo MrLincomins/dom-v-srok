@@ -30,8 +30,10 @@ const house = {
     entrances: 2,
     qr_token: 'qr',
     chat_bound: true,
+    chat_pinned: false,
     chat_keywords_enabled: false,
     start_url: 'https://max.ru/start',
+    qr_url: 'https://max.example/qr.png?signature=x',
 };
 
 beforeEach(() => {

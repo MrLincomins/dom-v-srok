@@ -62,6 +62,25 @@ it('binds the chat to the house by a staff command and refuses everyone else', f
         ->and(lastButtons($this->max))->toContain(app(DeepLinks::class)->houseStartUrl(chatHouse()));
 });
 
+it('pins the house card right after it is sent and remembers the pinned message', function () {
+    bindDemoChat($this->chatId);
+
+    $card = OutboxMessage::query()->where('kind', 'chat.card')->firstOrFail();
+    expect($this->max->pinned)->toBe([['chat' => $this->chatId, 'mid' => $card->max_message_id]])
+        ->and(chatHouse()->chat_pinned_message_id)->toBe($card->max_message_id);
+});
+
+it('keeps the card when the bot is not an admin and cannot pin', function () {
+    $this->max->failPins = true;
+
+    bindDemoChat($this->chatId);
+
+    expect(lastText($this->max))->toContain(DemoSeeder::HOUSE_ADDRESS)
+        ->and($this->max->pinned)->toBe([])
+        ->and(chatHouse()->chat_pinned_message_id)->toBeNull()
+        ->and(chatHouse()->max_chat_id)->toBe($this->chatId);
+});
+
 it('answers «статус N» with a card without personal data and a join button only for open requests', function () {
     bindDemoChat($this->chatId);
     $open = chatRequest('entrance.light');
