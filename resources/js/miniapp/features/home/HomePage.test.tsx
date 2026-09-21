@@ -57,6 +57,8 @@ describe('главный экран по роли', () => {
                 qr_token: 'qr',
                 chat_bound: true,
                 chat_keywords_enabled: false,
+                chat_pinned: false,
+                qr_url: 'https://max.ru/qr.png',
                 start_url: 'https://max.ru/start',
             },
         });

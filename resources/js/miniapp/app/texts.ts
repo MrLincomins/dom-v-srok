@@ -36,11 +36,11 @@ export const texts = {
         house: 'Дом и контакты',
         houseHint: 'Адрес, организация и телефоны',
         createRequest: 'Сообщить о проблеме',
-        createRequestHint: 'Новая заявка в организацию',
+        createRequestHint: 'Откроется бот',
     },
     queue: {
         title: 'Заявки',
-        tabs: { new: 'Новые', in_progress: 'В работе', overdue: 'Просрочено', closed: 'Выполнено' },
+        tabs: { new: 'Новые', in_progress: 'В работе', overdue: 'Просрочено', closed: 'Закрытые' },
         search: 'Найти: номер, квартира или улица',
         empty: {
             new: 'Новых заявок нет.',
@@ -68,12 +68,6 @@ export const texts = {
         noHouse: 'Дом ещё не привязан.',
         entrance: 'Подъезд',
         flat: 'Квартира',
-        create: 'Сообщить о проблеме',
-        category: 'Что случилось',
-        description: 'Опишите проблему',
-        submit: 'Отправить заявку',
-        emergency: 'Это авария. Позвоните в аварийную службу — заявку по ней не создаём.',
-        created: 'Заявка отправлена',
     },
     organization: {
         title: 'Организация',

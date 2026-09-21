@@ -22,11 +22,6 @@ const RequestPage = lazy(() =>
 const MyRequestsPage = lazy(() =>
     import('./features/resident/MyRequestsPage').then((module) => ({ default: module.MyRequestsPage })),
 );
-const CreateRequestPage = lazy(() =>
-    import('./features/resident/CreateRequestPage').then((module) => ({
-        default: module.CreateRequestPage,
-    })),
-);
 const OrganizationPage = lazy(() =>
     import('./features/organization/OrganizationPage').then((module) => ({
         default: module.OrganizationPage,
@@ -84,15 +79,13 @@ function RouteFallback() {
                     ? texts.organization.title
                     : pathname.includes('/house')
                       ? texts.resident.house
-                      : pathname.includes('/new')
-                        ? texts.resident.create
-                        : pathname.endsWith('/my')
-                          ? texts.resident.title
-                          : residentHome
-                            ? texts.home.residentTitle
-                            : pathname === '/' || pathname.endsWith('/queue')
-                              ? texts.queue.title
-                              : texts.queue.title
+                      : pathname.endsWith('/my')
+                        ? texts.resident.title
+                        : residentHome
+                          ? texts.home.residentTitle
+                          : pathname === '/' || pathname.endsWith('/queue')
+                            ? texts.queue.title
+                            : texts.queue.title
             }
             titleLevel={pathname === '/' || residentHome ? 2 : 1}
         >
@@ -130,7 +123,6 @@ export const router = createBrowserRouter(
                     children: [
                         { path: 'my', element: <MyRequestsPage backTo="/" /> },
                         { path: 'house', element: <HousePage /> },
-                        { path: 'new', element: <CreateRequestPage /> },
                     ],
                 },
                 { path: '*', element: <Navigate to="/" replace /> },
