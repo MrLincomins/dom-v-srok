@@ -1,6 +1,6 @@
 import type { RequestStatus } from '@/api/types';
 
-export type StatusTone = 'fresh' | 'work' | 'done' | 'late' | 'muted';
+export type StatusTone = 'fresh' | 'accepted' | 'work' | 'done' | 'late' | 'muted';
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
     new: 'Принято',
@@ -35,7 +35,7 @@ export function statusTone(status: RequestStatus, overdue: boolean): StatusTone 
     if (overdue) return 'late';
     switch (status) {
         case 'new':
-            return 'fresh';
+            return 'accepted';
         case 'assigned':
         case 'in_progress':
         case 'done':

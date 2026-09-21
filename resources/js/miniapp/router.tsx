@@ -7,6 +7,7 @@ import { ErrorState } from './components/ErrorState';
 import { ListSkeleton } from './components/ListSkeleton';
 import { Screen } from './components/Screen';
 import { HomePage } from './features/home/HomePage';
+import { HousePage } from './features/resident/HousePage';
 
 const OpenInMaxPage = lazy(() =>
     import('./features/auth/OpenInMaxPage').then((module) => ({ default: module.OpenInMaxPage })),
@@ -68,7 +69,7 @@ function RouteFallback() {
         );
     }
 
-    const residentHome = user?.role === 'resident' && (pathname === '/' || pathname.endsWith('/my'));
+    const residentHome = user?.role === 'resident' && pathname === '/';
 
     return (
         <Screen
@@ -76,15 +77,15 @@ function RouteFallback() {
             title={
                 pathname.includes('/organization')
                     ? texts.organization.title
-                    : residentHome
-                      ? texts.resident.title
-                      : pathname === '/' || pathname.endsWith('/queue')
-                        ? user?.role === 'resident'
-                          ? texts.resident.title
-                          : texts.queue.title
-                        : pathname.endsWith('/my')
-                          ? texts.resident.title
-                          : texts.queue.title
+                    : pathname.includes('/house')
+                      ? texts.resident.house
+                      : pathname.endsWith('/my')
+                        ? texts.resident.title
+                        : residentHome
+                          ? texts.home.residentTitle
+                          : pathname === '/' || pathname.endsWith('/queue')
+                            ? texts.queue.title
+                            : texts.queue.title
             }
             titleLevel={pathname === '/' || residentHome ? 2 : 1}
         >
@@ -119,7 +120,10 @@ export const router = createBrowserRouter(
                 },
                 {
                     element: <ResidentOnly />,
-                    children: [{ path: 'my', element: <MyRequestsPage backTo="/" /> }],
+                    children: [
+                        { path: 'my', element: <MyRequestsPage backTo="/" /> },
+                        { path: 'house', element: <HousePage /> },
+                    ],
                 },
                 { path: '*', element: <Navigate to="/" replace /> },
             ],

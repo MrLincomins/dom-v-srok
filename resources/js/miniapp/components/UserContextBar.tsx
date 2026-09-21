@@ -10,16 +10,17 @@ export function UserContextBar() {
 
     const place = user.organization?.name ?? user.house?.address;
     const role = user.role === 'resident' ? texts.home.residentRole : texts.home.dispatcherRole;
-    const toOrg = user.role !== 'resident';
+    const to = user.role === 'resident' ? '/house' : '/organization';
+    const label = user.role === 'resident' ? texts.home.house : texts.home.organization;
 
     return (
         <CellList mode="island" filled className="request-card">
             <CellSimple
                 title={user.name}
                 subtitle={[role, place].filter(Boolean).join(' · ')}
-                showChevron={toOrg}
-                onClick={toOrg ? () => navigate('/organization') : undefined}
-                aria-label={toOrg ? texts.home.organization : undefined}
+                showChevron
+                onClick={() => navigate(to)}
+                aria-label={label}
             />
         </CellList>
     );

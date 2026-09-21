@@ -1,4 +1,3 @@
-import { CellHeader } from '@maxhub/max-ui';
 import type { Attachment } from '@/api/types';
 import { texts } from '@/app/texts';
 import { openExternalLink } from '@/bridge/maxWebApp';
@@ -12,8 +11,8 @@ export function PhotoGallery({ attachments }: { attachments: Attachment[] | unde
     if (visible.length === 0) return null;
 
     return (
-        <section className="flex min-w-0 flex-col gap-12">
-            <CellHeader titleStyle="caps">{texts.request.photos}</CellHeader>
+        <section className="request-block flex min-w-0 flex-col gap-8">
+            <h3 className="request-block-title">{texts.request.photos}</h3>
             <div className="flex snap-x snap-mandatory gap-12 overflow-x-auto px-12 pb-8 scroll-px-12">
                 {visible.map((attachment, index) => (
                     <button

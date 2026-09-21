@@ -1,8 +1,8 @@
 import { useAuth } from '@/app/authContext';
 import { QueuePage } from '@/features/queue/QueuePage';
-import { MyRequestsPage } from '@/features/resident/MyRequestsPage';
+import { ResidentCabinet } from '@/features/resident/ResidentCabinet';
 
 export function HomePage() {
     const { user } = useAuth();
-    return user?.role === 'resident' ? <MyRequestsPage /> : <QueuePage />;
+    return user?.role === 'resident' ? <ResidentCabinet /> : <QueuePage />;
 }

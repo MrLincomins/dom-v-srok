@@ -1,12 +1,14 @@
 import { CellSimple } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
-import { Section } from '@/components/Section';
+import { RequestSection } from '@/components/RequestSection';
+import { withoutMarks } from '@/lib/address';
 import { describeDeadline } from '@/lib/deadline';
 import { statusExplain, statusTone, type StatusTone } from '@/lib/status';
 
 const TONE_TEXT: Record<StatusTone, string> = {
     fresh: 'text-fresh',
+    accepted: 'text-accepted-blue',
     work: 'text-work',
     done: 'text-done',
     late: 'text-late',
@@ -15,10 +17,10 @@ const TONE_TEXT: Record<StatusTone, string> = {
 
 export function RequestSummary({ card }: { card: RequestCard }) {
     const closed = card.status === 'confirmed' || card.status === 'redirected';
-    const tone = statusTone(card.status, card.is_overdue);
     const deadline = closed ? null : describeDeadline(card.deadline_fix_at);
+    const tone = statusTone(card.status, card.is_overdue);
     const place = [
-        card.house.address,
+        withoutMarks(card.house.address),
         card.entrance ? `подъезд ${card.entrance}` : null,
         card.flat ? `кв. ${card.flat}` : null,
     ]
@@ -26,12 +28,10 @@ export function RequestSummary({ card }: { card: RequestCard }) {
         .join(', ');
 
     return (
-        <Section>
+        <RequestSection>
             <CellSimple
                 title={
-                    <span className={`text-[17px] font-semibold ${TONE_TEXT[tone]}`}>
-                        {statusExplain(card.status, card.is_overdue)}
-                    </span>
+                    <span className={TONE_TEXT[tone]}>{statusExplain(card.status, card.is_overdue)}</span>
                 }
                 subtitle={deadline?.text}
             />
@@ -48,6 +48,6 @@ export function RequestSummary({ card }: { card: RequestCard }) {
                     subtitle={texts.request.joined(card.participants_count)}
                 />
             )}
-        </Section>
+        </RequestSection>
     );
 }

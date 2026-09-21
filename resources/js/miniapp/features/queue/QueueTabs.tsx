@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, type KeyboardEvent } from 'react';
 import { texts } from '@/app/texts';
 import type { QueueTab } from './useQueue';
 
@@ -13,26 +13,6 @@ export function QueueTabs({
     counters?: Partial<Record<QueueTab, number>>;
     onChange: (tab: QueueTab) => void;
 }) {
-    const navRef = useRef<HTMLElement>(null);
-    const [indicator, setIndicator] = useState({ x: 0, w: 0, ready: false });
-
-    const updateIndicator = useCallback(() => {
-        const nav = navRef.current;
-        const active = nav?.querySelector<HTMLElement>(`#queue-tab-${tab}`);
-        if (!nav || !active) return;
-        setIndicator({ x: active.offsetLeft, w: active.offsetWidth, ready: true });
-    }, [tab]);
-
-    useLayoutEffect(() => {
-        updateIndicator();
-        const nav = navRef.current;
-        if (!nav || typeof ResizeObserver === 'undefined') return undefined;
-        const observer = new ResizeObserver(updateIndicator);
-        observer.observe(nav);
-        for (const button of nav.querySelectorAll('.ios-tab')) observer.observe(button);
-        return () => observer.disconnect();
-    }, [updateIndicator, counters]);
-
     const selectAdjacent = useCallback(
         (event: KeyboardEvent, current: QueueTab) => {
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -47,12 +27,7 @@ export function QueueTabs({
     );
 
     return (
-        <nav ref={navRef} className="ios-tabs" aria-label={texts.queue.filters} role="tablist">
-            <span
-                className={`ios-tabs-indicator${tab === 'overdue' ? ' is-alert' : ''}${indicator.ready ? ' is-ready' : ''}`}
-                style={{ width: indicator.w, transform: `translate3d(${indicator.x}px, 0, 0)` }}
-                aria-hidden
-            />
+        <nav className="ios-tabs" aria-label={texts.queue.filters} role="tablist">
             {TABS.map((item) => {
                 const count = counters?.[item] ?? 0;
                 const selected = item === tab;
@@ -60,7 +35,7 @@ export function QueueTabs({
                     <button
                         key={item}
                         type="button"
-                        className={`ios-tab${selected ? ' is-active' : ''}${item === 'overdue' ? ' is-alert' : ''}`}
+                        className={`ios-tab${selected ? ' is-active' : ''}${item === 'overdue' ? ' is-alert' : ''}${item === 'closed' ? ' is-done' : ''}`}
                         onClick={() => onChange(item)}
                         onKeyDown={(event) => selectAdjacent(event, item)}
                         role="tab"
@@ -77,5 +52,3 @@ export function QueueTabs({
         </nav>
     );
 }
-
-export { TABS };

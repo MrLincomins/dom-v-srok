@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CellSimple, Typography } from '@maxhub/max-ui';
 import { listExecutors } from '@/api/organization';
 import { texts } from '@/app/texts';
-import { Section } from '@/components/Section';
+import { RequestSection } from '@/components/RequestSection';
 import { MutationError } from './MutationError';
 import type { StaffRequestActionMutations } from './useRequest';
 
@@ -21,8 +21,8 @@ export function AssignExecutor({
     });
 
     return (
-        <div className="flex min-w-0 flex-col gap-12">
-            <Section title={texts.request.assign}>
+        <div className="flex min-w-0 flex-col gap-8">
+            <RequestSection title={texts.request.assign}>
                 <CellSimple
                     separator
                     title={texts.request.executor}
@@ -38,7 +38,7 @@ export function AssignExecutor({
                         onClick={() => action.mutate(executor.id)}
                     />
                 ))}
-            </Section>
+            </RequestSection>
             {executors.data?.length === 0 && (
                 <Typography.Body variant="small" className="px-16 text-muted">
                     {texts.request.assignEmpty}

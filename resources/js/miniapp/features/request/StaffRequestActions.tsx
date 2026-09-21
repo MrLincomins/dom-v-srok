@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Button, CellHeader, CellInput, Textarea } from '@maxhub/max-ui';
+import { Button, CellInput } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CompactNote } from '@/components/CompactNote';
 import { Section } from '@/components/Section';
 import { transitionLabel } from '@/lib/status';
 import { AssignExecutor } from './AssignExecutor';
@@ -27,19 +28,18 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
     const directTransitions = card.allowed_transitions.filter((status) => status === 'in_progress');
 
     return (
-        <section className="flex min-w-0 flex-col gap-16">
+        <section className="request-actions flex min-w-0 flex-col gap-24">
             {canAssign && (
                 <AssignExecutor currentName={card.executor?.name} action={actions.assign} disabled={busy} />
             )}
 
             {directTransitions.length > 0 && (
-                <div className="flex min-w-0 flex-col gap-12">
+                <div className="flex min-w-0 flex-col gap-8">
                     {directTransitions.map((status) => (
                         <Button
                             key={status}
-                            size="large"
+                            size="medium"
                             variant="primary"
-                            stretched
                             loading={actions.status.isPending}
                             disabled={busy}
                             onClick={() =>
@@ -61,11 +61,10 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
             )}
 
             {card.allowed_transitions.includes('redirected') && (
-                <div className="flex min-w-0 flex-col gap-12">
+                <div className="flex min-w-0 flex-col gap-8">
                     <Button
-                        size="large"
+                        size="medium"
                         variant="secondary"
-                        stretched
                         disabled={busy}
                         onClick={() => setRedirectOpen((open) => !open)}
                         aria-expanded={redirectOpen}
@@ -82,17 +81,15 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                 </div>
             )}
 
-            <div className="flex min-w-0 flex-col gap-12">
-                <CellHeader titleStyle="caps">{texts.request.actions.comment}</CellHeader>
-                <Textarea
+            <div className="flex min-w-0 flex-col gap-8">
+                <CompactNote
+                    label={texts.request.actions.comment}
                     placeholder={texts.request.commentPlaceholder}
-                    aria-label={texts.request.commentPlaceholder}
                     value={comment}
                     onChange={(event) => setComment(event.target.value)}
-                    rows={3}
                 />
                 <Button
-                    size="large"
+                    size="medium"
                     variant="secondary"
                     stretched
                     disabled={busy || comment.trim() === ''}
@@ -131,7 +128,7 @@ function CloseRequestForm({
 
     return (
         <form
-            className="flex flex-col gap-16"
+            className="flex flex-col gap-8"
             onSubmit={(event) => {
                 event.preventDefault();
                 action.mutate(
@@ -146,13 +143,11 @@ function CloseRequestForm({
                 );
             }}
         >
-            <CellHeader titleStyle="caps">{texts.request.finishTitle}</CellHeader>
-            <Textarea
+            <CompactNote
+                label={texts.request.finishTitle}
                 placeholder={texts.request.finishComment}
-                aria-label={texts.request.finishComment}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                rows={3}
             />
             <input
                 ref={photoInput}
@@ -162,18 +157,7 @@ function CloseRequestForm({
                 multiple
                 onChange={selectPhotos}
             />
-            <Button
-                size="large"
-                variant="secondary"
-                stretched
-                type="button"
-                onClick={() => photoInput.current?.click()}
-            >
-                {texts.request.addPhoto}
-            </Button>
-            {photoError && (
-                <MutationError error={photoError} />
-            )}
+            {photoError && <MutationError error={photoError} />}
             {previews.length > 0 && (
                 <div
                     className="flex snap-x snap-mandatory gap-12 overflow-x-auto scroll-px-16"
@@ -202,16 +186,26 @@ function CloseRequestForm({
                     ))}
                 </div>
             )}
-            <Button
-                type="submit"
-                variant="primary"
-                size="large"
-                stretched
-                loading={action.isPending}
-                disabled={disabled}
-            >
-                {texts.request.finishSubmit}
-            </Button>
+            <div className="request-action-row">
+                <Button
+                    size="medium"
+                    variant="secondary"
+                    type="button"
+                    onClick={() => photoInput.current?.click()}
+                >
+                    {texts.request.addPhoto}
+                </Button>
+                <Button
+                    type="submit"
+                    variant="primary"
+                    size="medium"
+                    className="btn-done"
+                    loading={action.isPending}
+                    disabled={disabled}
+                >
+                    {texts.request.finishSubmit}
+                </Button>
+            </div>
             <MutationError error={action.error} />
         </form>
     );
@@ -243,7 +237,7 @@ function RedirectRequestForm({
     };
 
     return (
-        <form className="flex flex-col gap-16" onSubmit={submit}>
+        <form className="flex flex-col gap-8" onSubmit={submit}>
             <Section>
                 <CellInput
                     before={texts.request.redirectName}
@@ -260,18 +254,15 @@ function RedirectRequestForm({
                     inputMode="tel"
                 />
             </Section>
-            <Textarea
+            <CompactNote
                 placeholder={texts.request.redirectNote}
-                aria-label={texts.request.redirectNote}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
-                rows={3}
             />
             <Button
                 type="submit"
-                size="large"
+                size="medium"
                 variant="destructive"
-                stretched
                 loading={action.isPending}
                 disabled={disabled || name.trim() === ''}
             >

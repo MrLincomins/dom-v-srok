@@ -30,7 +30,7 @@ export function RequestPage() {
         <Screen
             title={texts.request.title(id)}
             backTo={backTo}
-            contentClassName="flex min-w-0 flex-col gap-16"
+            contentClassName="flex min-w-0 flex-col gap-24"
         >
             <DelayedSkeleton loading={request.isPending} rows={4} />
             {request.isError && (

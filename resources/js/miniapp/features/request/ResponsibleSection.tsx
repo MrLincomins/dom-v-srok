@@ -1,7 +1,7 @@
 import { CellSimple } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
-import { Section } from '@/components/Section';
+import { RequestSection } from '@/components/RequestSection';
 import { formatDateTime } from '@/lib/dates';
 
 export function ResponsibleSection({ card }: { card: RequestCard }) {
@@ -13,7 +13,7 @@ export function ResponsibleSection({ card }: { card: RequestCard }) {
         : null;
 
     return (
-        <Section title={texts.request.execution}>
+        <RequestSection title={texts.request.execution}>
             <CellSimple
                 title={texts.request.responsible}
                 subtitle={card.responsible.is_sure ? responsible : `${responsible}. ${texts.request.unsure}`}
@@ -25,6 +25,6 @@ export function ResponsibleSection({ card }: { card: RequestCard }) {
             <CellSimple title={texts.request.basis} subtitle={card.basis || '—'} />
             <CellSimple title={texts.request.executor} subtitle={card.executor?.name ?? texts.request.noExecutor} />
             {redirected && <CellSimple title={texts.request.redirected} subtitle={redirected} />}
-        </Section>
+        </RequestSection>
     );
 }

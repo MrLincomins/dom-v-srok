@@ -46,11 +46,11 @@ beforeEach(() => {
                 return json({ data: { ...house, chat_keywords_enabled: true } });
             }
             if (url.endsWith('/organization/houses')) return json({ data: [house] });
+            if (url.endsWith('/organization/executors') && method === 'POST') {
+                return json({ data: { id: 6, name: 'Пётр', specialty: null, phone: '+79172472389' } });
+            }
             if (url.endsWith('/organization/executors')) return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
             if (url.includes('/organization/executors/5') && method === 'DELETE') {
-                return json({ data: { ok: true } });
-            }
-            if (url.endsWith('/demo/reset') && method === 'POST') {
                 return json({ data: { ok: true } });
             }
             if (url.endsWith('/organization') && method === 'PATCH') {
@@ -87,6 +87,14 @@ describe('организация', () => {
             ).toBe(true);
         });
         fireEvent.click(screen.getByRole('button', { name: 'Убрать' }));
+        expect(
+            vi.mocked(fetch).mock.calls.some(
+                ([url, init]) =>
+                    String(url).includes('/organization/executors/5') && String(init?.method) === 'DELETE',
+            ),
+        ).toBe(false);
+        expect(screen.getByRole('dialog', { name: 'Убрать этого исполнителя?' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Да, убрать' }));
         await waitFor(() => {
             expect(
                 vi.mocked(fetch).mock.calls.some(
@@ -95,18 +103,48 @@ describe('организация', () => {
                 ),
             ).toBe(true);
         });
+        expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель убран');
     });
 
-    it('сбрасывает демо-данные', async () => {
+    it('сохраняет контакты и показывает уведомление', async () => {
         renderPage();
-        fireEvent.click(await screen.findByRole('button', { name: 'Сбросить демо-данные' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Сохранить' }));
         await waitFor(() => {
             expect(
                 vi.mocked(fetch).mock.calls.some(
-                    ([url, init]) => String(url).includes('/demo/reset') && String(init?.method) === 'POST',
+                    ([url, init]) => String(url).endsWith('/organization') && String(init?.method) === 'PATCH',
                 ),
             ).toBe(true);
         });
+        expect(await screen.findByRole('status')).toHaveTextContent('Сохранено');
+    });
+
+    it('принимает телефон исполнителя без +7', async () => {
+        renderPage();
+        await screen.findByDisplayValue('Мир');
+        const name = screen.getByLabelText('Имя');
+        const phone = screen.getByLabelText('Телефон');
+        fireEvent.change(name, { target: { value: 'Пётр' } });
+        fireEvent.change(phone, { target: { value: '9172472389' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Добавить исполнителя' }));
+        await waitFor(() => {
+            const call = vi.mocked(fetch).mock.calls.find(
+                ([url, init]) => String(url).endsWith('/organization/executors') && String(init?.method) === 'POST',
+            );
+            expect(call?.[1]?.body).toContain('+79172472389');
+        });
+        expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель добавлен');
+    });
+
+    it('копирует ссылку для жителя из списка домов', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.assign(navigator, { clipboard: { writeText } });
+        renderPage();
+        fireEvent.click(await screen.findByText('Ссылка для жителя'));
+        await waitFor(() => {
+            expect(writeText).toHaveBeenCalledWith('https://max.ru/start');
+        });
+        expect(await screen.findByRole('status')).toHaveTextContent('Ссылка скопирована');
     });
 });
 

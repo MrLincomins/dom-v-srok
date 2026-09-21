@@ -6,6 +6,13 @@ describe('status helpers', () => {
         expect(statusTone('in_progress', true)).toBe('late');
     });
 
+    it('красит принятые и рабочие статусы синим', () => {
+        expect(statusTone('new', false)).toBe('accepted');
+        expect(statusTone('assigned', false)).toBe('work');
+        expect(statusTone('in_progress', false)).toBe('work');
+        expect(statusTone('done', false)).toBe('work');
+    });
+
     it('uses a return-specific action label', () => {
         expect(transitionLabel('in_progress', 'returned')).toBe('Снова в работу');
     });

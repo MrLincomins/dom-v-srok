@@ -1,27 +1,26 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@maxhub/max-ui';
+import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
 import { DelayedSkeleton } from '@/components/DelayedSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { RequestRow } from '@/components/RequestRow';
 import { Screen } from '@/components/Screen';
-import { UserContextBar } from '@/components/UserContextBar';
 import { QueueSearch } from './QueueSearch';
-import { QueueTabs, TABS } from './QueueTabs';
+import { QueueTabs } from './QueueTabs';
 import { useQueue, type QueueTab } from './useQueue';
 
 export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const tab = isQueueTab(requestedTab) ? requestedTab : 'new';
     const [search, setSearch] = useState('');
-    const [slideFrom, setSlideFrom] = useState<'left' | 'right'>('right');
     const setTab = useCallback(
         (nextTab: QueueTab) => {
-            setSlideFrom(TABS.indexOf(nextTab) >= TABS.indexOf(tab) ? 'right' : 'left');
             setSearchParams(
                 (current) => {
                     if (nextTab === 'new') current.delete('tab');
@@ -31,7 +30,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                 { replace: true },
             );
         },
-        [setSearchParams, tab],
+        [setSearchParams],
     );
     const queue = useQueue(tab, search);
 
@@ -46,20 +45,26 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
             titleLevel={backTo ? 1 : 2}
             backTo={backTo}
             contentClassName="flex min-w-0 flex-col gap-12"
+            right={
+                !backTo && user ? (
+                    <button
+                        type="button"
+                        className="queue-who"
+                        onClick={() => navigate('/organization')}
+                    >
+                        {texts.home.organization}
+                    </button>
+                ) : undefined
+            }
         >
-            {!backTo && <UserContextBar />}
-            <section className="flex min-w-0 flex-col gap-16">
-                <QueueSearch onSearch={setSearch} />
-
-                <QueueTabs tab={tab} counters={counters} onChange={setTab} />
-            </section>
+            <QueueTabs tab={tab} counters={counters} onChange={setTab} />
+            <QueueSearch onSearch={setSearch} />
 
             <div
                 id="queue-panel"
                 role="tabpanel"
                 aria-labelledby={`queue-tab-${tab}`}
-                className={`queue-panel queue-panel-from-${slideFrom} flex min-w-0 flex-col gap-12 ${queue.isPlaceholderData ? 'opacity-60' : ''}`}
-                key={tab}
+                className={`flex min-w-0 flex-col gap-12 ${queue.isPlaceholderData ? 'opacity-60' : ''}`}
             >
                 <DelayedSkeleton loading={queue.isPending && !queue.data} rows={3} />
                 {queue.isError && !queue.data && (
