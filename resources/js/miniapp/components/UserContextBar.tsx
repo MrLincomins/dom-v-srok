@@ -1,27 +1,31 @@
-import { CellList, CellSimple } from '@maxhub/max-ui';
-import { useNavigate } from 'react-router';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
+import { withoutMarks } from '@/lib/address';
 
 export function UserContextBar() {
     const { user } = useAuth();
-    const navigate = useNavigate();
     if (!user) return null;
 
-    const place = user.organization?.name ?? user.house?.address;
-    const role = user.role === 'resident' ? texts.home.residentRole : texts.home.dispatcherRole;
-    const to = user.role === 'resident' ? '/house' : '/organization';
-    const label = user.role === 'resident' ? texts.home.house : texts.home.organization;
+    const resident = user.role === 'resident';
+    const place = resident
+        ? user.house
+            ? withoutMarks(user.house.address)
+            : null
+        : (user.organization?.name ?? null);
+    const facts = resident
+        ? [
+              user.entrance ? `${texts.resident.entrance} ${user.entrance}` : null,
+              user.flat ? `${texts.resident.flat} ${user.flat}` : null,
+          ]
+              .filter(Boolean)
+              .join(' · ')
+        : texts.home.dispatcherRole;
 
     return (
-        <CellList mode="island" filled className="request-card">
-            <CellSimple
-                title={user.name}
-                subtitle={[role, place].filter(Boolean).join(' · ')}
-                showChevron
-                onClick={() => navigate(to)}
-                aria-label={label}
-            />
-        </CellList>
+        <div className="who-card">
+            <span className="who-card-name">{user.name}</span>
+            {place ? <span className="who-card-place">{place}</span> : null}
+            {facts ? <span className="who-card-meta">{facts}</span> : null}
+        </div>
     );
 }

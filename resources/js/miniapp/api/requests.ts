@@ -9,11 +9,7 @@ export async function getRequest(id: number, signal?: AbortSignal): Promise<Requ
     return (await api<{ data: RequestCard }>(`/requests/${id}`, { signal })).data;
 }
 
-export async function assignExecutor(
-    id: number,
-    executorId: number,
-    comment?: string,
-): Promise<RequestCard> {
+export async function assignExecutor(id: number, executorId: number, comment?: string): Promise<RequestCard> {
     return (
         await api<{ data: RequestCard }>(`/requests/${id}/assign`, {
             body: { executor_id: executorId, comment },
@@ -55,6 +51,39 @@ export async function addComment(id: number, text: string): Promise<RequestCard>
 export async function confirmRequest(id: number, resolved: boolean, comment?: string): Promise<RequestCard> {
     return (await api<{ data: RequestCard }>(`/requests/${id}/confirm`, { body: { resolved, comment } }))
         .data;
+}
+
+export async function createRequest(body: {
+    category_id: number;
+    description: string;
+    entrance?: number | null;
+    flat?: string | null;
+    unsure?: boolean;
+    photos?: File[];
+}): Promise<RequestCard> {
+    const photos = body.photos ?? [];
+    if (photos.length > 0) {
+        const formData = new FormData();
+        formData.set('category_id', String(body.category_id));
+        formData.set('description', body.description);
+        if (body.entrance != null) formData.set('entrance', String(body.entrance));
+        if (body.flat) formData.set('flat', body.flat);
+        if (body.unsure) formData.set('unsure', '1');
+        photos.forEach((photo, index) => formData.append(`photos[${index}]`, photo));
+        return (await api<{ data: RequestCard }>('/requests', { formData })).data;
+    }
+
+    return (
+        await api<{ data: RequestCard }>('/requests', {
+            body: {
+                category_id: body.category_id,
+                description: body.description,
+                entrance: body.entrance,
+                flat: body.flat,
+                unsure: body.unsure,
+            },
+        })
+    ).data;
 }
 
 export function myRequests(page: number, signal?: AbortSignal): Promise<Paginated<RequestListItem>> {

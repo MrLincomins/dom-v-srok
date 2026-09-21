@@ -15,5 +15,11 @@ export function isCompletePhone(raw: string): boolean {
 export function toStoredPhone(raw: string): string | null {
     const local = localPhoneDigits(raw);
     if (local.length === 0) return null;
+    if (local.length !== 10) return null;
     return `+7${local}`;
+}
+
+/** `tel:` без пробелов и скобок, чтобы звонок открывался с любого формата. */
+export function telHref(phone: string): string {
+    return `tel:${phone.replace(/[^\d+]/g, '')}`;
 }

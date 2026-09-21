@@ -99,7 +99,8 @@ export interface paths {
         /** Очередь организации диспетчера */
         get: operations["listRequests"];
         put?: never;
-        post?: never;
+        /** Создать заявку из кабинета жителя — категория, описание, адрес; аварийная категория отклоняется */
+        post: operations["createRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1051,6 +1052,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RequestListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    createRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    category_id: number;
+                    description: string;
+                    entrance?: number | null;
+                    flat?: string | null;
+                    /** @description житель не уверен, кто отвечает */
+                    unsure?: boolean;
+                };
+                "multipart/form-data": {
+                    category_id: number;
+                    description?: string;
+                    entrance?: number;
+                    flat?: string;
+                    unsure?: boolean;
+                    photos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Создана */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestCardResponse"];
                 };
             };
             401: components["responses"]["Unauthenticated"];

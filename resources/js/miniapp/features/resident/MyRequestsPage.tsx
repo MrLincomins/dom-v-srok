@@ -8,11 +8,10 @@ import { DelayedSkeleton } from '@/components/DelayedSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { RequestRow } from '@/components/RequestRow';
-import { Screen } from '@/components/Screen';
 
 const PAST = new Set(['confirmed', 'redirected']);
 
-export function MyRequestsPage({ backTo }: { backTo?: string }) {
+export function MyRequestsList() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const past = searchParams.get('tab') === 'past';
@@ -30,13 +29,8 @@ export function MyRequestsPage({ backTo }: { backTo?: string }) {
     }, [pages, past]);
 
     return (
-        <Screen
-            title={past ? texts.home.pastRequests : texts.resident.title}
-            titleLevel={2}
-            backTo={backTo}
-            contentClassName="flex min-w-0 flex-col gap-16"
-        >
-            <nav className="ios-tabs" aria-label={texts.queue.filters} role="tablist">
+        <div className="flex min-w-0 flex-col gap-16">
+            <nav className="ios-tabs is-segment" aria-label={texts.resident.title} role="tablist">
                 <button
                     type="button"
                     className={`ios-tab${!past ? ' is-active' : ''}`}
@@ -48,7 +42,7 @@ export function MyRequestsPage({ backTo }: { backTo?: string }) {
                 </button>
                 <button
                     type="button"
-                    className={`ios-tab${past ? ' is-active' : ''}`}
+                    className={`ios-tab${past ? ' is-active is-done' : ''}`}
                     role="tab"
                     aria-selected={past}
                     onClick={() => setSearchParams({ tab: 'past' }, { replace: true })}
@@ -62,11 +56,7 @@ export function MyRequestsPage({ backTo }: { backTo?: string }) {
                 <EmptyState text={past ? texts.resident.emptyPast : texts.resident.empty} />
             )}
             {requests.map((item) => (
-                <RequestRow
-                    key={item.id}
-                    item={item}
-                    onOpen={(id) => navigate(`/requests/${id}`)}
-                />
+                <RequestRow key={item.id} item={item} onOpen={(id) => navigate(`/requests/${id}`)} />
             ))}
             {list.hasNextPage && !list.isError && (
                 <Button
@@ -78,6 +68,6 @@ export function MyRequestsPage({ backTo }: { backTo?: string }) {
                     {texts.queue.loadMore}
                 </Button>
             )}
-        </Screen>
+        </div>
     );
 }
