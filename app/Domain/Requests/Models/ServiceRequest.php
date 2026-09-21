@@ -10,6 +10,7 @@ use App\Domain\Organizations\Models\Executor;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Enums\ConfirmedBy;
+use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestOrigin;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Enums\ResponsibleKind;
@@ -187,6 +188,27 @@ class ServiceRequest extends Model
     public function closedLate(): bool
     {
         return $this->done_at !== null && $this->deadline_fix_at !== null && $this->done_at->greaterThan($this->deadline_fix_at);
+    }
+
+    public function hasOverdueMark(): bool
+    {
+        return $this->events()->where('type', EventType::Reminder->value)->where('payload->kind', 'overdue')->exists();
+    }
+
+    public function redirectedToName(): ?string
+    {
+        if ($this->status !== RequestStatus::Redirected) {
+            return null;
+        }
+        if ($this->redirectedParty !== null) {
+            return $this->redirectedParty->name;
+        }
+        $event = $this->relationLoaded('events')
+            ? $this->events->firstWhere('to_status', RequestStatus::Redirected->value)
+            : $this->events()->where('to_status', RequestStatus::Redirected->value)->latest('id')->first();
+        $to = $event?->payload['to'] ?? null;
+
+        return is_string($to) && $to !== '' ? $to : null;
     }
 
     /**
