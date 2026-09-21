@@ -7,8 +7,11 @@ use App\Bot\Models\ProcessedUpdate;
 use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Outbox\OutboxTarget;
 use App\Domain\Requests\Enums\ConfirmedBy;
+use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Users\Enums\Role;
+use App\Domain\Users\Models\User;
 use App\Jobs\SendOutboxMessage;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
@@ -34,6 +37,31 @@ it('leaves fresh done requests waiting for the resident', function () {
     $this->artisan('requests:auto-confirm')->assertSuccessful();
 
     expect(ServiceRequest::query()->where('status', RequestStatus::Done->value)->count())->toBe(1);
+});
+
+it('marks overdue requests once and warns staff who started the bot', function () {
+    $this->seed(DatabaseSeeder::class);
+    $max = fakeMax();
+    $overdue = ServiceRequest::query()->overdue()->firstOrFail();
+    $organizationId = (int) $overdue->organization_id;
+    $started = User::query()->create(['max_user_id' => 7001, 'name' => 'Диспетчер Один', 'role' => Role::Dispatcher, 'organization_id' => $organizationId, 'bot_started_at' => CarbonImmutable::now()]);
+    User::query()->create(['max_user_id' => 7002, 'name' => 'Диспетчер Два', 'role' => Role::Dispatcher, 'organization_id' => $organizationId]);
+
+    $this->artisan('requests:overdue-scan')->expectsOutputToContain('Срок вышел у заявок: 1')->assertSuccessful();
+
+    $reminders = $overdue->events()->where('type', EventType::Reminder->value)->get();
+    expect($reminders)->toHaveCount(1)
+        ->and($reminders->first()->payload['kind'])->toBe('overdue')
+        ->and($max->sent)->toHaveCount(1)
+        ->and($max->sent[0]['id'])->toBe(7001)
+        ->and(lastText($max))->toBe(botText('request.overdue_staff', ['number' => $overdue->id, 'what' => $overdue->category->name, 'address' => $overdue->house->address.', подъезд 3']))
+        ->and(lastButtons($max))->toBe([(string) config('max.miniapp_url')])
+        ->and(OutboxMessage::query()->where('kind', 'request.overdue_staff')->where('target_id', $started->max_user_id)->count())->toBe(1);
+
+    $this->artisan('requests:overdue-scan')->expectsOutputToContain('Срок вышел у заявок: 0')->assertSuccessful();
+    expect($overdue->events()->where('type', EventType::Reminder->value)->count())->toBe(1)
+        ->and($max->sent)->toHaveCount(1)
+        ->and(ServiceRequest::query()->whereHas('events', fn ($q) => $q->where('type', EventType::Reminder->value))->count())->toBe(1);
 });
 
 it('requeues outbox messages stuck in pending', function () {
