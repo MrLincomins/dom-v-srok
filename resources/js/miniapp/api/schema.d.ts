@@ -294,6 +294,23 @@ export interface paths {
         patch: operations["updateHouse"];
         trace?: never;
     };
+    "/organization/houses/{id}/qr.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PNG с QR-кодом deep link дома по подписанной ссылке qr_url из карточки дома */
+        get: operations["houseQr"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organization/executors": {
         parameters: {
             query?: never;
@@ -328,6 +345,92 @@ export interface paths {
         head?: never;
         /** Имя, телефон или специальность исполнителя */
         patch: operations["updateExecutor"];
+        trace?: never;
+    };
+    "/organization/contractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Подрядчики организации по договору (лифтовая, домофонная, ТКО) — перекрывают региональные стороны */
+        get: operations["listContractors"];
+        put?: never;
+        /** Добавить подрядчика; новые заявки его типа пойдут ему */
+        post: operations["createContractor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organization/contractors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Убрать подрядчика; заявки хранят снимок ответственного и не меняются */
+        delete: operations["deleteContractor"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Карточка организации для жителя — контакты и прямые договоры, без персональных данных */
+        get: operations["getOrganizationCard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Журнал заявок организации за период со сводкой */
+        get: operations["journal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Журнал заявок за период в CSV по форме журнала АДС — разделитель «;», BOM для Excel */
+        get: operations["journalCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/attachments/{id}": {
@@ -409,10 +512,14 @@ export interface components {
             qr_token: string;
             /** @description домовой чат привязан командой /дом <код> */
             chat_bound: boolean;
+            /** @description карточка дома закреплена в чате; для этого бот должен быть администратором чата */
+            chat_pinned: boolean;
             /** @description бот предлагает присоединиться к открытой заявке, когда в чате пишут о той же проблеме */
             chat_keywords_enabled: boolean;
             /** @description deep link дома для QR-плаката и кнопки в чате */
             start_url: string;
+            /** @description подписанная ссылка на PNG с QR-кодом deep link дома, без срока действия; для плаката в подъезде добавьте &entrance=N */
+            qr_url: string;
         };
         User: {
             id: number;
@@ -487,6 +594,23 @@ export interface components {
             phone?: string | null;
             specialty?: string | null;
         };
+        Contractor: {
+            id: number;
+            /** @enum {string} */
+            type: "lift" | "intercom" | "tko" | "other";
+            type_label: string;
+            name: string;
+            phone?: string | null;
+        };
+        ContractorInput: {
+            /**
+             * @description подрядчик этого типа перекрывает региональную сторону при расчёте ответственного
+             * @enum {string}
+             */
+            type: "lift" | "intercom" | "tko" | "other";
+            name: string;
+            phone?: string | null;
+        };
         OrganizationResponse: {
             data: components["schemas"]["Organization"];
         };
@@ -501,6 +625,12 @@ export interface components {
         };
         ExecutorListResponse: {
             data: components["schemas"]["Executor"][];
+        };
+        ContractorResponse: {
+            data: components["schemas"]["Contractor"];
+        };
+        ContractorListResponse: {
+            data: components["schemas"]["Contractor"][];
         };
         OkResponse: {
             data: {
@@ -632,6 +762,79 @@ export interface components {
         RequestListResponse: {
             data: components["schemas"]["RequestListItem"][];
             meta: components["schemas"]["PaginationMeta"];
+            links?: {
+                [key: string]: unknown;
+            };
+        };
+        JournalRow: {
+            /** @description номер заявки */
+            id: number;
+            /** Format: date-time */
+            created_at: string;
+            address: string;
+            entrance?: number | null;
+            flat?: string | null;
+            /** @description после /delete_me — «Житель (удалён)» */
+            resident_name: string;
+            category: string;
+            description: string;
+            responsible_name: string;
+            responsible_phone?: string | null;
+            /** Format: date-time */
+            deadline_fix_at?: string | null;
+            basis: string;
+            status: components["schemas"]["RequestStatus"];
+            status_label: string;
+            executor_name?: string | null;
+            /** Format: date-time */
+            first_reaction_at?: string | null;
+            /** Format: date-time */
+            done_at?: string | null;
+            /** Format: date-time */
+            closed_at?: string | null;
+            is_overdue: boolean;
+            /** @description выполнена после срока */
+            closed_late: boolean;
+            /** @enum {string|null} */
+            confirmed_by?: "resident" | "auto" | "dispatcher" | null;
+            returned_count: number;
+            redirected_to?: string | null;
+            participants_count: number;
+        };
+        JournalSummary: {
+            /** @description заявок принято за период */
+            total: number;
+            open: number;
+            /** @description открытые, у которых срок уже вышел */
+            overdue: number;
+            /** @description подтверждено или переадресовано */
+            closed: number;
+            /** @description выполнено до срока */
+            on_time: number;
+            /** @description выполнено после срока */
+            late: number;
+            /** @description заявок, которые житель хотя бы раз вернул */
+            returned: number;
+            redirected: number;
+            /** @description среднее время до первого действия диспетчера; null, если действий не было */
+            first_reaction_minutes: number | null;
+        };
+        JournalMeta: {
+            current_page: number;
+            last_page: number;
+            per_page: number;
+            total: number;
+            period: {
+                /** Format: date */
+                from: string;
+                /** Format: date */
+                to: string;
+            };
+            summary: components["schemas"]["JournalSummary"];
+        };
+        JournalResponse: {
+            data: components["schemas"]["JournalRow"][];
+            meta: components["schemas"]["JournalMeta"];
             links?: {
                 [key: string]: unknown;
             };
@@ -1209,6 +1412,34 @@ export interface operations {
             422: components["responses"]["Validation"];
         };
     };
+    houseQr: {
+        parameters: {
+            query: {
+                signature: string;
+                /** @description подъезд для плаката; в подпись не входит, добавляется к qr_url как есть */
+                entrance?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Картинка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listExecutors: {
         parameters: {
             query?: never;
@@ -1312,6 +1543,162 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    listContractors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Подрядчики */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createContractor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractorInput"];
+            };
+        };
+        responses: {
+            /** @description Создан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    deleteContractor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Готово */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getOrganizationCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Организация */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    journal: {
+        parameters: {
+            query?: {
+                /** @description дата приёма с, по зоне региона; по умолчанию первое число текущего месяца */
+                from?: string;
+                /** @description дата приёма по, включительно; по умолчанию сегодня; период не длиннее года */
+                to?: string;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Строки журнала по номеру заявки и сводка за период */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    journalCsv: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Файл */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
         };
     };

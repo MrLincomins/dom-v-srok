@@ -13,7 +13,13 @@ export type OrganizationUpdate = components['schemas']['OrganizationUpdate'];
 export type House = components['schemas']['House'];
 export type Executor = components['schemas']['Executor'];
 export type ExecutorUpdate = components['schemas']['ExecutorUpdate'];
+export type Contractor = components['schemas']['Contractor'];
+export type ContractorInput = components['schemas']['ContractorInput'];
+export type JournalRow = components['schemas']['JournalRow'];
+export type JournalSummary = components['schemas']['JournalSummary'];
+export type JournalMeta = components['schemas']['JournalMeta'];
 export type QueueQuery = NonNullable<operations['listRequests']['parameters']['query']>;
+export type JournalQuery = NonNullable<operations['journal']['parameters']['query']>;
 type Counters = components['schemas']['Counters'];
 
 export interface Paginated<T> {

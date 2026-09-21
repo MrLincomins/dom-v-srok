@@ -22,6 +22,7 @@ test_data:
   request_new_id: 1          # заявка в статусе «Принято»
   request_done_id: 6         # заявка «Выполнено», ждёт подтверждения
   request_confirmed_id: 7    # терминальный статус для проверки 409
+  organization_id: 1         # демо-организация «ТСЖ «Демо»»
 
 checks:
   - id: demo-reset
@@ -54,6 +55,36 @@ checks:
     path: /organization/executors
     role: dispatcher
     expect: { status: [200], content_type: application/json, required: [data.0.id, data.0.name] }
+
+  - id: contractors
+    method: GET
+    path: /organization/contractors
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.0.type, data.0.name] }
+
+  - id: houses
+    method: GET
+    path: /organization/houses
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.0.qr_token, data.0.start_url, data.0.qr_url] }
+
+  - id: organization-card
+    method: GET
+    path: /organizations/{{test_data.organization_id}}
+    role: resident
+    expect: { status: [200], content_type: application/json, required: [data.name, data.phone_ads] }
+
+  - id: journal
+    method: GET
+    path: /journal
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data, meta.period.from, meta.summary.total, meta.summary.overdue] }
+
+  - id: journal-csv
+    method: GET
+    path: /journal.csv
+    role: dispatcher
+    expect: { status: [200], content_type: text/csv }
 
   - id: catalog
     method: GET
