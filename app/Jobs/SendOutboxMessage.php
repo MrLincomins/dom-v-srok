@@ -8,6 +8,7 @@ use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 use App\Bot\Client\MaxRateLimited;
 use App\Bot\Models\OutboxMessage;
+use App\Bot\Outbox\Events\OutboxMessageSent;
 use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Outbox\OutboxTarget;
 use Carbon\CarbonImmutable;
@@ -82,6 +83,8 @@ final class SendOutboxMessage implements ShouldQueue
             ]);
         } catch (MaxRateLimited $e) {
             $this->release(2);
+
+            return;
         } catch (MaxApiException $e) {
             $message->update(['last_error' => $e->getMessage()]);
             if ($e->isPermanent()) {
@@ -92,6 +95,8 @@ final class SendOutboxMessage implements ShouldQueue
             }
             throw $e; // временная ошибка, ретрай по backoff
         }
+
+        event(new OutboxMessageSent($message));
     }
 
     /** @return array<string,mixed> */
