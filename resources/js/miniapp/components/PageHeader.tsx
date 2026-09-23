@@ -32,7 +32,7 @@ export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
                     >
                         {title}
                     </Typography.Headline>
-                    <div className="flex min-w-0 items-center justify-end">{right}</div>
+                    <div className="page-header-trailing">{right}</div>
                 </div>
             </header>
         );
@@ -40,13 +40,13 @@ export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
 
     return (
         <header className="page-header">
-            <div className="flex min-h-[44px] items-end justify-between pb-8 pt-8">
+            <div className="flex min-h-[44px] items-center justify-between pb-8 pt-8">
                 {titleLevel === 2 ? (
                     <h2 className="ios-title-24 min-w-0 truncate">{title}</h2>
                 ) : (
                     <h1 className="ios-large-title min-w-0 truncate">{title}</h1>
                 )}
-                <div className="flex shrink-0 items-center justify-end">{right}</div>
+                <div className="page-header-trailing">{right}</div>
             </div>
         </header>
     );

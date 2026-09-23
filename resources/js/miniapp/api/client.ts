@@ -120,3 +120,66 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
     return json as T;
 }
+
+export async function downloadFile(
+    path: string,
+    options: {
+        query?: Record<string, string | number | boolean | null | undefined>;
+        filename: string;
+        signal?: AbortSignal;
+    },
+): Promise<void> {
+    const url = new URL(BASE + path, window.location.origin);
+    for (const [key, value] of Object.entries(options.query ?? {})) {
+        if (value !== undefined && value !== null && value !== '') {
+            url.searchParams.set(key, typeof value === 'boolean' ? String(Number(value)) : String(value));
+        }
+    }
+
+    const headers: Record<string, string> = { Accept: 'text/csv' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    let response: Response;
+    try {
+        response = await fetch(url, { headers, signal: options.signal });
+    } catch (error) {
+        if (options.signal?.aborted) throw error;
+        throw new ApiError('network', 'Нет связи с сервером', 0);
+    }
+
+    if (!response.ok) {
+        const json = await parseJson(response);
+        const error = (
+            json as { error?: { code?: string; message?: string; details?: Record<string, unknown> } } | null
+        )?.error;
+        if (response.status === 401) {
+            setToken(null);
+            window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+        }
+        throw new ApiError(
+            error?.code ?? `http_${response.status}`,
+            error?.message ?? `Ошибка ${response.status}`,
+            response.status,
+            error?.details ?? {},
+        );
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filenameFromDisposition(response.headers.get('Content-Disposition')) ?? options.filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+}
+
+function filenameFromDisposition(header: string | null): string | null {
+    if (!header) return null;
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (encoded?.[1]) return decodeURIComponent(encoded[1]);
+    const plain = /filename="?([^";]+)"?/i.exec(header);
+    return plain?.[1] ?? null;
+}

@@ -12,20 +12,25 @@ import { HousePage } from './features/resident/HousePage';
 const OpenInMaxPage = lazy(() =>
     import('./features/auth/OpenInMaxPage').then((module) => ({ default: module.OpenInMaxPage })),
 );
-function QueueToHome() {
+function ToHome() {
     const { search } = useLocation();
     return <Navigate to={search ? `/${search}` : '/'} replace />;
 }
 const RequestPage = lazy(() =>
     import('./features/request/RequestPage').then((module) => ({ default: module.RequestPage })),
 );
-const MyRequestsPage = lazy(() =>
-    import('./features/resident/MyRequestsPage').then((module) => ({ default: module.MyRequestsPage })),
+const CreateRequestPage = lazy(() =>
+    import('./features/resident/CreateRequestPage').then((module) => ({
+        default: module.CreateRequestPage,
+    })),
 );
 const OrganizationPage = lazy(() =>
     import('./features/organization/OrganizationPage').then((module) => ({
         default: module.OrganizationPage,
     })),
+);
+const JournalPage = lazy(() =>
+    import('./features/journal/JournalPage').then((module) => ({ default: module.JournalPage })),
 );
 
 /** Не монтируем рабочие экраны, пока не понятно, кто открыл приложение. */
@@ -79,13 +84,13 @@ function RouteFallback() {
                     ? texts.organization.title
                     : pathname.includes('/house')
                       ? texts.resident.house
-                      : pathname.endsWith('/my')
-                        ? texts.resident.title
-                        : residentHome
-                          ? texts.home.residentTitle
-                          : pathname === '/' || pathname.endsWith('/queue')
-                            ? texts.queue.title
-                            : texts.queue.title
+                      : pathname.includes('/create')
+                          ? texts.home.createRequest
+                          : pathname.includes('/journal')
+                            ? texts.journal.title
+                            : residentHome
+                              ? texts.home.residentTitle
+                              : texts.queue.title
             }
             titleLevel={pathname === '/' || residentHome ? 2 : 1}
         >
@@ -96,7 +101,7 @@ function RouteFallback() {
 
 function StaffOnly() {
     const { user } = useAuth();
-    return user?.role === 'resident' ? <Navigate to="/my" replace /> : <Outlet />;
+    return user?.role === 'resident' ? <Navigate to="/" replace /> : <Outlet />;
 }
 
 function ResidentOnly() {
@@ -114,14 +119,16 @@ export const router = createBrowserRouter(
                 {
                     element: <StaffOnly />,
                     children: [
-                        { path: 'queue', element: <QueueToHome /> },
+                        { path: 'queue', element: <ToHome /> },
                         { path: 'organization', element: <OrganizationPage /> },
+                        { path: 'journal', element: <JournalPage /> },
                     ],
                 },
                 {
                     element: <ResidentOnly />,
                     children: [
-                        { path: 'my', element: <MyRequestsPage backTo="/" /> },
+                        { path: 'my', element: <ToHome /> },
+                        { path: 'create', element: <CreateRequestPage /> },
                         { path: 'house', element: <HousePage /> },
                     ],
                 },

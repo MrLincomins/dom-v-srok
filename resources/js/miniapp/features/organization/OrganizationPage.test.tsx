@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
@@ -49,10 +49,29 @@ beforeEach(() => {
             if (url.endsWith('/organization/executors') && method === 'POST') {
                 return json({ data: { id: 6, name: 'Пётр', specialty: null, phone: '+79172472389' } });
             }
-            if (url.endsWith('/organization/executors')) return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
+            if (url.endsWith('/organization/executors'))
+                return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
             if (url.includes('/organization/executors/5') && method === 'DELETE') {
                 return json({ data: { ok: true } });
             }
+            if (url.endsWith('/organization/contractors') && method === 'POST') {
+                return json(
+                    {
+                        data: {
+                            id: 3,
+                            type: 'lift',
+                            type_label: 'Лифтовая организация',
+                            name: 'Лифт-Сервис',
+                            phone: '+79172472389',
+                        },
+                    },
+                    201,
+                );
+            }
+            if (url.includes('/organization/contractors/4') && method === 'DELETE') {
+                return json({ data: { ok: true } });
+            }
+            if (url.endsWith('/organization/contractors')) return json({ data: [] });
             if (url.endsWith('/organization') && method === 'PATCH') {
                 return json({
                     data: {
@@ -88,19 +107,25 @@ describe('организация', () => {
         });
         fireEvent.click(screen.getByRole('button', { name: 'Убрать' }));
         expect(
-            vi.mocked(fetch).mock.calls.some(
-                ([url, init]) =>
-                    String(url).includes('/organization/executors/5') && String(init?.method) === 'DELETE',
-            ),
+            vi
+                .mocked(fetch)
+                .mock.calls.some(
+                    ([url, init]) =>
+                        String(url).includes('/organization/executors/5') &&
+                        String(init?.method) === 'DELETE',
+                ),
         ).toBe(false);
         expect(screen.getByRole('dialog', { name: 'Убрать этого исполнителя?' })).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Да, убрать' }));
         await waitFor(() => {
             expect(
-                vi.mocked(fetch).mock.calls.some(
-                    ([url, init]) =>
-                        String(url).includes('/organization/executors/5') && String(init?.method) === 'DELETE',
-                ),
+                vi
+                    .mocked(fetch)
+                    .mock.calls.some(
+                        ([url, init]) =>
+                            String(url).includes('/organization/executors/5') &&
+                            String(init?.method) === 'DELETE',
+                    ),
             ).toBe(true);
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель убран');
@@ -111,9 +136,12 @@ describe('организация', () => {
         fireEvent.click(await screen.findByRole('button', { name: 'Сохранить' }));
         await waitFor(() => {
             expect(
-                vi.mocked(fetch).mock.calls.some(
-                    ([url, init]) => String(url).endsWith('/organization') && String(init?.method) === 'PATCH',
-                ),
+                vi
+                    .mocked(fetch)
+                    .mock.calls.some(
+                        ([url, init]) =>
+                            String(url).endsWith('/organization') && String(init?.method) === 'PATCH',
+                    ),
             ).toBe(true);
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Сохранено');
@@ -122,15 +150,20 @@ describe('организация', () => {
     it('принимает телефон исполнителя без +7', async () => {
         renderPage();
         await screen.findByDisplayValue('Мир');
-        const name = screen.getByLabelText('Имя');
-        const phone = screen.getByLabelText('Телефон');
+        const form = screen.getByRole('button', { name: 'Добавить исполнителя' }).closest('form');
+        expect(form).toBeTruthy();
+        const name = within(form as HTMLElement).getByLabelText('Имя');
+        const phone = within(form as HTMLElement).getByLabelText('Телефон');
         fireEvent.change(name, { target: { value: 'Пётр' } });
         fireEvent.change(phone, { target: { value: '9172472389' } });
         fireEvent.click(screen.getByRole('button', { name: 'Добавить исполнителя' }));
         await waitFor(() => {
-            const call = vi.mocked(fetch).mock.calls.find(
-                ([url, init]) => String(url).endsWith('/organization/executors') && String(init?.method) === 'POST',
-            );
+            const call = vi
+                .mocked(fetch)
+                .mock.calls.find(
+                    ([url, init]) =>
+                        String(url).endsWith('/organization/executors') && String(init?.method) === 'POST',
+                );
             expect(call?.[1]?.body).toContain('+79172472389');
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель добавлен');
@@ -145,6 +178,88 @@ describe('организация', () => {
             expect(writeText).toHaveBeenCalledWith('https://max.ru/start');
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Ссылка скопирована');
+    });
+
+    it('добавляет подрядчика и показывает QR дома', async () => {
+        renderPage();
+        await screen.findByDisplayValue('Мир');
+        expect(screen.getByText('Журнал заявок')).toBeInTheDocument();
+        const qr = await screen.findByRole('img', { name: 'QR-код дома' });
+        expect(qr).toHaveAttribute('src', 'https://max.example/qr.png?signature=x');
+        fireEvent.click(screen.getByRole('button', { name: '2' }));
+        expect(screen.getByRole('img', { name: 'QR-код дома' })).toHaveAttribute(
+            'src',
+            'https://max.example/qr.png?signature=x&entrance=2',
+        );
+
+        const form = screen.getByRole('button', { name: 'Добавить подрядчика' }).closest('form');
+        expect(form).toBeTruthy();
+        fireEvent.click(within(form as HTMLElement).getByRole('button', { name: 'Лифт' }));
+        fireEvent.change(within(form as HTMLElement).getByLabelText('Название'), {
+            target: { value: 'Лифт-Сервис' },
+        });
+        fireEvent.change(within(form as HTMLElement).getByLabelText('Телефон'), {
+            target: { value: '9172472389' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Добавить подрядчика' }));
+        await waitFor(() => {
+            const call = vi
+                .mocked(fetch)
+                .mock.calls.find(
+                    ([url, init]) =>
+                        String(url).endsWith('/organization/contractors') && String(init?.method) === 'POST',
+                );
+            expect(call?.[1]?.body).toContain('"type":"lift"');
+            expect(call?.[1]?.body).toContain('Лифт-Сервис');
+            expect(call?.[1]?.body).toContain('+79172472389');
+        });
+        expect(await screen.findByRole('status')).toHaveTextContent('Подрядчик добавлен');
+    });
+
+    it('просит подтверждение, прежде чем убрать подрядчика', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+                const url = String(input);
+                const method = init?.method ?? 'GET';
+                if (url.endsWith('/organization/houses')) return json({ data: [house] });
+                if (url.endsWith('/organization/executors')) return json({ data: [] });
+                if (url.includes('/organization/contractors/4') && method === 'DELETE') {
+                    return json({ data: { ok: true } });
+                }
+                if (url.endsWith('/organization/contractors')) {
+                    return json({
+                        data: [
+                            {
+                                id: 4,
+                                type: 'intercom',
+                                type_label: 'Домофонная компания',
+                                name: 'Домофон-Сервис',
+                                phone: null,
+                            },
+                        ],
+                    });
+                }
+                if (url.endsWith('/organization')) return json({ data: organization });
+                return json({ data: {} }, 404);
+            }),
+        );
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'Убрать' }));
+        expect(screen.getByRole('dialog', { name: 'Убрать этого подрядчика?' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Да, убрать' }));
+        await waitFor(() => {
+            expect(
+                vi
+                    .mocked(fetch)
+                    .mock.calls.some(
+                        ([url, init]) =>
+                            String(url).includes('/organization/contractors/4') &&
+                            String(init?.method) === 'DELETE',
+                    ),
+            ).toBe(true);
+        });
+        expect(await screen.findByRole('status')).toHaveTextContent('Подрядчик убран');
     });
 });
 

@@ -7,9 +7,22 @@ import { statusExplain } from '@/lib/status';
 
 export function RequestRow({
     item,
+    detail,
     onOpen,
 }: {
-    item: RequestListItem;
+    item: Pick<
+        RequestListItem,
+        | 'id'
+        | 'status'
+        | 'category'
+        | 'address'
+        | 'entrance'
+        | 'flat'
+        | 'participants_count'
+        | 'is_overdue'
+        | 'deadline_fix_at'
+    >;
+    detail?: string;
     onOpen: (id: number) => void;
 }) {
     const status = statusExplain(item.status, item.is_overdue);
@@ -20,8 +33,8 @@ export function RequestRow({
     ]
         .filter(Boolean)
         .join(', ');
-    const neighbors =
-        item.participants_count > 0 ? texts.queue.neighbors(item.participants_count) : null;
+    const neighbors = item.participants_count > 0 ? texts.queue.neighbors(item.participants_count) : null;
+    const meta = [detail, neighbors].filter(Boolean).join(' · ');
 
     return (
         <button
@@ -33,13 +46,15 @@ export function RequestRow({
             <span className="request-tile-name tabular">
                 № {item.id}. {item.category}
             </span>
-            {neighbors ? <span className="request-tile-meta">{neighbors}</span> : null}
+            {meta ? <span className="request-tile-meta">{meta}</span> : null}
             <span className="request-tile-place">{place}</span>
             <span className="request-tile-foot">
                 <StatusChip status={item.status} overdue={item.is_overdue} />
                 <DeadlineChip
                     deadline={item.deadline_fix_at}
-                    closed={item.status === 'done' || item.status === 'confirmed' || item.status === 'redirected'}
+                    closed={
+                        item.status === 'done' || item.status === 'confirmed' || item.status === 'redirected'
+                    }
                 />
             </span>
             <span className="request-tile-chevron" aria-hidden>

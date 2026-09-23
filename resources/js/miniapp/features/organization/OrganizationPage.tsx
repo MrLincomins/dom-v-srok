@@ -1,10 +1,14 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, CellSimple, Switch, Typography } from '@maxhub/max-ui';
 import {
     archiveExecutor,
+    createContractor,
     createExecutor,
+    deleteContractor,
     getOrganization,
+    listContractors,
     listExecutors,
     listHouses,
     updateExecutor,
@@ -22,13 +26,17 @@ import { PhoneField } from '@/components/PhoneField';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { SettingsField } from '@/components/SettingsField';
+import { openExternalLink } from '@/bridge/maxWebApp';
 import { copyToClipboard } from '@/lib/clipboard';
 import { isCompletePhone, localPhoneDigits, toStoredPhone } from '@/lib/phone';
+import { houseQrUrl } from '@/lib/qr';
 import { MutationError } from '@/features/request/MutationError';
 
 const CONTRACTS = ['cold_water', 'hot_water', 'heat', 'power', 'tko'] as const;
+const CONTRACTOR_TYPES = ['lift', 'intercom', 'tko', 'other'] as const;
 
 export function OrganizationPage() {
+    const navigate = useNavigate();
     const organization = useQuery({
         queryKey: ['organization'],
         queryFn: ({ signal }) => getOrganization(signal),
@@ -41,8 +49,13 @@ export function OrganizationPage() {
         queryKey: ['organization', 'executors'],
         queryFn: ({ signal }) => listExecutors(signal),
     });
-    const loading = organization.isPending || houses.isPending || executors.isPending;
-    const error = organization.error ?? houses.error ?? executors.error;
+    const contractors = useQuery({
+        queryKey: ['organization', 'contractors'],
+        queryFn: ({ signal }) => listContractors(signal),
+    });
+    const loading =
+        organization.isPending || houses.isPending || executors.isPending || contractors.isPending;
+    const error = organization.error ?? houses.error ?? executors.error ?? contractors.error;
 
     return (
         <Screen title={texts.organization.title} backTo="/" contentClassName="flex min-w-0 flex-col gap-24">
@@ -54,13 +67,22 @@ export function OrganizationPage() {
                         void organization.refetch();
                         void houses.refetch();
                         void executors.refetch();
+                        void contractors.refetch();
                     }}
                 />
             )}
             {organization.data && (
                 <>
+                    <Section>
+                        <CellSimple
+                            title={texts.journal.title}
+                            subtitle={texts.journal.hint}
+                            onClick={() => navigate('/journal')}
+                        />
+                    </Section>
                     <ContactsCard organization={organization.data} />
                     <ContractsCard organization={organization.data} />
+                    <ContractorsCard />
                     <HousesCard houses={houses.data ?? []} />
                     <ExecutorsCard />
                 </>
@@ -299,6 +321,7 @@ function HousesCard({ houses }: { houses: House[] }) {
                             save.mutate({ id: house.id, entrances: next });
                         }}
                     />
+                    <HouseQr house={house} />
                     <Typography.Body variant="small" className="settings-hint">
                         {texts.organization.joinInChatHint}
                     </Typography.Body>
@@ -463,6 +486,215 @@ function ExecutorsCard() {
                     loading={archive.isPending}
                     onCancel={() => setPendingArchiveId(null)}
                     onConfirm={() => archive.mutate(pendingArchiveId)}
+                />
+            )}
+            <Notice text={notice} onGone={() => setNotice(null)} />
+        </form>
+    );
+}
+
+function HouseQr({ house }: { house: House }) {
+    const [entrance, setEntrance] = useState<number | null>(null);
+    const compact = house.entrances <= 12;
+    const selected = entrance != null && entrance <= house.entrances ? entrance : null;
+    const src = houseQrUrl(house.qr_url, selected);
+
+    return (
+        <div className="flex min-w-0 flex-col gap-8">
+            <h3 className="request-block-title">{texts.organization.qr}</h3>
+            <div className="house-qr">
+                <img src={src} alt={texts.organization.qrAlt} />
+            </div>
+            {compact ? (
+                <div className="house-qr-entrances" role="group" aria-label={texts.organization.qrEntrance}>
+                    <button
+                        type="button"
+                        className={`ios-tab${selected === null ? ' is-active' : ''}`}
+                        aria-pressed={selected === null}
+                        onClick={() => setEntrance(null)}
+                    >
+                        {texts.organization.qrWholeHouse}
+                    </button>
+                    {Array.from({ length: house.entrances }, (_, index) => index + 1).map((number) => (
+                        <button
+                            key={number}
+                            type="button"
+                            className={`ios-tab${selected === number ? ' is-active' : ''}`}
+                            aria-pressed={selected === number}
+                            onClick={() => setEntrance(number)}
+                        >
+                            {number}
+                        </button>
+                    ))}
+                </div>
+            ) : (
+                <SettingsField
+                    label={texts.organization.qrEntrance}
+                    inputMode="numeric"
+                    defaultValue={selected == null ? '' : String(selected)}
+                    onBlur={(event) => {
+                        const raw = event.currentTarget.value.trim();
+                        if (raw === '') {
+                            setEntrance(null);
+                            return;
+                        }
+                        const next = Number(raw);
+                        if (!Number.isInteger(next) || next < 1 || next > house.entrances) {
+                            event.currentTarget.value = selected == null ? '' : String(selected);
+                            return;
+                        }
+                        setEntrance(next);
+                    }}
+                />
+            )}
+            <Section>
+                <CellSimple title={texts.organization.qrOpen} onClick={() => openExternalLink(src)} />
+            </Section>
+        </div>
+    );
+}
+
+function ContractorsCard() {
+    const client = useQueryClient();
+    const contractors = useQuery({
+        queryKey: ['organization', 'contractors'],
+        queryFn: ({ signal }) => listContractors(signal),
+    });
+    const [type, setType] = useState<(typeof CONTRACTOR_TYPES)[number]>('lift');
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [pendingId, setPendingId] = useState<number | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
+
+    const reset = () => {
+        setName('');
+        setPhone('');
+        setNameError('');
+        setPhoneError('');
+    };
+
+    const create = useMutation({
+        mutationFn: createContractor,
+        onSuccess: () => {
+            reset();
+            setNotice(texts.organization.contractorAdded);
+            void client.invalidateQueries({ queryKey: ['organization', 'contractors'] });
+        },
+    });
+    const remove = useMutation({
+        mutationFn: deleteContractor,
+        onSuccess: () => {
+            setPendingId(null);
+            setNotice(texts.organization.contractorRemoved);
+            void client.invalidateQueries({ queryKey: ['organization', 'contractors'] });
+        },
+    });
+
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        const trimmed = name.trim();
+        if (!trimmed) {
+            setNameError(texts.organization.contractorNameRequired);
+            return;
+        }
+        if (phone.length > 0 && !isCompletePhone(phone)) {
+            setPhoneError(texts.organization.phoneError);
+            return;
+        }
+        setNameError('');
+        setPhoneError('');
+        create.mutate({
+            type,
+            name: trimmed,
+            phone: toStoredPhone(phone) ?? undefined,
+        });
+    };
+
+    const busy = create.isPending || remove.isPending;
+
+    return (
+        <form className="flex min-w-0 flex-col gap-16" noValidate onSubmit={submit}>
+            <Section title={texts.organization.contractors} className="settings-card">
+                {(contractors.data ?? []).map((contractor) => (
+                    <CellSimple
+                        key={contractor.id}
+                        separator
+                        title={contractor.name}
+                        subtitle={[contractor.type_label, contractor.phone].filter(Boolean).join(' · ')}
+                        after={
+                            <Button
+                                type="button"
+                                size="small"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setPendingId(contractor.id);
+                                }}
+                            >
+                                {texts.organization.removeContractor}
+                            </Button>
+                        }
+                    />
+                ))}
+            </Section>
+            <div className="ios-tabs" role="group" aria-label={texts.organization.contractorType}>
+                {CONTRACTOR_TYPES.map((item) => (
+                    <button
+                        key={item}
+                        type="button"
+                        className={`ios-tab${type === item ? ' is-active' : ''}`}
+                        aria-pressed={type === item}
+                        onClick={() => setType(item)}
+                    >
+                        {texts.organization.contractorTypes[item]}
+                    </button>
+                ))}
+            </div>
+            <SettingsField
+                label={texts.organization.contractorName}
+                value={name}
+                error={nameError}
+                onChange={(event) => {
+                    setName(event.target.value);
+                    if (nameError) setNameError('');
+                }}
+            />
+            <PhoneField
+                label={texts.organization.contractorPhone}
+                value={phone}
+                error={phoneError}
+                onChange={(next) => {
+                    setPhone(next);
+                    if (phoneError) setPhoneError('');
+                }}
+            />
+            {contractors.data?.length === 0 && <EmptyState text={texts.organization.contractorsEmpty} />}
+            <Button
+                type="submit"
+                variant="primary"
+                size="large"
+                stretched
+                loading={create.isPending}
+                disabled={busy}
+            >
+                {texts.organization.addContractor}
+            </Button>
+            <Typography.Body variant="small" className="settings-hint">
+                {texts.organization.contractorsHint}
+            </Typography.Body>
+            <MutationError error={create.error ?? remove.error} />
+            {pendingId !== null && (
+                <ConfirmDialog
+                    title={texts.organization.removeContractorConfirm}
+                    confirm={texts.organization.removeContractorYes}
+                    cancel={texts.organization.cancel}
+                    loading={remove.isPending}
+                    onCancel={() => setPendingId(null)}
+                    onConfirm={() => remove.mutate(pendingId)}
                 />
             )}
             <Notice text={notice} onGone={() => setNotice(null)} />

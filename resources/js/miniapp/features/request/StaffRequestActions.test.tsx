@@ -74,6 +74,34 @@ describe('действия диспетчера', () => {
             ).toBe(true);
         });
     });
+
+    it('показывает полные подписи полей переадресации', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = String(input);
+                if (url.endsWith('/organization/executors')) {
+                    return json({ data: [] });
+                }
+                return json({ data: card });
+            }),
+        );
+
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        render(
+            <MaxUI platform="android" colorScheme="light">
+                <QueryClientProvider client={client}>
+                    <StaffRequestActions card={card} />
+                </QueryClientProvider>
+            </MaxUI>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Передать другой службе' }));
+
+        expect(screen.getByLabelText('Какой службе передать')).toBeInTheDocument();
+        expect(screen.getByLabelText('Телефон, если есть')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Что сказать жителю')).toBeInTheDocument();
+    });
 });
 
 function json(body: unknown, status = 200) {

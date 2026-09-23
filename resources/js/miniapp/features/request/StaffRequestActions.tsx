@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Button, CellInput } from '@maxhub/max-ui';
+import { Button } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
 import { CompactNote } from '@/components/CompactNote';
-import { Section } from '@/components/Section';
+import { SettingsField } from '@/components/SettingsField';
 import { transitionLabel } from '@/lib/status';
 import { AssignExecutor } from './AssignExecutor';
 import { MutationError } from './MutationError';
@@ -238,22 +238,18 @@ function RedirectRequestForm({
 
     return (
         <form className="flex flex-col gap-8" onSubmit={submit}>
-            <Section>
-                <CellInput
-                    before={texts.request.redirectName}
-                    aria-label={texts.request.redirectName}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    required
-                />
-                <CellInput
-                    before={texts.request.redirectPhone}
-                    aria-label={texts.request.redirectPhone}
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    inputMode="tel"
-                />
-            </Section>
+            <SettingsField
+                label={texts.request.redirectName}
+                value={name}
+                required
+                onChange={(event) => setName(event.target.value)}
+            />
+            <SettingsField
+                label={texts.request.redirectPhone}
+                value={phone}
+                inputMode="tel"
+                onChange={(event) => setPhone(event.target.value)}
+            />
             <CompactNote
                 placeholder={texts.request.redirectNote}
                 value={note}
