@@ -1,0 +1,1 @@
+export { CompactNote } from './CompactNote';

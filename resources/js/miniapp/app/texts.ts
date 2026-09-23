@@ -1,6 +1,6 @@
 /** Тексты кабинета держим рядом, чтобы терминология не расходилась между экранами. */
 export const texts = {
-    app: { back: 'Назад' },
+    app: { back: 'Назад', loading: 'Загрузка…' },
     auth: {
         loading: 'Входим…',
         openInMax: 'Откройте кабинет из бота в MAX',
@@ -129,6 +129,14 @@ export const texts = {
         phonePrefix: '+7',
         phoneError: 'Введите 10 цифр, без +7',
         executorSpecialty: 'Специальность',
+        houseBind: 'Как привязать чат',
+        houseBindCommand: (token: string) => `/дом ${token}`,
+        houseBindHint: 'Напишите эту команду в чате дома. Привязать может сотрудник организации.',
+        houseBindCopied: 'Команда скопирована',
+        housePinned: 'Карточка закреплена в чате',
+        houseNotPinned: 'Карточка не закреплена. Сделайте бота администратором чата.',
+        qrDownload: 'Скачать QR',
+        qrDownloaded: 'QR скачан',
         types: { uk: 'УК', tsj: 'ТСЖ', jsk: 'ЖСК' },
         contractsLabels: {
             cold_water: 'Холодная вода',
@@ -200,6 +208,8 @@ export const texts = {
         assignEmpty: 'Сначала добавьте мастеров в организации.',
         assigned: 'Назначен',
         commentPlaceholder: 'Напишите, что сделали или что мешает',
+        templates: 'Шаблон ответа',
+        templateOptions: ['Выехал', 'Ждём доступ в квартиру', 'Нужна запчасть', 'Передал мастеру'],
         actions: { redirect: 'Передать другой службе', comment: 'Написать комментарий' },
         notFound: 'Эту заявку не нашли. Нажмите Назад.',
         awaitingResident: 'Сделали. Ждём, что скажет житель',

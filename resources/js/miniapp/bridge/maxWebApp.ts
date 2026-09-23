@@ -1,4 +1,4 @@
-/** Доступ к MAX Bridge всегда идёт через безопасные функции: в обычном браузере window.WebApp нет. */
+/** Bridge из max-web-app.js есть и в браузере, но без initData он не умеет открывать ссылки. */
 type Platform = 'ios' | 'android' | 'desktop' | 'web';
 
 interface MaxBackButton {
@@ -75,12 +75,24 @@ export function openExternalLink(url: string): void {
     }
     if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
 
-    const app = getWebApp();
-    if (app?.openLink) {
-        app.openLink(target.href);
-        return;
+    if (isInsideMax()) {
+        const openLink = getWebApp()?.openLink;
+        if (openLink) {
+            openLink(target.href);
+            return;
+        }
     }
-    window.open(target.href, '_blank', 'noopener,noreferrer');
+
+    const opened = window.open(target.href, '_blank', 'noopener,noreferrer');
+    if (opened) return;
+
+    const link = document.createElement('a');
+    link.href = target.href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 export function signalReady(): void {

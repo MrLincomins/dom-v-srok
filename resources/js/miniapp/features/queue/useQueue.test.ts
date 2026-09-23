@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tabToQuery } from './useQueue';
+import { tabToQuery } from '@/features/queue/useQueue';
 
 describe('tabToQuery', () => {
     it('maps overdue to open overdue requests', () => {

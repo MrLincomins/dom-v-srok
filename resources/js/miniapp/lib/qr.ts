@@ -9,3 +9,24 @@ export function houseQrUrl(qrUrl: string, entrance?: number | null): string {
         return `${qrUrl}${qrUrl.includes('?') ? '&' : '?'}entrance=${entrance}`;
     }
 }
+
+export function houseQrFilename(token: string, entrance?: number | null): string {
+    return entrance == null ? `qr-${token}.png` : `qr-${token}-${entrance}.png`;
+}
+
+export async function downloadQr(url: string, filename: string): Promise<void> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error('download_failed');
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+}

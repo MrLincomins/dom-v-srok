@@ -1,0 +1,1 @@
+export { ResponsibleSection } from './ResponsibleSection';

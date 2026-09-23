@@ -4,8 +4,6 @@ import { useAuth } from './app/authContext';
 import { texts } from './app/texts';
 import { FullscreenSpinner } from './components/FullscreenSpinner';
 import { ErrorState } from './components/ErrorState';
-import { ListSkeleton } from './components/ListSkeleton';
-import { Screen } from './components/Screen';
 import { HomePage } from './features/home/HomePage';
 import { HousePage } from './features/resident/HousePage';
 
@@ -36,7 +34,7 @@ const JournalPage = lazy(() =>
 /** Не монтируем рабочие экраны, пока не понятно, кто открыл приложение. */
 function Gate() {
     const auth = useAuth();
-    if (auth.status === 'loading') return <FullscreenSpinner />;
+    if (auth.status === 'loading') return <FullscreenSpinner label={texts.auth.loading} />;
     if (auth.status === 'error')
         return (
             <ErrorState message={auth.error ?? undefined} onRetry={() => void auth.refresh()} fullscreen />
@@ -49,53 +47,10 @@ function Gate() {
         );
     return (
         <div className="app-shell">
-            <Suspense fallback={<RouteFallback />}>
+            <Suspense fallback={<FullscreenSpinner />}>
                 <Outlet />
             </Suspense>
         </div>
-    );
-}
-
-function RouteFallback() {
-    const { pathname } = useLocation();
-    const { user } = useAuth();
-    const requestId = Number(pathname.split('/').at(-1));
-
-    if (pathname.includes('/requests/')) {
-        return (
-            <Screen
-                title={
-                    Number.isFinite(requestId) ? texts.request.title(requestId) : texts.request.invalidTitle
-                }
-                backTo="/"
-            >
-                <ListSkeleton rows={2} />
-            </Screen>
-        );
-    }
-
-    const residentHome = user?.role === 'resident' && pathname === '/';
-
-    return (
-        <Screen
-            className="is-fallback"
-            title={
-                pathname.includes('/organization')
-                    ? texts.organization.title
-                    : pathname.includes('/house')
-                      ? texts.resident.house
-                      : pathname.includes('/create')
-                          ? texts.home.createRequest
-                          : pathname.includes('/journal')
-                            ? texts.journal.title
-                            : residentHome
-                              ? texts.home.residentTitle
-                              : texts.queue.title
-            }
-            titleLevel={pathname === '/' || residentHome ? 2 : 1}
-        >
-            <ListSkeleton />
-        </Screen>
     );
 }
 
