@@ -184,6 +184,19 @@ describe('действия диспетчера', () => {
         expect(screen.queryByRole('button', { name: 'Завершить' })).not.toBeInTheDocument();
     });
 
+    it('у возвращённой заявки с мастером даёт взять в работу и завершить', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
+        renderActions({
+            ...card,
+            status: 'returned',
+            allowed_transitions: ['assigned', 'in_progress', 'done'],
+            executor: { id: 5, name: 'Иван' },
+        });
+        expect(await screen.findByRole('button', { name: 'В работу' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Завершить' })).toBeInTheDocument();
+        expect(screen.queryByText('Назначить')).not.toBeInTheDocument();
+    });
+
     it('у назначенной заявки показывает только «В работу»', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
         renderActions({

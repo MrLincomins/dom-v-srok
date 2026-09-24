@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useLayoutEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/api/client';
 import { updateOrganization } from '@/api/organization';
@@ -15,10 +15,25 @@ function isValidEmail(raw: string): boolean {
     return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
 }
 
+export const contactFieldId = {
+    name: 'contact-name',
+    phone_ads: 'contact-phone-ads',
+    phone_dispatch: 'contact-phone-dispatch',
+    email: 'contact-email',
+} as const;
+
+const FIELD_ORDER = ['name', 'phone_ads', 'phone_dispatch', 'email'] as const;
+
 function fieldKeys(details: Record<string, unknown>): string[] {
     const fields = details.fields;
     if (!fields || typeof fields !== 'object') return [];
     return Object.keys(fields);
+}
+
+function focusContactField(id: string) {
+    const field = document.getElementById(id);
+    if (!(field instanceof HTMLElement)) return;
+    field.focus({ preventScroll: true });
 }
 
 export function useContactsCard(organization: Organization) {
@@ -32,6 +47,21 @@ export function useContactsCard(organization: Organization) {
     const notice = useNoticeState();
     const [checked, setChecked] = useState(false);
     const [serverFields, setServerFields] = useState<string[]>([]);
+    const [focusId, setFocusId] = useState<string | null>(null);
+
+    useLayoutEffect(() => {
+        if (!focusId) return;
+        focusContactField(focusId);
+        setFocusId(null);
+    }, [focusId]);
+
+    const dirty =
+        name.trim() !== organization.name.trim() ||
+        phoneAds !== localPhoneDigits(organization.phone_ads) ||
+        phoneDispatch !== localPhoneDigits(organization.phone_dispatch ?? '') ||
+        email.trim() !== (organization.email ?? '').trim() ||
+        hours.trim() !== (organization.reception_hours ?? '').trim() ||
+        address.trim() !== (organization.reception_address ?? '').trim();
 
     const nameInvalid = checked && name.trim() === '';
     const phoneAdsInvalid = checked && (serverFields.includes('phone_ads') || !isCompletePhone(phoneAds));
@@ -41,15 +71,18 @@ export function useContactsCard(organization: Organization) {
             (phoneDispatch.length > 0 && !isCompletePhone(phoneDispatch)));
     const emailInvalid = checked && (serverFields.includes('email') || !isValidEmail(email));
 
-    const firstError = () => {
-        if (name.trim() === '') return texts.organization.nameRequired;
+    const firstInvalid = (): { id: string; message: string } | null => {
+        if (name.trim() === '') return { id: contactFieldId.name, message: texts.organization.nameRequired };
         if (!isCompletePhone(phoneAds)) {
-            return phoneAds.length === 0 ? texts.organization.phoneRequired : texts.organization.phoneError;
+            return {
+                id: contactFieldId.phone_ads,
+                message: phoneAds.length === 0 ? texts.organization.phoneRequired : texts.organization.phoneError,
+            };
         }
         if (phoneDispatch.length > 0 && !isCompletePhone(phoneDispatch)) {
-            return texts.organization.phoneError;
+            return { id: contactFieldId.phone_dispatch, message: texts.organization.phoneError };
         }
-        if (!isValidEmail(email)) return texts.organization.emailError;
+        if (!isValidEmail(email)) return { id: contactFieldId.email, message: texts.organization.emailError };
         return null;
     };
 
@@ -77,16 +110,20 @@ export function useContactsCard(organization: Organization) {
                     : describeError(error, save.failureCount),
                 'error',
             );
+            const first = FIELD_ORDER.find((key) => fields.includes(key));
+            if (first) setFocusId(contactFieldId[first]);
         },
     });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (!dirty) return;
         setChecked(true);
         setServerFields([]);
-        const message = firstError();
-        if (message) {
-            notice.show(message, 'error');
+        const invalid = firstInvalid();
+        if (invalid) {
+            notice.show(invalid.message, 'error');
+            setFocusId(invalid.id);
             return;
         }
         save.mutate();
@@ -123,6 +160,7 @@ export function useContactsCard(organization: Organization) {
         phoneAdsInvalid,
         phoneDispatchInvalid,
         emailInvalid,
+        dirty,
         notice,
         save,
         saving,

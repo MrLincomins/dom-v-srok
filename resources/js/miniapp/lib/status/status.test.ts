@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { staffPrimaryAction, statusExplain, statusTone } from './status';
 
 describe('status helpers', () => {
-    it('prioritizes overdue tone', () => {
-        expect(statusTone('in_progress', true)).toBe('late');
+    it('просрочка не красит заявку, которую вернули в работу', () => {
+        expect(statusTone('in_progress', true)).toBe('progress');
+        expect(statusTone('returned', true)).toBe('progress');
+        expect(statusTone('new', true)).toBe('late');
     });
 
     it('красит принятые, рабочие и неподтверждённые разными синими', () => {
@@ -27,6 +29,7 @@ describe('status helpers', () => {
     it('выбирает главную кнопку диспетчера', () => {
         expect(staffPrimaryAction('new')).toBe('assign');
         expect(staffPrimaryAction('returned')).toBe('assign');
+        expect(staffPrimaryAction('returned', true)).toBe('start');
         expect(staffPrimaryAction('assigned')).toBe('start');
         expect(staffPrimaryAction('in_progress')).toBe('finish');
         expect(staffPrimaryAction('done')).toBeNull();

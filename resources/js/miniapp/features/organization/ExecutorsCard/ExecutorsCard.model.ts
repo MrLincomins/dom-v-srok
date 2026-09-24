@@ -62,8 +62,15 @@ export function useExecutorsCard() {
         },
     });
 
+    const dirty = editing
+        ? name.trim() !== editing.name.trim() ||
+          phone !== localPhoneDigits(editing.phone ?? '') ||
+          specialty.trim() !== (editing.specialty ?? '').trim()
+        : name.trim() !== '' || phone !== '' || specialty.trim() !== '';
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (!dirty) return;
         const trimmed = name.trim();
         const storedPhone = toStoredPhone(phone);
         const nextNameError = trimmed ? '' : texts.organization.executorNameRequired;
@@ -113,5 +120,6 @@ export function useExecutorsCard() {
         archive,
         submit,
         busy,
+        dirty,
     };
 }

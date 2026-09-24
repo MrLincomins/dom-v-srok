@@ -35,7 +35,7 @@ export function EventTimeline({
                         const last = index === items.length - 1;
                         const tone = TONE_CLASS[eventTone(event)];
                         const comment = eventComment(event);
-                        const photos = eventPhotos(event, attachments);
+                        const photos = eventPhotos(event, attachments, items);
                         return (
                             <div key={event.id} className="history-step">
                                 <div className="history-rail" aria-hidden>

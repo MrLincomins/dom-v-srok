@@ -45,8 +45,11 @@ export function useContractorsCard() {
         },
     });
 
+    const dirty = name.trim() !== '' || phone !== '';
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (!dirty) return;
         const trimmed = name.trim();
         const storedPhone = toStoredPhone(phone);
         const nextNameError = trimmed ? '' : texts.organization.contractorNameRequired;
@@ -89,5 +92,6 @@ export function useContractorsCard() {
         remove,
         submit,
         busy,
+        dirty,
     };
 }

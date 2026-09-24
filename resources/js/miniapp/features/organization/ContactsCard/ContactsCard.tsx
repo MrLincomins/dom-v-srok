@@ -5,7 +5,7 @@ import { CellHeading } from '@/components/CellHeading';
 import { Notice } from '@/components/Notice';
 import { PhoneField } from '@/components/PhoneField';
 import { SettingsField } from '@/components/SettingsField';
-import { useContactsCard } from './ContactsCard.model';
+import { contactFieldId, useContactsCard } from './ContactsCard.model';
 
 export function ContactsCard({ organization }: { organization: Organization }) {
     const card = useContactsCard(organization);
@@ -16,24 +16,28 @@ export function ContactsCard({ organization }: { organization: Organization }) {
                 <CellHeading>{texts.organization.types[organization.type]}</CellHeading>
                 <div className="org-contacts-grid">
                     <SettingsField
+                        id={contactFieldId.name}
                         label={texts.organization.name}
                         value={card.name}
                         invalid={card.nameInvalid}
                         onChange={(event) => card.setName(event.target.value)}
                     />
                     <PhoneField
+                        id={contactFieldId.phone_ads}
                         label={texts.organization.phoneAds}
                         value={card.phoneAds}
                         invalid={card.phoneAdsInvalid}
                         onChange={card.setPhoneAds}
                     />
                     <PhoneField
+                        id={contactFieldId.phone_dispatch}
                         label={texts.organization.phoneDispatch}
                         value={card.phoneDispatch}
                         invalid={card.phoneDispatchInvalid}
                         onChange={card.setPhoneDispatch}
                     />
                     <SettingsField
+                        id={contactFieldId.email}
                         label={texts.organization.email}
                         value={card.email}
                         invalid={card.emailInvalid}
@@ -52,7 +56,14 @@ export function ContactsCard({ organization }: { organization: Organization }) {
                     />
                 </div>
             </div>
-            <Button type="submit" variant="primary" size="large" stretched loading={card.saving}>
+            <Button
+                type="submit"
+                variant="primary"
+                size="large"
+                stretched
+                loading={card.saving}
+                disabled={!card.dirty || card.saving}
+            >
                 {texts.organization.save}
             </Button>
             <Notice

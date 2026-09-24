@@ -1,7 +1,8 @@
 import { CellSimple } from '@maxhub/max-ui';
-import type { RequestCard } from '@/api/types';
+import type { RequestCard, RequestEvent } from '@/api/types';
 import { texts } from '@/app/texts';
 import { RequestSection } from '@/components/RequestSection';
+import { eventComment } from '@/features/request/EventTimeline/EventTimeline.model';
 import { withoutMarks } from '@/lib/address';
 import { describeDeadline } from '@/lib/deadline';
 import { statusExplain, statusTone, type StatusAudience, type StatusTone } from '@/lib/status';
@@ -46,7 +47,12 @@ export function RequestSummary({ card, audience }: { card: RequestCard; audience
                 subtitle={[card.category.name, card.description].filter(Boolean).join('. ')}
             />
             <CellSimple title={texts.request.where} subtitle={place} />
-            {card.returned_count > 0 && <CellSimple title={texts.request.returnedBadge} />}
+            {card.returned_count > 0 && (
+                <CellSimple
+                    title={texts.request.returnedBadge}
+                    subtitle={lastReturnComment(card.events) ?? undefined}
+                />
+            )}
             {card.participants_count > 0 && (
                 <CellSimple
                     title={texts.request.neighbors}
@@ -55,4 +61,14 @@ export function RequestSummary({ card, audience }: { card: RequestCard; audience
             )}
         </RequestSection>
     );
+}
+
+function lastReturnComment(events: RequestEvent[] | undefined): string | null {
+    if (!events) return null;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+        const event = events[index];
+        if (event.type !== 'returned' && event.to_status !== 'returned') continue;
+        return eventComment(event);
+    }
+    return null;
 }

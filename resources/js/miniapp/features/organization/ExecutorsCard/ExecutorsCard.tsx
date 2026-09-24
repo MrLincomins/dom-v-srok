@@ -76,7 +76,7 @@ export function ExecutorsCard() {
                 size="large"
                 stretched
                 loading={card.create.isPending || card.update.isPending}
-                disabled={card.busy}
+                disabled={card.busy || !card.dirty}
             >
                 {card.editing ? texts.organization.saveExecutor : texts.organization.addExecutor}
             </Button>

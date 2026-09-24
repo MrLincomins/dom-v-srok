@@ -45,8 +45,12 @@ export function statusExplain(
     return `Срок вышел. ${text}`;
 }
 
-export function staffPrimaryAction(status: RequestStatus): StaffPrimaryAction | null {
-    if (status === 'new' || status === 'returned') return 'assign';
+export function staffPrimaryAction(
+    status: RequestStatus,
+    hasExecutor = false,
+): StaffPrimaryAction | null {
+    if (status === 'new') return 'assign';
+    if (status === 'returned') return hasExecutor ? 'start' : 'assign';
     if (status === 'assigned') return 'start';
     if (status === 'in_progress') return 'finish';
     return null;
@@ -55,9 +59,9 @@ export function staffPrimaryAction(status: RequestStatus): StaffPrimaryAction | 
 export function statusTone(status: RequestStatus, overdue: boolean): StatusTone {
     if (status === 'redirected') return 'muted';
     if (status === 'confirmed') return 'done';
-    if (overdue) return 'late';
     if (status === 'done') return 'ready';
     if (status === 'in_progress' || status === 'returned') return 'progress';
+    if (overdue) return 'late';
     return 'accepted';
 }
 

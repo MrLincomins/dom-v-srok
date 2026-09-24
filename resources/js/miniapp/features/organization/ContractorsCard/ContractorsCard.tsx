@@ -84,7 +84,7 @@ export function ContractorsCard() {
                 size="large"
                 stretched
                 loading={card.create.isPending}
-                disabled={card.busy}
+                disabled={card.busy || !card.dirty}
             >
                 {texts.organization.addContractor}
             </Button>

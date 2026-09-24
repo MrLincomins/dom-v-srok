@@ -43,7 +43,10 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
         actions.redirect.isPending ||
         actions.close.isPending ||
         actions.addComment.isPending;
-    const primary = staffPrimaryAction(card.status);
+    const primary = staffPrimaryAction(card.status, Boolean(card.executor));
+    const canFinish =
+        card.allowed_transitions.includes('done') &&
+        (primary === 'finish' || (card.status === 'returned' && Boolean(card.executor)));
     const failed =
         [actions.status, actions.assign, actions.redirect, actions.close, actions.addComment].find(
             (action) => action.error,
@@ -82,7 +85,7 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                 </Button>
             )}
 
-            {primary === 'finish' && card.allowed_transitions.includes('done') && (
+            {canFinish && (
                 <div className="flex min-w-0 flex-col">
                     <Button
                         size="medium"

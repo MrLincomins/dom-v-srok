@@ -3,12 +3,14 @@ import { texts } from '@/app/texts';
 import { formatLocalPhone, localPhoneDigits } from '@/lib/phone';
 
 export function PhoneField({
+    id,
     label,
     value,
     onChange,
     error,
     invalid,
 }: {
+    id?: string;
     label: string;
     value: string;
     onChange: (value: string) => void;
@@ -23,6 +25,7 @@ export function PhoneField({
                     {texts.organization.phonePrefix}
                 </span>
                 <input
+                    id={id}
                     className="settings-field-value"
                     placeholder={label}
                     inputMode="numeric"

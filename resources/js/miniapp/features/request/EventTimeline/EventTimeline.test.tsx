@@ -50,6 +50,46 @@ describe('лента событий', () => {
         expect(screen.getByText('Подтверждено')).toBeInTheDocument();
     });
 
+    it('не смешивает фото двух закрытий', () => {
+        renderTimeline(
+            [
+                event({
+                    id: 1,
+                    type: 'status_changed',
+                    to_status: 'done',
+                    comment: 'Первый раз',
+                    created_at: '2026-09-24T09:01:00Z',
+                }),
+                event({
+                    id: 2,
+                    type: 'returned',
+                    created_at: '2026-09-24T09:03:00Z',
+                }),
+                event({
+                    id: 3,
+                    type: 'status_changed',
+                    to_status: 'done',
+                    comment: 'Второй раз',
+                    created_at: '2026-09-24T09:09:00Z',
+                }),
+            ],
+            [
+                photo(11, 'https://example.test/a.jpg', '2026-09-24T09:00:50Z'),
+                photo(12, 'https://example.test/b.jpg', '2026-09-24T09:00:51Z'),
+                photo(13, 'https://example.test/c.jpg', '2026-09-24T09:08:50Z'),
+            ],
+        );
+
+        const first = screen.getByText('Первый раз').closest('.history-body');
+        const second = screen.getByText('Второй раз').closest('.history-body');
+        expect(first?.querySelector('img[src="https://example.test/a.jpg"]')).toBeTruthy();
+        expect(first?.querySelector('img[src="https://example.test/b.jpg"]')).toBeTruthy();
+        expect(first?.querySelector('img[src="https://example.test/c.jpg"]')).toBeFalsy();
+        expect(second?.querySelector('img[src="https://example.test/c.jpg"]')).toBeTruthy();
+        expect(second?.querySelector('img[src="https://example.test/a.jpg"]')).toBeFalsy();
+        expect(second?.querySelector('img[src="https://example.test/b.jpg"]')).toBeFalsy();
+    });
+
     it('показывает фото оператора у «Выполнено»', () => {
         renderTimeline(
             [event({ id: 1, type: 'status_changed', to_status: 'done', comment: 'Готово' })],
@@ -84,6 +124,10 @@ describe('лента событий', () => {
         expect(container.querySelector('.history-title.is-progress')).toHaveTextContent('В работе');
     });
 });
+
+function photo(id: number, url: string, created_at: string): Attachment {
+    return { id, kind: 'closing', mime: 'image/jpeg', url, created_at };
+}
 
 function event(partial: Partial<RequestEvent> & Pick<RequestEvent, 'id' | 'type'>): RequestEvent {
     return {

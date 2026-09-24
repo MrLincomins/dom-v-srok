@@ -131,12 +131,24 @@ describe('организация', () => {
         expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель убран');
     });
 
+    it('ставит фокус на первое поле с ошибкой', async () => {
+        renderPage('/organization/contacts');
+        const name = await screen.findByLabelText('Название');
+        fireEvent.change(name, { target: { value: '' } });
+        fireEvent.change(screen.getByLabelText('Почта'), { target: { value: 'плохо' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+        expect(name).toBeInvalid();
+        expect(name).toHaveFocus();
+        expect(screen.getByLabelText('Почта')).not.toHaveFocus();
+    });
+
     it('подсвечивает почту и объясняет ошибку без запроса', async () => {
         renderPage('/organization/contacts');
         const email = await screen.findByLabelText('Почта');
         fireEvent.change(email, { target: { value: 'demo@example.ruффафыафы' } });
         fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
         expect(email).toBeInvalid();
+        expect(email).toHaveFocus();
         expect(await screen.findByRole('status')).toHaveTextContent('Укажите правильную почту');
         expect(
             vi
@@ -148,9 +160,15 @@ describe('организация', () => {
         ).toBe(false);
     });
 
+    it('не даёт сохранить контакты без изменений', async () => {
+        renderPage('/organization/contacts');
+        expect(await screen.findByRole('button', { name: 'Сохранить' })).toBeDisabled();
+    });
+
     it('сохраняет контакты и показывает уведомление', async () => {
         renderPage('/organization/contacts');
-        fireEvent.click(await screen.findByRole('button', { name: 'Сохранить' }));
+        fireEvent.change(await screen.findByLabelText('Часы приёма'), { target: { value: '9:00–18:00' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
         await waitFor(() => {
             expect(
                 vi
@@ -162,6 +180,11 @@ describe('организация', () => {
             ).toBe(true);
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Сохранено');
+    });
+
+    it('не даёт добавить исполнителя из пустой формы', async () => {
+        renderPage('/organization/executors');
+        expect(await screen.findByRole('button', { name: 'Добавить исполнителя' })).toBeDisabled();
     });
 
     it('не добавляет исполнителя без телефона', async () => {
@@ -225,6 +248,11 @@ describe('организация', () => {
             'https://max.example/qr.png?signature=x&entrance=2',
         );
         expect(screen.getByText('Скачать QR')).toBeInTheDocument();
+    });
+
+    it('не даёт добавить подрядчика из пустой формы', async () => {
+        renderPage('/organization/contractors');
+        expect(await screen.findByRole('button', { name: 'Добавить подрядчика' })).toBeDisabled();
     });
 
     it('не добавляет подрядчика без телефона', async () => {

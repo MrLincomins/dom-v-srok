@@ -26,6 +26,8 @@ describe('кто и когда сделает', () => {
             'aria-expanded',
             'false',
         );
+        expect(screen.getByText('Показать')).toBeInTheDocument();
+        expect(document.querySelector('.section-disclosure-hint')).toHaveTextContent('ТСЖ «Демо»');
         expect(fold).not.toHaveClass('is-open');
         expect(fold).toHaveAttribute('aria-hidden', 'true');
 
@@ -35,6 +37,9 @@ describe('кто и когда сделает', () => {
             'aria-expanded',
             'true',
         );
+        expect(screen.getByText('Скрыть')).toBeInTheDocument();
+        expect(screen.queryByText('Показать')).not.toBeInTheDocument();
+        expect(document.querySelector('.section-disclosure-hint')).toBeNull();
         expect(fold).toHaveClass('is-open');
         expect(fold).toHaveAttribute('aria-hidden', 'false');
         expect(screen.getByText('ТСЖ «Демо»')).toBeInTheDocument();

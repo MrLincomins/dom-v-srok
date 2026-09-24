@@ -19,6 +19,8 @@ describe('фотографии заявки', () => {
             [event({ id: 1, type: 'created', comment: 'Не крутится ручка плиты' })],
         );
 
+        expect(screen.getByText('Фото жителя')).toBeInTheDocument();
+        expect(screen.getByText('Комментарий')).toBeInTheDocument();
         expect(screen.getByAltText('Фото жителя 1')).toHaveAttribute(
             'src',
             'https://example.test/stove.jpg',
@@ -48,9 +50,60 @@ describe('фотографии заявки', () => {
             'Течёт кран',
         );
 
+        expect(screen.getByText('Фото после работы')).toBeInTheDocument();
+        expect(screen.getByText('Комментарий')).toBeInTheDocument();
         expect(screen.getByAltText('Фото после работы 1')).toBeInTheDocument();
         expect(screen.getByText('Ручку поменяли')).toBeInTheDocument();
         expect(screen.queryByText('Течёт кран')).not.toBeInTheDocument();
+    });
+
+    it('не склеивает фото двух закрытий в один блок', () => {
+        renderGallery(
+            [
+                {
+                    id: 11,
+                    kind: 'closing',
+                    mime: 'image/jpeg',
+                    url: 'https://example.test/first.jpg',
+                    created_at: '2026-09-24T09:00:50Z',
+                },
+                {
+                    id: 12,
+                    kind: 'closing',
+                    mime: 'image/jpeg',
+                    url: 'https://example.test/second.jpg',
+                    created_at: '2026-09-24T09:08:50Z',
+                },
+            ],
+            [
+                event({
+                    id: 1,
+                    type: 'status_changed',
+                    to_status: 'done',
+                    comment: 'Первый раз',
+                    created_at: '2026-09-24T09:01:00Z',
+                }),
+                event({
+                    id: 2,
+                    type: 'status_changed',
+                    to_status: 'done',
+                    comment: 'Второй раз',
+                    created_at: '2026-09-24T09:09:00Z',
+                }),
+            ],
+        );
+
+        expect(screen.getByText('Фото после работы, 1-й раз')).toBeInTheDocument();
+        expect(screen.getByText('Фото после работы, 2-й раз')).toBeInTheDocument();
+        expect(screen.getAllByText('Комментарий')).toHaveLength(2);
+        expect(screen.getByText('Первый раз')).toBeInTheDocument();
+        expect(screen.getByText('Второй раз')).toBeInTheDocument();
+        const first = screen.getByText('Первый раз').closest('.photo-with-comment');
+        const second = screen.getByText('Второй раз').closest('.photo-with-comment');
+        expect(first?.querySelector('img[src="https://example.test/first.jpg"]')).toBeTruthy();
+        expect(first?.querySelector('img[src="https://example.test/second.jpg"]')).toBeFalsy();
+        expect(second?.querySelector('img[src="https://example.test/second.jpg"]')).toBeTruthy();
+        expect(second?.querySelector('img[src="https://example.test/first.jpg"]')).toBeFalsy();
     });
 });
 
