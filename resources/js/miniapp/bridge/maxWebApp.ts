@@ -1,4 +1,4 @@
-/** Доступ к MAX Bridge всегда идёт через безопасные функции: в обычном браузере window.WebApp нет. */
+/** Скрипт MAX есть и в браузере, но без входа сам ссылки не откроет. */
 type Platform = 'ios' | 'android' | 'desktop' | 'web';
 
 interface MaxBackButton {
@@ -75,12 +75,24 @@ export function openExternalLink(url: string): void {
     }
     if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
 
-    const app = getWebApp();
-    if (app?.openLink) {
-        app.openLink(target.href);
-        return;
+    if (isInsideMax()) {
+        const openLink = getWebApp()?.openLink;
+        if (openLink) {
+            openLink(target.href);
+            return;
+        }
     }
-    window.open(target.href, '_blank', 'noopener,noreferrer');
+
+    const opened = window.open(target.href, '_blank', 'noopener,noreferrer');
+    if (opened) return;
+
+    const link = document.createElement('a');
+    link.href = target.href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 export function openFileLink(url: string): void {
@@ -101,7 +113,7 @@ export function signalReady(): void {
     try {
         getWebApp()?.ready?.();
     } catch {
-        // Старые клиенты MAX могут объявить bridge без рабочего ready().
+        // В старых клиентах ready() может не работать.
     }
 }
 
@@ -116,7 +128,7 @@ export function closeMiniApp(): boolean {
     }
 }
 
-/** На desktop и в браузере оставляем кнопку в header, потому что нативной там нет. */
+/** На компьютере и в браузере своей кнопки «Назад» нет — рисуем в шапке. */
 export function useNativeBackButton(): boolean {
     const button = getWebApp()?.BackButton;
     return Boolean(button?.show && button?.onClick) && getPlatform() !== 'web';

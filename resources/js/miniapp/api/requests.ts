@@ -33,7 +33,7 @@ export async function changeStatus(
 export async function closeRequest(id: number, comment: string, photos: File[]): Promise<RequestCard> {
     const formData = new FormData();
     formData.set('comment', comment);
-    photos.forEach((photo, index) => formData.append(`photos[${index}]`, photo));
+    photos.forEach((photo) => formData.append('photos[]', photo));
     return (await api<{ data: RequestCard }>(`/requests/${id}/close`, { formData })).data;
 }
 
@@ -69,7 +69,7 @@ export async function createRequest(body: {
         if (body.entrance != null) formData.set('entrance', String(body.entrance));
         if (body.flat) formData.set('flat', body.flat);
         if (body.unsure) formData.set('unsure', '1');
-        photos.forEach((photo, index) => formData.append(`photos[${index}]`, photo));
+        photos.forEach((photo) => formData.append('photos[]', photo));
         return (await api<{ data: RequestCard }>('/requests', { formData })).data;
     }
 

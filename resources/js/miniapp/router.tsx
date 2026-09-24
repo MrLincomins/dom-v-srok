@@ -4,8 +4,7 @@ import { useAuth } from './app/authContext';
 import { texts } from './app/texts';
 import { FullscreenSpinner } from './components/FullscreenSpinner';
 import { ErrorState } from './components/ErrorState';
-import { ListSkeleton } from './components/ListSkeleton';
-import { Screen } from './components/Screen';
+import { RouteError } from './components/RouteError';
 import { HomePage } from './features/home/HomePage';
 import { HousePage } from './features/resident/HousePage';
 
@@ -29,14 +28,19 @@ const OrganizationPage = lazy(() =>
         default: module.OrganizationPage,
     })),
 );
+const OrganizationSectionPage = lazy(() =>
+    import('./features/organization/OrganizationPage').then((module) => ({
+        default: module.OrganizationSectionPage,
+    })),
+);
 const JournalPage = lazy(() =>
     import('./features/journal/JournalPage').then((module) => ({ default: module.JournalPage })),
 );
 
-/** Не монтируем рабочие экраны, пока не понятно, кто открыл приложение. */
+/** Пока не ясно, кто вошёл, рабочие экраны не показываем. */
 function Gate() {
     const auth = useAuth();
-    if (auth.status === 'loading') return <FullscreenSpinner />;
+    if (auth.status === 'loading') return <FullscreenSpinner label={texts.auth.loading} />;
     if (auth.status === 'error')
         return (
             <ErrorState message={auth.error ?? undefined} onRetry={() => void auth.refresh()} fullscreen />
@@ -49,53 +53,10 @@ function Gate() {
         );
     return (
         <div className="app-shell">
-            <Suspense fallback={<RouteFallback />}>
+            <Suspense fallback={<FullscreenSpinner />}>
                 <Outlet />
             </Suspense>
         </div>
-    );
-}
-
-function RouteFallback() {
-    const { pathname } = useLocation();
-    const { user } = useAuth();
-    const requestId = Number(pathname.split('/').at(-1));
-
-    if (pathname.includes('/requests/')) {
-        return (
-            <Screen
-                title={
-                    Number.isFinite(requestId) ? texts.request.title(requestId) : texts.request.invalidTitle
-                }
-                backTo="/"
-            >
-                <ListSkeleton rows={2} />
-            </Screen>
-        );
-    }
-
-    const residentHome = user?.role === 'resident' && pathname === '/';
-
-    return (
-        <Screen
-            className="is-fallback"
-            title={
-                pathname.includes('/organization')
-                    ? texts.organization.title
-                    : pathname.includes('/house')
-                      ? texts.resident.house
-                      : pathname.includes('/create')
-                          ? texts.home.createRequest
-                          : pathname.includes('/journal')
-                            ? texts.journal.title
-                            : residentHome
-                              ? texts.home.residentTitle
-                              : texts.queue.title
-            }
-            titleLevel={pathname === '/' || residentHome ? 2 : 1}
-        >
-            <ListSkeleton />
-        </Screen>
     );
 }
 
@@ -113,6 +74,7 @@ export const router = createBrowserRouter(
     [
         {
             element: <Gate />,
+            errorElement: <RouteError />,
             children: [
                 { index: true, element: <HomePage /> },
                 { path: 'requests/:id', element: <RequestPage /> },
@@ -121,6 +83,7 @@ export const router = createBrowserRouter(
                     children: [
                         { path: 'queue', element: <ToHome /> },
                         { path: 'organization', element: <OrganizationPage /> },
+                        { path: 'organization/:section', element: <OrganizationSectionPage /> },
                         { path: 'journal', element: <JournalPage /> },
                     ],
                 },

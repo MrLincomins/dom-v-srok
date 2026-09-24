@@ -1,0 +1,1 @@
+export { ResidentCabinet } from './ResidentCabinet';
