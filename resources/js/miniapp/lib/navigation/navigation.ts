@@ -1,6 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { bindBackButton, useNativeBackButton } from '@/bridge/maxWebApp';
+import { bindBackButton, getPlatform, useNativeBackButton } from '@/bridge/maxWebApp';
+import { DESKTOP_QUERY } from '@/lib/useWideLayout';
 
 const EDGE = 28;
 const DISTANCE = 72;
@@ -24,10 +25,19 @@ function isHorizontallyScrollable(target: EventTarget | null): boolean {
     return false;
 }
 
-/** Назад — история, нативный BackButton и свайп от левого края вправо. */
+export function edgeSwipeAllowed(platform = getPlatform(), desktopWidth = desktopWidthNow()): boolean {
+    return platform !== 'desktop' && !desktopWidth;
+}
+
+function desktopWidthNow(): boolean {
+    return window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+/** Назад: история, кнопка MAX и на телефоне свайп от левого края. */
 export function useScreenBack(fallback?: string) {
     const navigate = useNavigate();
     const native = useNativeBackButton();
+    const [desktopWidth, setDesktopWidth] = useState(desktopWidthNow);
 
     const goBack = useCallback(() => {
         if (historyIndex() > 0) {
@@ -43,7 +53,15 @@ export function useScreenBack(fallback?: string) {
     }, [fallback, goBack, native]);
 
     useEffect(() => {
-        if (!fallback) return undefined;
+        const media = window.matchMedia(DESKTOP_QUERY);
+        const onChange = () => setDesktopWidth(media.matches);
+        onChange();
+        media.addEventListener('change', onChange);
+        return () => media.removeEventListener('change', onChange);
+    }, []);
+
+    useEffect(() => {
+        if (!fallback || !edgeSwipeAllowed(getPlatform(), desktopWidth)) return undefined;
 
         let startX = 0;
         let startY = 0;
@@ -81,7 +99,7 @@ export function useScreenBack(fallback?: string) {
             window.removeEventListener('touchstart', onStart);
             window.removeEventListener('touchend', onEnd);
         };
-    }, [fallback, goBack]);
+    }, [desktopWidth, fallback, goBack]);
 
     return { goBack, showHeaderBack: Boolean(fallback) && !native };
 }

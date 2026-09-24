@@ -20,13 +20,19 @@ export function ExecutorsCard() {
                         key={executor.id}
                         separator
                         title={executor.name}
-                        subtitle={[executor.specialty, executor.phone].filter(Boolean).join(' · ')}
+                        subtitle={
+                            <span className="cell-lines">
+                                {executor.specialty ? <span>{executor.specialty}</span> : null}
+                                {executor.phone ? <span>{executor.phone}</span> : null}
+                            </span>
+                        }
                         onClick={() => card.fill(executor)}
                         after={
                             <Button
                                 type="button"
                                 size="small"
-                                variant="ghost"
+                                variant="secondary"
+                                className="btn-remove"
                                 disabled={card.busy}
                                 onClick={(event) => {
                                     event.preventDefault();
@@ -75,19 +81,23 @@ export function ExecutorsCard() {
                 {card.editing ? texts.organization.saveExecutor : texts.organization.addExecutor}
             </Button>
             <MutationError error={card.create.error ?? card.update.error ?? card.archive.error} />
-            {card.pendingArchiveId !== null && (
-                <ConfirmDialog
-                    title={texts.organization.archiveConfirm}
-                    confirm={texts.organization.archiveYes}
-                    cancel={texts.organization.cancel}
-                    loading={card.archive.isPending}
-                    onCancel={() => card.setPendingArchiveId(null)}
-                    onConfirm={() => {
-                        if (card.pendingArchiveId !== null) card.archive.mutate(card.pendingArchiveId);
-                    }}
-                />
-            )}
-            <Notice text={card.notice} onGone={() => card.setNotice(null)} />
+            <ConfirmDialog
+                open={card.pendingArchiveId !== null}
+                title={texts.organization.archiveConfirm}
+                confirm={texts.organization.archiveYes}
+                cancel={texts.organization.cancel}
+                loading={card.busy}
+                onCancel={() => card.setPendingArchiveId(null)}
+                onConfirm={() => {
+                    if (card.pendingArchiveId !== null) card.archive.mutate(card.pendingArchiveId);
+                }}
+            />
+            <Notice
+                text={card.notice.text}
+                tone={card.notice.tone}
+                revision={card.notice.revision}
+                onGone={card.notice.clear}
+            />
         </form>
     );
 }

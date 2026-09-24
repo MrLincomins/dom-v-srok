@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { archiveExecutor, createExecutor, listExecutors, updateExecutor } from '@/api/organization';
 import type { Executor } from '@/api/types';
 import { texts } from '@/app/texts';
-import { isCompletePhone, localPhoneDigits, toStoredPhone } from '@/lib/phone';
+import { useNoticeState } from '@/components/Notice';
+import { localPhoneDigits, toStoredPhone } from '@/lib/phone';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 
 export function useExecutorsCard() {
     const client = useQueryClient();
@@ -18,7 +20,7 @@ export function useExecutorsCard() {
     const [nameError, setNameError] = useState('');
     const [phoneError, setPhoneError] = useState('');
     const [pendingArchiveId, setPendingArchiveId] = useState<number | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
+    const notice = useNoticeState();
 
     const fill = (executor: Executor | null) => {
         setEditing(executor);
@@ -33,7 +35,7 @@ export function useExecutorsCard() {
         mutationFn: createExecutor,
         onSuccess: () => {
             fill(null);
-            setNotice(texts.organization.executorAdded);
+            notice.show(texts.organization.executorAdded, 'success');
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -46,7 +48,7 @@ export function useExecutorsCard() {
             }),
         onSuccess: () => {
             fill(null);
-            setNotice(texts.organization.executorSaved);
+            notice.show(texts.organization.executorSaved, 'success');
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -55,7 +57,7 @@ export function useExecutorsCard() {
         onSuccess: () => {
             fill(null);
             setPendingArchiveId(null);
-            setNotice(texts.organization.executorRemoved);
+            notice.show(texts.organization.executorRemoved, 'success');
             void client.invalidateQueries({ queryKey: ['organization', 'executors'] });
         },
     });
@@ -63,17 +65,19 @@ export function useExecutorsCard() {
     const submit = (event: FormEvent) => {
         event.preventDefault();
         const trimmed = name.trim();
-        if (!trimmed) {
-            setNameError(texts.organization.executorNameRequired);
+        const storedPhone = toStoredPhone(phone);
+        const nextNameError = trimmed ? '' : texts.organization.executorNameRequired;
+        const nextPhoneError = storedPhone
+            ? ''
+            : phone.length === 0
+              ? texts.organization.phoneRequired
+              : texts.organization.phoneError;
+        setNameError(nextNameError);
+        setPhoneError(nextPhoneError);
+        if (nextNameError || nextPhoneError || !storedPhone) {
+            notice.show(nextPhoneError || nextNameError, 'error');
             return;
         }
-        if (phone.length > 0 && !isCompletePhone(phone)) {
-            setPhoneError(texts.organization.phoneError);
-            return;
-        }
-        setNameError('');
-        setPhoneError('');
-        const storedPhone = toStoredPhone(phone) ?? undefined;
         if (editing) {
             update.mutate(editing.id);
             return;
@@ -85,7 +89,7 @@ export function useExecutorsCard() {
         });
     };
 
-    const busy = create.isPending || update.isPending || archive.isPending;
+    const busy = useDelayedFlag(create.isPending || update.isPending || archive.isPending);
 
     return {
         executors,
@@ -103,7 +107,6 @@ export function useExecutorsCard() {
         pendingArchiveId,
         setPendingArchiveId,
         notice,
-        setNotice,
         fill,
         create,
         update,

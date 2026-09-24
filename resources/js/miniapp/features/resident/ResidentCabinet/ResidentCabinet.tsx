@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
 import { openExternalLink } from '@/bridge/maxWebApp';
-import { Notice } from '@/components/Notice';
+import { Notice, useNoticeState } from '@/components/Notice';
 import { Screen } from '@/components/Screen';
 import { HouseSheet } from '@/features/resident/HouseSheet';
 import { MyRequestsList } from '@/features/resident/MyRequestsPage';
@@ -10,15 +10,15 @@ import { MyRequestsList } from '@/features/resident/MyRequestsPage';
 export function ResidentCabinet() {
     const { user } = useAuth();
     const [houseOpen, setHouseOpen] = useState(false);
-    const [notice, setNotice] = useState<string | null>(null);
+    const notice = useNoticeState();
     const closeHouse = useCallback(() => setHouseOpen(false), []);
     const house = user?.house;
     const startUrl = house?.start_url;
     const openChat = useCallback(() => {
         if (!startUrl) return;
-        setNotice(texts.home.createRequestNotice);
+        notice.show(texts.home.createRequestNotice, 'success');
         openExternalLink(startUrl);
-    }, [startUrl]);
+    }, [startUrl, notice.show]);
 
     return (
         <Screen
@@ -51,7 +51,12 @@ export function ResidentCabinet() {
             ) : null}
             <MyRequestsList />
             <HouseSheet open={houseOpen} onClose={closeHouse} />
-            <Notice text={notice} onGone={() => setNotice(null)} />
+            <Notice
+                text={notice.text}
+                tone={notice.tone}
+                revision={notice.revision}
+                onGone={notice.clear}
+            />
         </Screen>
     );
 }

@@ -134,7 +134,7 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                     {texts.request.actions.comment}
                 </Button>
             </div>
-            <Notice text={noticeText} onGone={clearNotice} />
+            <Notice text={noticeText} tone="error" onGone={clearNotice} />
         </section>
     );
 }

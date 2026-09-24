@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** Скелет показываем только если загрузка длится дольше delay, чтобы экран не дёргался. */
+/** Спиннер не показываем, если запрос успел за delay — так экран не моргает. */
 export function useDelayedFlag(active: boolean, delay = 500): boolean {
     const [armed, setArmed] = useState(false);
     if (!active && armed) {

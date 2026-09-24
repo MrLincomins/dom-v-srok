@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 export const TABLET_QUERY = '(min-width: 768px)';
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 
-/** Планшет и ПК: шторка как окно, без свайпа вниз. */
+/** На широком экране шторка как окно, без свайпа вниз. */
 export function useWideLayout(): boolean {
     const [wide, setWide] = useState(() => window.matchMedia(TABLET_QUERY).matches);
 

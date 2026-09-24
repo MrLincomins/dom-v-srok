@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { RequestSection } from '@/components/RequestSection';
 import { Screen } from '@/components/Screen';
 import { SettingsField } from '@/components/SettingsField';
+import { Notice } from '@/components/Notice';
 import { MutationError } from '@/features/request/MutationError';
 
 type Step = 'emergency' | 'category' | 'subcategory' | 'details' | 'address' | 'preview';
@@ -92,6 +93,14 @@ export function CreateRequestPage() {
 
     return (
         <Screen title={title} backTo="/" contentClassName="flex min-w-0 flex-col gap-16">
+            <Notice
+                text={detailsError ?? photoError}
+                tone="error"
+                onGone={() => {
+                    setDetailsError(null);
+                    setPhotoError(null);
+                }}
+            />
             {step !== 'emergency' && (
                 <Button type="button" variant="ghost" size="small" onClick={backStep}>
                     {texts.app.back}
@@ -136,8 +145,6 @@ export function CreateRequestPage() {
                 <DetailsStep
                     description={description}
                     photos={photos}
-                    photoError={photoError}
-                    error={detailsError}
                     onDescription={(value) => {
                         setDescription(value);
                         if (detailsError) setDetailsError(null);
@@ -253,16 +260,12 @@ function CategoryStep({
 function DetailsStep({
     description,
     photos,
-    photoError,
-    error,
     onDescription,
     onPhotos,
     onNext,
 }: {
     description: string;
     photos: File[];
-    photoError: string | null;
-    error: string | null;
     onDescription: (value: string) => void;
     onPhotos: (files: File[]) => void;
     onNext: () => void;
@@ -323,7 +326,6 @@ function DetailsStep({
                 {texts.request.addPhoto}
                 {photos.length > 0 ? ` · ${texts.request.selectedPhotos(photos.length)}` : ''}
             </Button>
-            <MutationError error={photoError ?? error} />
             <Button type="button" variant="primary" size="large" stretched onClick={onNext}>
                 {texts.resident.create.next}
             </Button>

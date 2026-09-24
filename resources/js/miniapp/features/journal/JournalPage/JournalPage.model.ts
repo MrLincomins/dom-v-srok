@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { downloadJournalCsv, getJournal } from '@/api/journal';
 import { texts } from '@/app/texts';
+import { useNoticeState } from '@/components/Notice';
 import { daysBetween, formatDateInput, startOfMonthInput } from '@/lib/dates';
 import type { JournalStat } from './JournalPage.types';
 
@@ -26,10 +27,15 @@ export function describePeriod(from: string, to: string): string | null {
 
 export function useJournalPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [notice, setNotice] = useState<string | null>(null);
+    const notice = useNoticeState();
     const from = searchParams.get('from') || startOfMonthInput();
     const to = searchParams.get('to') || formatDateInput();
     const periodError = describePeriod(from, to);
+
+    useEffect(() => {
+        if (!periodError) return;
+        notice.show(periodError, 'error');
+    }, [periodError, notice.show]);
 
     const journal = useInfiniteQuery({
         queryKey: ['journal', from, to],
@@ -43,7 +49,9 @@ export function useJournalPage() {
 
     const csv = useMutation({
         mutationFn: () => downloadJournalCsv({ from, to }),
-        onSuccess: () => setNotice(texts.journal.csvDone),
+        onSuccess: () => {
+            notice.show(texts.journal.csvDone, 'success');
+        },
     });
 
     const setPeriod = (key: 'from' | 'to', value: string) => {
@@ -62,5 +70,16 @@ export function useJournalPage() {
     const summary = pages?.[0]?.meta.summary;
     const ready = Boolean(journal.data) && !journal.isPlaceholderData && periodError === null;
 
-    return { from, to, periodError, journal, csv, setPeriod, items, summary, ready, notice, setNotice };
+    return {
+        from,
+        to,
+        periodError,
+        journal,
+        csv,
+        setPeriod,
+        items,
+        summary,
+        ready,
+        notice,
+    };
 }

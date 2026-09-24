@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCompletePhone, localPhoneDigits, telHref, toStoredPhone } from './phone';
+import { formatLocalPhone, isCompletePhone, localPhoneDigits, telHref, toStoredPhone } from './phone';
 
 describe('телефон для звонка', () => {
     it('убирает пробелы и скобки', () => {
@@ -21,5 +21,14 @@ describe('телефон в поле', () => {
         expect(toStoredPhone('9172472389')).toBe('+79172472389');
         expect(toStoredPhone('')).toBeNull();
         expect(toStoredPhone('917')).toBeNull();
+    });
+
+    it('рисует номер как (000) 000-00-00', () => {
+        expect(formatLocalPhone('')).toBe('');
+        expect(formatLocalPhone('917')).toBe('(917');
+        expect(formatLocalPhone('917247')).toBe('(917) 247');
+        expect(formatLocalPhone('91724723')).toBe('(917) 247-23');
+        expect(formatLocalPhone('9172472389')).toBe('(917) 247-23-89');
+        expect(formatLocalPhone('+7 (917) 247-23-89')).toBe('(917) 247-23-89');
     });
 });

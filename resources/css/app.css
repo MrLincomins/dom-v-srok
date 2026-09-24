@@ -3,7 +3,7 @@
 @source '../js/miniapp/**/*.{ts,tsx}';
 
 @theme inline {
-    /* 1 unit = 1px. Для layout только 8 / 12 / 16 / 24 / 32. */
+    /* 1 в Tailwind = 1px. В вёрстке шагаем 8 / 12 / 16 / 24 / 32. */
     --spacing: 0.0625rem;
     --color-accent: #471aff;
     --color-accent-muted: rgb(71 26 255 / 16%);
@@ -107,7 +107,7 @@ html[data-color-scheme='light'] {
     --info-muted: rgb(0 122 255 / 12%);
 }
 
-/* Оболочка приложения */
+/* Экран и прокрутка */
 html,
 body,
 #app {
@@ -220,9 +220,16 @@ body {
 .screen-content [class*='CellList_mode_island'] {
     padding-left: 0;
     padding-right: 0;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
-/* Карточки заявок и ячейки */
+.screen-content [class*='CellHeader'] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* Заявки */
 .request-card [class*='CellSimple_height_'] {
     min-height: 72px;
     padding: 16px 24px 16px 16px !important;
@@ -315,8 +322,20 @@ body {
 }
 
 .settings-card [class*='CellSimple_height_'] {
-    min-height: 52px;
+    min-height: 56px;
     padding: 12px 16px !important;
+}
+
+.switch-hit {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    box-sizing: content-box;
+    min-width: 52px;
+    min-height: 44px;
+    margin: -12px -16px -12px 0;
+    padding: 12px 16px;
+    pointer-events: none;
 }
 
 .request-block {
@@ -361,7 +380,7 @@ body {
 .request-block-title,
 .compact-note-label {
     margin: 0;
-    padding: 0 16px;
+    padding: 0;
     color: var(--fg-label);
     font-size: 13px;
     font-weight: 600;
@@ -386,6 +405,11 @@ body {
     padding-left: 0;
 }
 
+.compact-note-field {
+    position: relative;
+    display: block;
+}
+
 .compact-note-input {
     box-sizing: border-box;
     width: 100%;
@@ -400,6 +424,16 @@ body {
     line-height: 20px;
     outline: none;
     resize: none;
+}
+
+.compact-note-field.is-filled:focus-within .compact-note-input {
+    padding-right: 40px;
+}
+
+.compact-note-field .field-clear {
+    position: absolute;
+    top: 8px;
+    right: 8px;
 }
 
 .compact-note-input::placeholder {
@@ -422,10 +456,26 @@ body {
     color: var(--fg-on-strong) !important;
 }
 
+.btn-remove {
+    background: var(--bg-card-hover) !important;
+    color: var(--negative) !important;
+}
+
+.btn-confirm {
+    background: var(--negative) !important;
+    color: var(--fg-on-strong) !important;
+}
+
+.cell-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .settings-field {
     position: relative;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     box-sizing: border-box;
     min-height: 64px;
     padding: 10px 16px;
@@ -444,15 +494,16 @@ body {
     letter-spacing: -0.4px;
     line-height: 22px;
     pointer-events: none;
-    transform: translate3d(0, 0, 0) scale(1);
-    transform-origin: left center;
-    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-field-value:not(:placeholder-shown)+.settings-field-label {
+    visibility: hidden;
 }
 
 .settings-field-value {
     width: 100%;
     min-width: 0;
-    padding: 16px 0 0;
+    padding: 0;
     border: 0;
     background: transparent;
     color: var(--fg);
@@ -491,11 +542,6 @@ body {
     transform: translateY(-50%);
 }
 
-.settings-field-value:not(:placeholder-shown)+.settings-field-label,
-.settings-field-value:focus+.settings-field-label {
-    transform: translate3d(0, -12px, 0) scale(0.76);
-}
-
 .settings-field.is-invalid {
     box-shadow: inset 0 0 0 1px var(--invalid);
 }
@@ -505,6 +551,35 @@ body {
     color: var(--invalid);
     font-size: 13px;
     line-height: 16px;
+}
+
+.field-clear {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--fg) 16%, transparent);
+    color: var(--fg);
+    line-height: 0;
+    cursor: pointer;
+}
+
+.field-clear svg {
+    display: block;
+}
+
+.settings-field:focus-within .field-clear,
+.compact-note-field:focus-within .field-clear {
+    display: flex;
+}
+
+[class*='Input__clearButton'] {
+    color: var(--fg) !important;
 }
 
 .settings-phone {
@@ -523,6 +598,7 @@ body {
 
 .settings-phone .settings-field-value {
     padding: 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .settings-phone .settings-field-value::placeholder {
@@ -530,7 +606,7 @@ body {
 }
 
 .settings-hint {
-    padding: 0 16px;
+    padding: 0;
     color: var(--fg-label);
 }
 
@@ -543,6 +619,12 @@ body {
     justify-content: center;
     padding: 24px;
     background: var(--bg-overlay);
+    animation: sheet-fade 0.28s ease;
+}
+
+.confirm-backdrop.is-closing {
+    pointer-events: none;
+    animation: sheet-fade-out 0.28s ease forwards;
 }
 
 .confirm-card {
@@ -551,6 +633,11 @@ body {
     padding: 20px 16px 16px;
     border-radius: 14px;
     background: var(--bg-raised);
+    animation: confirm-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.confirm-backdrop.is-closing .confirm-card {
+    animation: confirm-out 0.22s ease forwards;
 }
 
 .confirm-title {
@@ -571,21 +658,48 @@ body {
 
 .notice {
     position: fixed;
-    inset: calc(16px + env(safe-area-inset-top, 0px)) 16px auto;
+    left: 16px;
+    right: 16px;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    bottom: auto;
     z-index: 40;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: var(--bg-raised);
-    color: var(--fg);
-    font-size: 15px;
-    line-height: 20px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    margin-inline: auto;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 590;
+    letter-spacing: -0.2px;
+    line-height: 18px;
     text-align: center;
     box-shadow: 0 8px 24px var(--bg-shadow);
-    animation: drop-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+    animation: notice-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notice.is-success {
+    background: var(--positive);
+    color: var(--fg-on-strong);
+}
+
+.notice.is-error {
+    background: var(--negative);
+    color: var(--fg-on-strong);
 }
 
 .notice.is-leaving {
-    animation: drop-out 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: notice-out 0.22s ease forwards;
+}
+
+.cell-copied {
+    flex-shrink: 0;
+    color: var(--positive);
+    font-size: 15px;
+    font-weight: 590;
+    letter-spacing: -0.2px;
+    line-height: 20px;
+    white-space: nowrap;
 }
 
 .request-card [class*='CellSimple__title'] {
@@ -593,6 +707,10 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow-wrap: normal;
+}
+
+.screen-content [class*='CellList_mode_island'] [class*='CellList__body'] {
+    border-radius: 12px;
 }
 
 .screen-content [class*='CellList__body']> :first-child {
@@ -1525,7 +1643,7 @@ body {
     }
 }
 
-@keyframes drop-in {
+@keyframes notice-in {
     from {
         opacity: 0;
         transform: translate3d(0, -10px, 0);
@@ -1533,14 +1651,14 @@ body {
 
     to {
         opacity: 1;
-        transform: translate3d(0, 0, 0);
+        transform: none;
     }
 }
 
-@keyframes drop-out {
+@keyframes notice-out {
     from {
         opacity: 1;
-        transform: translate3d(0, 0, 0);
+        transform: none;
     }
 
     to {
@@ -1696,7 +1814,7 @@ body {
     }
 }
 
-/* Планшет: 768–1023. ПК: от 1024. Широкий ПК: от 1440. Мобилка — стили выше. */
+/* Ширина: планшет 768, ПК 1024, две колонки 1240, поля 1280, широкий 1440. */
 @media (min-width: 768px) {
     .screen {
         width: 100%;
@@ -1767,14 +1885,10 @@ body {
     }
 
     .notice {
-        left: 0;
-        right: 0;
-        width: max-content;
         max-width: min(400px, calc(100vw - 48px));
-        margin-inline: auto;
-        padding: 15px 20px;
-        font-size: 16px;
-        line-height: 22px;
+        padding: 11px 18px;
+        font-size: 15px;
+        line-height: 20px;
     }
 
     .confirm-card {
@@ -1834,10 +1948,6 @@ body {
         padding: 16px 32px 48px;
     }
 
-    .journal-stats {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
     .house-panel {
         grid-template-columns: minmax(0, 1fr) 260px;
         column-gap: 24px;
@@ -1853,6 +1963,25 @@ body {
         height: 180px;
     }
 
+    .auth-panel {
+        width: min(420px, 100%);
+    }
+
+    .notice {
+        max-width: min(420px, calc(100vw - 48px));
+    }
+
+    .sheet-backdrop,
+    .sheet-backdrop.is-wide {
+        padding: 32px;
+    }
+}
+
+@media (min-width: 1240px) {
+    .journal-stats {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
     .request-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1863,30 +1992,18 @@ body {
     .request-list .request-tile {
         height: 100%;
     }
-
-    .auth-panel {
-        width: min(420px, 100%);
-    }
-
-    .notice {
-        max-width: min(420px, calc(100vw - 48px));
-        padding: 16px 22px;
-    }
-
-    .sheet-backdrop,
-    .sheet-backdrop.is-wide {
-        padding: 32px;
-    }
 }
 
-@media (min-width: 1440px) {
+@media (min-width: 1280px) {
     .screen-content {
         box-sizing: border-box;
         max-width: 1440px;
         margin-inline: auto;
         padding: 24px 48px 56px;
     }
+}
 
+@media (min-width: 1440px) {
     .request-photo {
         width: 220px;
         height: 220px;
@@ -1902,6 +2019,30 @@ body {
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes confirm-in {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes confirm-out {
+    from {
+        opacity: 1;
+        transform: none;
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0) scale(0.96);
     }
 }
 

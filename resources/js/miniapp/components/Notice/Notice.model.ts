@@ -4,17 +4,19 @@ import type { NoticeProps } from './Notice.types';
 const SHOW_MS = 2400;
 const LEAVE_MS = 280;
 
-export function useNotice({ text, onGone }: NoticeProps) {
+export function useNotice({ text, revision = 0, onGone }: NoticeProps) {
     const [shown, setShown] = useState<string | null>(text);
     const [leaving, setLeaving] = useState(false);
     const [typedAt, setTypedAt] = useState(0);
+    const [seenRevision, setSeenRevision] = useState(revision);
 
     if (text == null && shown != null) {
         setShown(null);
         setLeaving(false);
-    } else if (text != null && text !== shown) {
+    } else if (text != null && (text !== shown || revision !== seenRevision)) {
         setShown(text);
         setLeaving(false);
+        setSeenRevision(revision);
     }
 
     useEffect(() => {

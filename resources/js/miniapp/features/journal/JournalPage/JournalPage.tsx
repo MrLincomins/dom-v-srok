@@ -33,6 +33,7 @@ export function JournalPage() {
                     type="date"
                     value={page.from}
                     max={page.to}
+                    invalid={page.periodError !== null}
                     onChange={(event) => page.setPeriod('from', event.target.value)}
                 />
                 <SettingsField
@@ -41,16 +42,12 @@ export function JournalPage() {
                     value={page.to}
                     min={page.from}
                     max={formatDateInput()}
+                    invalid={page.periodError !== null}
                     onChange={(event) => page.setPeriod('to', event.target.value)}
                 />
                 <Typography.Body variant="small" className="settings-hint">
                     {texts.journal.periodHint}
                 </Typography.Body>
-                {page.periodError && (
-                    <Typography.Body variant="small" className="px-16 text-negative" role="alert">
-                        {page.periodError}
-                    </Typography.Body>
-                )}
             </div>
             <Button
                 type="button"
@@ -96,7 +93,12 @@ export function JournalPage() {
                     {texts.queue.loadMore}
                 </Button>
             )}
-            <Notice text={page.notice} onGone={() => page.setNotice(null)} />
+            <Notice
+                text={page.notice.text}
+                tone={page.notice.tone}
+                revision={page.notice.revision}
+                onGone={page.notice.clear}
+            />
         </Screen>
     );
 }

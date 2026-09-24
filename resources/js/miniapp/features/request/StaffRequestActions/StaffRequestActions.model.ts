@@ -8,7 +8,7 @@ import {
 } from '@/api/requests';
 import type { RequestCard, RequestStatus } from '@/api/types';
 
-/** Ответ мутации сразу кладём в карточку; списки перезапрашиваем только при смене её состояния. */
+/** Карточку обновляем сразу. Списки — только если у заявки сменилось состояние. */
 export function useStaffRequestActions(id: number) {
     const client = useQueryClient();
     const syncCard = (card: RequestCard) => {

@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContractor, deleteContractor, listContractors } from '@/api/organization';
 import { texts } from '@/app/texts';
-import { isCompletePhone, toStoredPhone } from '@/lib/phone';
+import { useNoticeState } from '@/components/Notice';
+import { toStoredPhone } from '@/lib/phone';
+import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import type { ContractorType } from '../constants';
 
 export function useContractorsCard() {
@@ -17,7 +19,7 @@ export function useContractorsCard() {
     const [nameError, setNameError] = useState('');
     const [phoneError, setPhoneError] = useState('');
     const [pendingId, setPendingId] = useState<number | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
+    const notice = useNoticeState();
 
     const reset = () => {
         setName('');
@@ -30,7 +32,7 @@ export function useContractorsCard() {
         mutationFn: createContractor,
         onSuccess: () => {
             reset();
-            setNotice(texts.organization.contractorAdded);
+            notice.show(texts.organization.contractorAdded, 'success');
             void client.invalidateQueries({ queryKey: ['organization', 'contractors'] });
         },
     });
@@ -38,7 +40,7 @@ export function useContractorsCard() {
         mutationFn: deleteContractor,
         onSuccess: () => {
             setPendingId(null);
-            setNotice(texts.organization.contractorRemoved);
+            notice.show(texts.organization.contractorRemoved, 'success');
             void client.invalidateQueries({ queryKey: ['organization', 'contractors'] });
         },
     });
@@ -46,24 +48,27 @@ export function useContractorsCard() {
     const submit = (event: FormEvent) => {
         event.preventDefault();
         const trimmed = name.trim();
-        if (!trimmed) {
-            setNameError(texts.organization.contractorNameRequired);
+        const storedPhone = toStoredPhone(phone);
+        const nextNameError = trimmed ? '' : texts.organization.contractorNameRequired;
+        const nextPhoneError = storedPhone
+            ? ''
+            : phone.length === 0
+              ? texts.organization.phoneRequired
+              : texts.organization.phoneError;
+        setNameError(nextNameError);
+        setPhoneError(nextPhoneError);
+        if (nextNameError || nextPhoneError || !storedPhone) {
+            notice.show(nextPhoneError || nextNameError, 'error');
             return;
         }
-        if (phone.length > 0 && !isCompletePhone(phone)) {
-            setPhoneError(texts.organization.phoneError);
-            return;
-        }
-        setNameError('');
-        setPhoneError('');
         create.mutate({
             type,
             name: trimmed,
-            phone: toStoredPhone(phone) ?? undefined,
+            phone: storedPhone,
         });
     };
 
-    const busy = create.isPending || remove.isPending;
+    const busy = useDelayedFlag(create.isPending || remove.isPending);
 
     return {
         contractors,
@@ -80,7 +85,6 @@ export function useContractorsCard() {
         pendingId,
         setPendingId,
         notice,
-        setNotice,
         create,
         remove,
         submit,

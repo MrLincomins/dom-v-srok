@@ -1,40 +1,33 @@
-import { useQuery } from '@tanstack/react-query';
-import { getOrganization, listContractors, listExecutors, listHouses } from '@/api/organization';
+import { texts } from '@/app/texts';
 
-export function useOrganizationPage() {
-    const organization = useQuery({
-        queryKey: ['organization'],
-        queryFn: ({ signal }) => getOrganization(signal),
-    });
-    const houses = useQuery({
-        queryKey: ['organization', 'houses'],
-        queryFn: ({ signal }) => listHouses(signal),
-    });
-    const executors = useQuery({
-        queryKey: ['organization', 'executors'],
-        queryFn: ({ signal }) => listExecutors(signal),
-    });
-    const contractors = useQuery({
-        queryKey: ['organization', 'contractors'],
-        queryFn: ({ signal }) => listContractors(signal),
-    });
+export const ORGANIZATION_SECTIONS = [
+    { to: '/organization/contacts', title: texts.organization.contacts, hint: texts.organization.contactsHint },
+    {
+        to: '/organization/contracts',
+        title: texts.organization.contracts,
+        hint: texts.organization.contractsHintShort,
+    },
+    { to: '/organization/houses', title: texts.organization.houses, hint: texts.organization.housesHint },
+    {
+        to: '/organization/executors',
+        title: texts.organization.executors,
+        hint: texts.organization.executorsHint,
+    },
+    {
+        to: '/organization/contractors',
+        title: texts.organization.contractors,
+        hint: texts.organization.contractorsHintShort,
+    },
+] as const;
 
-    const loading =
-        organization.isPending || houses.isPending || executors.isPending || contractors.isPending;
-    const error = organization.error ?? houses.error ?? executors.error ?? contractors.error;
-    const failureCount = Math.max(
-        organization.failureCount,
-        houses.failureCount,
-        executors.failureCount,
-        contractors.failureCount,
-    );
+export type OrganizationSectionKey = 'contacts' | 'contracts' | 'houses' | 'executors' | 'contractors';
 
-    const retry = () => {
-        void organization.refetch();
-        void houses.refetch();
-        void executors.refetch();
-        void contractors.refetch();
-    };
+const SECTION_KEYS = new Set<string>(ORGANIZATION_SECTIONS.map((item) => item.to.slice('/organization/'.length)));
 
-    return { organization, houses, loading, error, failureCount, retry };
+export function isOrganizationSection(value: string | undefined): value is OrganizationSectionKey {
+    return value != null && SECTION_KEYS.has(value);
+}
+
+export function sectionTitle(section: OrganizationSectionKey): string {
+    return ORGANIZATION_SECTIONS.find((item) => item.to === `/organization/${section}`)?.title ?? texts.organization.title;
 }

@@ -1,6 +1,6 @@
-/** Тексты кабинета держим рядом, чтобы терминология не расходилась между экранами. */
+/** Подписи кабинета в одном месте, чтобы на экранах звучало одинаково. */
 export const texts = {
-    app: { back: 'Назад', loading: 'Загрузка…' },
+    app: { back: 'Назад', loading: 'Загрузка…', copied: 'Скопировано', clear: 'Очистить' },
     auth: {
         loading: 'Входим…',
         openInMax: 'Откройте кабинет из бота в MAX',
@@ -26,7 +26,7 @@ export const texts = {
         overdueHint: 'Срок вышел — откройте сначала эти',
         closedHint: 'Уже сделали или передали дальше',
         organization: 'Организация',
-        organizationHint: 'Контакты, подрядчики, дома, журнал',
+        organizationHint: 'Контакты, договоры, дома, журнал',
         residentTitle: 'Кабинет',
         residentRole: 'Житель',
         myRequests: 'Мои заявки',
@@ -96,9 +96,17 @@ export const texts = {
         title: 'Организация',
         name: 'Название',
         contacts: 'Контакты',
+        contactsHint: 'Название, телефоны и почта',
+        contractsHintShort: 'Какие услуги закрывает РСО',
+        housesHint: 'QR, чат и ссылка для жителей',
+        housesEmpty: 'Домов пока нет.',
+        executorsHint: 'Кто выезжает на заявки',
+        contractorsHintShort: 'Кому сразу уходят заявки',
         phoneAds: 'Аварийная служба',
         phoneDispatch: 'Диспетчерская',
         email: 'Почта',
+        emailError: 'Укажите правильную почту',
+        nameRequired: 'Укажите название',
         hours: 'Часы приёма',
         address: 'Адрес приёма',
         contracts: 'Прямые договоры с РСО',
@@ -128,6 +136,7 @@ export const texts = {
         executorNameRequired: 'Укажите имя',
         executorPhone: 'Телефон',
         phonePrefix: '+7',
+        phoneRequired: 'Укажите номер телефона',
         phoneError: 'Введите 10 цифр, без +7',
         executorSpecialty: 'Специальность',
         houseBind: 'Как привязать чат',

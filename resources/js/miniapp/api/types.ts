@@ -1,4 +1,4 @@
-// schema.d.ts генерируется из OpenAPI; здесь оставляем только короткие имена для приложения.
+// Короткие имена для приложения. Полная схема — в schema.d.ts, её собирает OpenAPI.
 import type { components, operations } from './schema';
 
 export type User = components['schemas']['User'];

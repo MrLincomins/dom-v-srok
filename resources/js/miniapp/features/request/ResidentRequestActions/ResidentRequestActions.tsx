@@ -64,7 +64,7 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                     {texts.request.confirmNo}
                 </Button>
             </div>
-            <Notice text={noticeText} onGone={clearNotice} />
+            <Notice text={noticeText} tone="error" onGone={clearNotice} />
         </section>
     );
 }

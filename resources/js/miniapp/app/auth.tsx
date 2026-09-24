@@ -7,7 +7,7 @@ import { getInitData, isInsideMax } from '@/bridge/maxWebApp';
 import { AuthContext, type AuthState } from './authContext';
 const SESSION_KEY = ['session'] as const;
 
-/** В браузере восстанавливаем сохранённую сессию, а внутри MAX обмениваем initData на токен. */
+/** В браузере поднимаем сохранённый вход. В MAX меняем initData на токен. */
 async function loadSession(): Promise<User | null> {
     if (hasToken()) {
         try {

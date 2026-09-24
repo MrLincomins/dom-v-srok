@@ -1,4 +1,4 @@
-/** К подписанному qr_url подъезды добавляются как есть — в подпись они не входят. */
+/** Подъезд дописываем в ссылку сами: в подписи QR его нет. */
 export function houseQrUrl(qrUrl: string, entrance?: number | null): string {
     if (entrance == null) return qrUrl;
     try {

@@ -43,7 +43,7 @@ final class RequestController extends Controller
             $request->validated('q'),
         )->paginate(min((int) $request->validated('per_page', 30), 100));
 
-        return RequestListResource::collection($page)->additional(['meta' => ['counters' => $this->query->counters($organizationId, $request->validated('q'))]]);
+        return RequestListResource::collection($page)->additional(['meta' => ['counters' => $this->query->counters($organizationId)]]);
     }
 
     public function show(Request $request, ServiceRequest $serviceRequest): RequestResource

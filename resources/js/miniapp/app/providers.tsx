@@ -17,7 +17,7 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
     return failureCount < 2;
 }
 
-// Повторяем только чтение: автоматический повтор мутации может дважды изменить заявку.
+// Повтор только у чтения. Если повторить сохранение, заявка может уехать дважды.
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: { retry: shouldRetryQuery, staleTime: LIVE_REFETCH_MS, refetchOnWindowFocus: false },
@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: ReactNode }) {
-    // На вебе и iOS берём iOS-ячейки MAX — они ближе к мессенджеру, чем android-пилюли.
+    // На вебе и iPhone — ячейки как в iOS, ближе к мессенджеру.
     const platform = getPlatform() === 'android' ? 'android' : 'ios';
     const [colorScheme, setColorScheme] = useState(getColorScheme);
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
@@ -74,6 +74,32 @@ describe('очередь заявок', () => {
         );
         renderQueue();
         expect(await screen.findByText(/№ 17/)).toBeInTheDocument();
+    });
+
+    it('показывает крестик в поиске, когда есть текст', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () =>
+                json({
+                    data: [],
+                    meta: {
+                        current_page: 1,
+                        last_page: 1,
+                        per_page: 30,
+                        total: 0,
+                        counters: { new: 0, in_progress: 0, overdue: 0, closed: 0 },
+                    },
+                }),
+            ),
+        );
+        renderQueue();
+        const search = await screen.findByLabelText('Найти: номер, квартира или улица');
+        expect(screen.queryByRole('button', { name: 'Очистить' })).not.toBeInTheDocument();
+        fireEvent.focus(search);
+        fireEvent.change(search, { target: { value: 'мира' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Очистить' }));
+        expect(search).toHaveValue('');
+        expect(screen.queryByRole('button', { name: 'Очистить' })).not.toBeInTheDocument();
     });
 });
 

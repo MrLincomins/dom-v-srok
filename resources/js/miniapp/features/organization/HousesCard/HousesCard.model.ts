@@ -1,12 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateHouse } from '@/api/organization';
 import type { House } from '@/api/types';
+import { texts } from '@/app/texts';
+import { useNoticeState } from '@/components/Notice';
+import { copyToClipboard } from '@/lib/clipboard';
 import type { UpdateHouseParams } from './HousesCard.types';
+
+const COPIED_MS = 2000;
 
 export function useHousesCard() {
     const client = useQueryClient();
-    const [notice, setNotice] = useState<string | null>(null);
+    const notice = useNoticeState();
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const save = useMutation({
         mutationFn: ({ id, chat_keywords_enabled, entrances }: UpdateHouseParams) =>
             updateHouse(id, { chat_keywords_enabled, entrances }),
@@ -36,5 +42,19 @@ export function useHousesCard() {
         },
     });
 
-    return { notice, setNotice, save };
+    useEffect(() => {
+        if (!copiedKey) return undefined;
+        const done = window.setTimeout(() => setCopiedKey(null), COPIED_MS);
+        return () => window.clearTimeout(done);
+    }, [copiedKey]);
+
+    const copy = (key: string, value: string) => {
+        void copyToClipboard(value).then((ok) => {
+            if (!ok) return;
+            setCopiedKey(key);
+            notice.show(texts.app.copied, 'success');
+        });
+    };
+
+    return { notice, copiedKey, copy, save };
 }

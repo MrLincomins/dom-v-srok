@@ -28,11 +28,16 @@ const OrganizationPage = lazy(() =>
         default: module.OrganizationPage,
     })),
 );
+const OrganizationSectionPage = lazy(() =>
+    import('./features/organization/OrganizationPage').then((module) => ({
+        default: module.OrganizationSectionPage,
+    })),
+);
 const JournalPage = lazy(() =>
     import('./features/journal/JournalPage').then((module) => ({ default: module.JournalPage })),
 );
 
-/** Не монтируем рабочие экраны, пока не понятно, кто открыл приложение. */
+/** Пока не ясно, кто вошёл, рабочие экраны не показываем. */
 function Gate() {
     const auth = useAuth();
     if (auth.status === 'loading') return <FullscreenSpinner label={texts.auth.loading} />;
@@ -78,6 +83,7 @@ export const router = createBrowserRouter(
                     children: [
                         { path: 'queue', element: <ToHome /> },
                         { path: 'organization', element: <OrganizationPage /> },
+                        { path: 'organization/:section', element: <OrganizationSectionPage /> },
                         { path: 'journal', element: <JournalPage /> },
                     ],
                 },

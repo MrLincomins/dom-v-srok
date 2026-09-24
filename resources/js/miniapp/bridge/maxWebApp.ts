@@ -1,4 +1,4 @@
-/** Bridge из max-web-app.js есть и в браузере, но без initData он не умеет открывать ссылки. */
+/** Скрипт MAX есть и в браузере, но без входа сам ссылки не откроет. */
 type Platform = 'ios' | 'android' | 'desktop' | 'web';
 
 interface MaxBackButton {
@@ -99,7 +99,7 @@ export function signalReady(): void {
     try {
         getWebApp()?.ready?.();
     } catch {
-        // Старые клиенты MAX могут объявить bridge без рабочего ready().
+        // В старых клиентах ready() может не работать.
     }
 }
 
@@ -114,7 +114,7 @@ export function closeMiniApp(): boolean {
     }
 }
 
-/** На desktop и в браузере оставляем кнопку в header, потому что нативной там нет. */
+/** На компьютере и в браузере своей кнопки «Назад» нет — рисуем в шапке. */
 export function useNativeBackButton(): boolean {
     const button = getWebApp()?.BackButton;
     return Boolean(button?.show && button?.onClick) && getPlatform() !== 'web';

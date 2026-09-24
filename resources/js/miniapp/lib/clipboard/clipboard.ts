@@ -4,7 +4,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
             await navigator.clipboard.writeText(text);
             return true;
         } catch {
-            // старые браузеры и http без clipboard API
+            // Буфер недоступен — копируем через textarea.
         }
     }
 

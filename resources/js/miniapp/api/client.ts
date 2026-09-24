@@ -1,4 +1,4 @@
-/** Все запросы проходят здесь, чтобы экраны одинаково понимали ошибки API и сети. */
+/** Все запросы идут отсюда, чтобы ошибки API и сети выглядели одинаково. */
 export class ApiError extends Error {
     constructor(
         public readonly code: string,
@@ -43,7 +43,7 @@ export function setToken(value: string | null): void {
         if (value) sessionStorage.setItem(TOKEN_KEY, value);
         else sessionStorage.removeItem(TOKEN_KEY);
     } catch {
-        // Если sessionStorage недоступен, текущая вкладка всё равно сможет работать с токеном в памяти.
+        // Нет sessionStorage — токен живёт только в этой вкладке.
     }
 }
 

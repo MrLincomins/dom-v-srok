@@ -5,7 +5,6 @@ import { Notice } from '@/components/Notice';
 import { Section } from '@/components/Section';
 import { SettingsField } from '@/components/SettingsField';
 import { MutationError } from '@/features/request/MutationError';
-import { copyToClipboard } from '@/lib/clipboard';
 import { HouseQr } from '../HouseQr';
 import { useHousesCard } from './HousesCard.model';
 
@@ -39,40 +38,50 @@ export function HousesCard({ houses }: { houses: House[] }) {
                                 separator
                                 title={texts.organization.houseBind}
                                 subtitle={texts.organization.houseBindCommand(house.qr_token)}
-                                onClick={() => {
-                                    void copyToClipboard(
+                                after={
+                                    card.copiedKey === `bind:${house.id}` ? (
+                                        <span className="cell-copied">{texts.app.copied}</span>
+                                    ) : undefined
+                                }
+                                onClick={() =>
+                                    card.copy(
+                                        `bind:${house.id}`,
                                         texts.organization.houseBindCommand(house.qr_token),
-                                    ).then((ok) => {
-                                        if (ok) card.setNotice(texts.organization.houseBindCopied);
-                                    });
-                                }}
+                                    )
+                                }
                             />
                         )}
                         <CellSimple
                             separator
                             title={texts.organization.joinInChat}
+                            onClick={
+                                house.chat_bound
+                                    ? () =>
+                                          card.save.mutate({
+                                              id: house.id,
+                                              chat_keywords_enabled: !house.chat_keywords_enabled,
+                                          })
+                                    : undefined
+                            }
                             after={
-                                <Switch
-                                    checked={house.chat_keywords_enabled}
-                                    disabled={!house.chat_bound}
-                                    aria-label={texts.organization.joinInChat}
-                                    onChange={(event) =>
-                                        card.save.mutate({
-                                            id: house.id,
-                                            chat_keywords_enabled: event.currentTarget.checked,
-                                        })
-                                    }
-                                />
+                                <span className="switch-hit">
+                                    <Switch
+                                        checked={house.chat_keywords_enabled}
+                                        disabled={!house.chat_bound}
+                                        aria-label={texts.organization.joinInChat}
+                                    />
+                                </span>
                             }
                         />
                         <CellSimple
                             title={texts.organization.openHouse}
                             subtitle={house.start_url}
-                            onClick={() => {
-                                void copyToClipboard(house.start_url).then((ok) => {
-                                    if (ok) card.setNotice(texts.organization.houseLinkCopied);
-                                });
-                            }}
+                            after={
+                                card.copiedKey === `link:${house.id}` ? (
+                                    <span className="cell-copied">{texts.app.copied}</span>
+                                ) : undefined
+                            }
+                            onClick={() => card.copy(`link:${house.id}`, house.start_url)}
                         />
                     </Section>
                     <SettingsField
@@ -95,7 +104,10 @@ export function HousesCard({ houses }: { houses: House[] }) {
                             card.save.mutate({ id: house.id, entrances: next });
                         }}
                     />
-                    <HouseQr house={house} onDownloaded={() => card.setNotice(texts.organization.qrDownloaded)} />
+                    <HouseQr
+                        house={house}
+                        onDownloaded={() => card.notice.show(texts.organization.qrDownloaded, 'success')}
+                    />
                     <Typography.Body variant="small" className="settings-hint">
                         {house.chat_bound
                             ? texts.organization.joinInChatHint
@@ -104,7 +116,12 @@ export function HousesCard({ houses }: { houses: House[] }) {
                 </div>
             ))}
             <MutationError error={card.save.error} />
-            <Notice text={card.notice} onGone={() => card.setNotice(null)} />
+            <Notice
+                text={card.notice.text}
+                tone={card.notice.tone}
+                revision={card.notice.revision}
+                onGone={card.notice.clear}
+            />
         </div>
     );
 }

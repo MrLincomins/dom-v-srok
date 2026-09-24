@@ -21,12 +21,18 @@ export function ContractorsCard() {
                         key={contractor.id}
                         separator
                         title={contractor.name}
-                        subtitle={[contractor.type_label, contractor.phone].filter(Boolean).join(' · ')}
+                        subtitle={
+                            <span className="cell-lines">
+                                {contractor.type_label ? <span>{contractor.type_label}</span> : null}
+                                {contractor.phone ? <span>{contractor.phone}</span> : null}
+                            </span>
+                        }
                         after={
                             <Button
                                 type="button"
                                 size="small"
-                                variant="ghost"
+                                variant="secondary"
+                                className="btn-remove"
                                 disabled={card.busy}
                                 onClick={(event) => {
                                     event.preventDefault();
@@ -86,19 +92,23 @@ export function ContractorsCard() {
                 {texts.organization.contractorsHint}
             </Typography.Body>
             <MutationError error={card.create.error ?? card.remove.error} />
-            {card.pendingId !== null && (
-                <ConfirmDialog
-                    title={texts.organization.removeContractorConfirm}
-                    confirm={texts.organization.removeContractorYes}
-                    cancel={texts.organization.cancel}
-                    loading={card.remove.isPending}
-                    onCancel={() => card.setPendingId(null)}
-                    onConfirm={() => {
-                        if (card.pendingId !== null) card.remove.mutate(card.pendingId);
-                    }}
-                />
-            )}
-            <Notice text={card.notice} onGone={() => card.setNotice(null)} />
+            <ConfirmDialog
+                open={card.pendingId !== null}
+                title={texts.organization.removeContractorConfirm}
+                confirm={texts.organization.removeContractorYes}
+                cancel={texts.organization.cancel}
+                loading={card.busy}
+                onCancel={() => card.setPendingId(null)}
+                onConfirm={() => {
+                    if (card.pendingId !== null) card.remove.mutate(card.pendingId);
+                }}
+            />
+            <Notice
+                text={card.notice.text}
+                tone={card.notice.tone}
+                revision={card.notice.revision}
+                onGone={card.notice.clear}
+            />
         </form>
     );
 }
