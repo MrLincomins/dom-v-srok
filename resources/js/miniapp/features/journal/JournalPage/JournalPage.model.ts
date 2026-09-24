@@ -28,14 +28,15 @@ export function describePeriod(from: string, to: string): string | null {
 export function useJournalPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const notice = useNoticeState();
+    const showNotice = notice.show;
     const from = searchParams.get('from') || startOfMonthInput();
     const to = searchParams.get('to') || formatDateInput();
     const periodError = describePeriod(from, to);
 
     useEffect(() => {
         if (!periodError) return;
-        notice.show(periodError, 'error');
-    }, [periodError, notice.show]);
+        showNotice(periodError, 'error');
+    }, [periodError, showNotice]);
 
     const journal = useInfiniteQuery({
         queryKey: ['journal', from, to],

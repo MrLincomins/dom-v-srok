@@ -31,6 +31,7 @@ import {
 export function StaffRequestActions({ card }: { card: RequestCard }) {
     const actions = useStaffRequestActions(card.id);
     const notice = useNoticeState();
+    const showNotice = notice.show;
     const [comment, setComment] = useState('');
     const [redirectOpen, setRedirectOpen] = useState(false);
     const [finishOpen, setFinishOpen] = useState(false);
@@ -53,8 +54,8 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
         ) ?? null;
 
     useEffect(() => {
-        if (failed?.error) notice.show(describeError(failed.error, failed.failureCount), 'error');
-    }, [failed, notice.show]);
+        if (failed?.error) showNotice(describeError(failed.error, failed.failureCount), 'error');
+    }, [failed, showNotice]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-24">

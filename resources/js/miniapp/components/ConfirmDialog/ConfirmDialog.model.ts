@@ -10,14 +10,19 @@ export function useConfirmDialog({
 }: Pick<ConfirmDialogProps, 'open' | 'loading' | 'onCancel'>) {
     const [shown, setShown] = useState(open);
     const [leaving, setLeaving] = useState(false);
+    const [dismissed, setDismissed] = useState(false);
     const onCancelRef = useRef(onCancel);
     const notifyCancel = useRef(false);
-    const dismissed = useRef(false);
-    onCancelRef.current = onCancel;
 
-    if (!open) dismissed.current = false;
+    useEffect(() => {
+        onCancelRef.current = onCancel;
+    }, [onCancel]);
 
-    if (open && !shown && !leaving && !dismissed.current) {
+    if (!open && dismissed) {
+        setDismissed(false);
+    }
+
+    if (open && !shown && !leaving && !dismissed) {
         setShown(true);
     } else if (!open && shown && !leaving) {
         setLeaving(true);
@@ -26,7 +31,7 @@ export function useConfirmDialog({
     const beginClose = () => {
         if (leaving || !open || loading) return;
         notifyCancel.current = true;
-        dismissed.current = true;
+        setDismissed(true);
         setLeaving(true);
     };
 

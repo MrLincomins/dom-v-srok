@@ -67,6 +67,7 @@ function lastReturnComment(events: RequestEvent[] | undefined): string | null {
     if (!events) return null;
     for (let index = events.length - 1; index >= 0; index -= 1) {
         const event = events[index];
+        if (!event) continue;
         if (event.type !== 'returned' && event.to_status !== 'returned') continue;
         return eventComment(event);
     }

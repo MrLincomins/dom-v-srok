@@ -58,6 +58,7 @@ export function closingPhotosByDoneEvent(
                 break;
             }
         }
+        if (!owner) continue;
         result.get(owner.id)?.push(photo);
     }
 

@@ -11,14 +11,15 @@ export function ResidentCabinet() {
     const { user } = useAuth();
     const [houseOpen, setHouseOpen] = useState(false);
     const notice = useNoticeState();
+    const showNotice = notice.show;
     const closeHouse = useCallback(() => setHouseOpen(false), []);
     const house = user?.house;
     const startUrl = house?.start_url;
     const openChat = useCallback(() => {
         if (!startUrl) return;
-        notice.show(texts.home.createRequestNotice, 'success');
+        showNotice(texts.home.createRequestNotice, 'success');
         openExternalLink(startUrl);
-    }, [startUrl, notice.show]);
+    }, [startUrl, showNotice]);
 
     return (
         <Screen

@@ -72,7 +72,7 @@ export function photoGroups(
 function commentFrom(events: RequestEvent[], match: (event: RequestEvent) => boolean): string | null {
     for (let index = events.length - 1; index >= 0; index -= 1) {
         const event = events[index];
-        if (!match(event)) continue;
+        if (!event || !match(event)) continue;
         const text = eventComment(event);
         if (text) return text;
     }

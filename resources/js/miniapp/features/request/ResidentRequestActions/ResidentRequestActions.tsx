@@ -9,15 +9,16 @@ import { useResidentRequestActions } from './ResidentRequestActions.model';
 export function ResidentRequestActions({ requestId }: { requestId: number }) {
     const actions = useResidentRequestActions(requestId);
     const notice = useNoticeState();
+    const showNotice = notice.show;
     const [comment, setComment] = useState('');
     const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
     const busy = actions.confirm.isPending;
 
     useEffect(() => {
         if (actions.confirm.error) {
-            notice.show(describeError(actions.confirm.error, actions.confirm.failureCount), 'error');
+            showNotice(describeError(actions.confirm.error, actions.confirm.failureCount), 'error');
         }
-    }, [actions.confirm.error, actions.confirm.failureCount, notice.show]);
+    }, [actions.confirm.error, actions.confirm.failureCount, showNotice]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-8">

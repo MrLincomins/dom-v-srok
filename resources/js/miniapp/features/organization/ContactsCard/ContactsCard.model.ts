@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/api/client';
 import { updateOrganization } from '@/api/organization';
@@ -47,14 +47,6 @@ export function useContactsCard(organization: Organization) {
     const notice = useNoticeState();
     const [checked, setChecked] = useState(false);
     const [serverFields, setServerFields] = useState<string[]>([]);
-    const [focusId, setFocusId] = useState<string | null>(null);
-
-    useLayoutEffect(() => {
-        if (!focusId) return;
-        focusContactField(focusId);
-        setFocusId(null);
-    }, [focusId]);
-
     const dirty =
         name.trim() !== organization.name.trim() ||
         phoneAds !== localPhoneDigits(organization.phone_ads) ||
@@ -111,7 +103,7 @@ export function useContactsCard(organization: Organization) {
                 'error',
             );
             const first = FIELD_ORDER.find((key) => fields.includes(key));
-            if (first) setFocusId(contactFieldId[first]);
+            if (first) focusContactField(contactFieldId[first]);
         },
     });
 
@@ -123,7 +115,7 @@ export function useContactsCard(organization: Organization) {
         const invalid = firstInvalid();
         if (invalid) {
             notice.show(invalid.message, 'error');
-            setFocusId(invalid.id);
+            focusContactField(invalid.id);
             return;
         }
         save.mutate();

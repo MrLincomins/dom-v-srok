@@ -4,10 +4,11 @@ import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { openExternalLink } from '@/bridge/maxWebApp';
+import type * as maxWebApp from '@/bridge/maxWebApp';
 import { JournalPage } from '@/features/journal/JournalPage';
 
 vi.mock('@/bridge/maxWebApp', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@/bridge/maxWebApp')>();
+    const actual = await importOriginal<typeof maxWebApp>();
     return {
         ...actual,
         openExternalLink: vi.fn(),

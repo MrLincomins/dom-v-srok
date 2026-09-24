@@ -282,7 +282,7 @@ describe('действия диспетчера', () => {
     });
 
     it('сохраняет комментарий и фото при повторном «Завершить»', async () => {
-        const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:finish-photo');
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:finish-photo');
         vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
         vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
         renderActions({
