@@ -22,7 +22,7 @@ describe('ссылка на QR дома', () => {
     it('скачивает картинку по ссылке', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response(new Blob(['qr']), { status: 200 })),
+            vi.fn(async () => new Response('qr', { status: 200 })),
         );
         const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:qr');
         const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
@@ -33,5 +33,6 @@ describe('ссылка на QR дома', () => {
         createObjectURL.mockRestore();
         revokeObjectURL.mockRestore();
         click.mockRestore();
+        vi.unstubAllGlobals();
     });
 });
