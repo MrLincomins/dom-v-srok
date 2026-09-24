@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@maxhub/max-ui';
 import { myRequests } from '@/api/requests';
+import { LIVE_REFETCH_MS } from '@/app/live';
 import { texts } from '@/app/texts';
 import { EmptyState } from '@/components/EmptyState';
 import { InlineLoader } from '@/components/LineLoader';
@@ -21,6 +22,7 @@ export function MyRequestsList() {
         initialPageParam: 1,
         getNextPageParam: (lastPage) =>
             lastPage.meta.current_page < lastPage.meta.last_page ? lastPage.meta.current_page + 1 : undefined,
+        refetchInterval: LIVE_REFETCH_MS,
     });
     const pages = list.data?.pages;
     const requests = useMemo(() => {

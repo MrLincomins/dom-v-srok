@@ -5,5 +5,4 @@ export type JournalStatKey = Exclude<keyof JournalSummary, 'first_reaction_minut
 export interface JournalStat {
     key: JournalStatKey;
     label: string;
-    alert?: boolean;
 }

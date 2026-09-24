@@ -34,7 +34,13 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                     disabled={busy}
                     onClick={() => {
                         setChoice('yes');
-                        actions.confirm.mutate({ resolved: true }, { onSettled: () => setChoice(null) });
+                        actions.confirm.mutate(
+                            {
+                                resolved: true,
+                                comment: comment.trim() || undefined,
+                            },
+                            { onSettled: () => setChoice(null) },
+                        );
                     }}
                 >
                     {texts.request.confirmYes}

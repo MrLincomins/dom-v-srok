@@ -52,7 +52,7 @@ export function RequestPage() {
                     <ResponsibleSection card={request.data} />
                     <PhotoGallery attachments={request.data.attachments} />
                     <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />
-                    <EventTimeline events={request.data.events} />
+                    <EventTimeline events={request.data.events} attachments={request.data.attachments} />
                 </div>
             )}
         </Screen>

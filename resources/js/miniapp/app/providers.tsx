@@ -5,6 +5,7 @@ import '@maxhub/max-ui/dist/styles.css';
 import { ApiError } from '@/api/client';
 import { getColorScheme, getPlatform, subscribeColorScheme } from '@/bridge/maxWebApp';
 import { AuthProvider } from './auth';
+import { LIVE_REFETCH_MS } from './live';
 
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {
     if (
@@ -19,7 +20,7 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
 // Повторяем только чтение: автоматический повтор мутации может дважды изменить заявку.
 const queryClient = new QueryClient({
     defaultOptions: {
-        queries: { retry: shouldRetryQuery, staleTime: 15_000, refetchOnWindowFocus: false },
+        queries: { retry: shouldRetryQuery, staleTime: LIVE_REFETCH_MS, refetchOnWindowFocus: false },
         mutations: { retry: 0 },
     },
 });

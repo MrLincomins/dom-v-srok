@@ -1,29 +1,28 @@
-import type { RequestEvent, RequestStatus } from '@/api/types';
+import type { Attachment, RequestEvent } from '@/api/types';
 import { texts } from '@/app/texts';
 import { CellHeading } from '@/components/CellHeading';
+import { RequestPhoto } from '@/features/request/PhotoGallery';
 import { formatDateTime } from '@/lib/dates';
-import { STATUS_LABEL, type StatusTone } from '@/lib/status';
+import type { StatusTone } from '@/lib/status';
+import { eventComment, eventLine, eventPhotos, eventTone, visibleEvents } from './EventTimeline.model';
 
-const TONE_TEXT: Record<StatusTone, string> = {
-    accepted: ' text-accepted-blue',
-    progress: ' text-progress-blue',
-    ready: ' text-ready-blue',
-    done: ' text-done',
-    late: ' text-late',
-    muted: ' text-muted',
-};
-
-const TONE_DOT: Record<StatusTone, string> = {
+const TONE_CLASS: Record<StatusTone, string> = {
     accepted: ' is-accepted',
     progress: ' is-progress',
     ready: ' is-ready',
     done: ' is-done',
     late: ' is-late',
-    muted: '',
+    muted: ' is-muted',
 };
 
-export function EventTimeline({ events }: { events: RequestEvent[] | undefined }) {
-    const items = events ?? [];
+export function EventTimeline({
+    events,
+    attachments,
+}: {
+    events: RequestEvent[] | undefined;
+    attachments?: Attachment[];
+}) {
+    const items = visibleEvents(events ?? []);
 
     return (
         <section className="request-block flex min-w-0 flex-col gap-8">
@@ -34,13 +33,13 @@ export function EventTimeline({ events }: { events: RequestEvent[] | undefined }
                 ) : (
                     items.map((event, index) => {
                         const last = index === items.length - 1;
-                        const tone = eventTone(event);
+                        const tone = TONE_CLASS[eventTone(event)];
+                        const comment = eventComment(event);
+                        const photos = eventPhotos(event, attachments);
                         return (
                             <div key={event.id} className="history-step">
                                 <div className="history-rail" aria-hidden>
-                                    <span
-                                        className={`history-dot${last ? TONE_DOT[tone] : ''}`}
-                                    />
+                                    <span className={`history-dot${tone}`} />
                                     {last ? null : (
                                         <span className="history-arrow">
                                             <span className="history-arrow-line" />
@@ -49,7 +48,23 @@ export function EventTimeline({ events }: { events: RequestEvent[] | undefined }
                                     )}
                                 </div>
                                 <div className="history-body">
-                                    <p className={`history-title${TONE_TEXT[tone]}`}>{eventLine(event)}</p>
+                                    <p className={`history-title${tone}`}>{eventLine(event)}</p>
+                                    {comment ? <p className="history-comment">{comment}</p> : null}
+                                    {photos.length > 0 ? (
+                                        <div className="history-photos">
+                                            {photos.map((photo, photoIndex) => (
+                                                <RequestPhoto
+                                                    key={photo.id}
+                                                    url={photo.url}
+                                                    alt={
+                                                        photo.kind === 'closing'
+                                                            ? `${texts.request.closingPhoto} ${photoIndex + 1}`
+                                                            : `${texts.request.residentPhoto} ${photoIndex + 1}`
+                                                    }
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : null}
                                     <p className="history-meta">{formatDateTime(event.created_at)}</p>
                                 </div>
                             </div>
@@ -73,53 +88,4 @@ function ArrowDown() {
             />
         </svg>
     );
-}
-
-function eventTone(event: RequestEvent): StatusTone {
-    if (event.type === 'confirmed' || event.to_status === 'confirmed') return 'done';
-    if (event.type === 'redirected' || event.to_status === 'redirected') return 'muted';
-    if (event.to_status === 'done') return 'ready';
-    if (event.to_status === 'in_progress' || event.type === 'returned') return 'progress';
-    return 'accepted';
-}
-function eventLine(event: RequestEvent): string {
-    const comment = event.comment ? ` — ${event.comment}` : '';
-    switch (event.type) {
-        case 'created':
-            return `${texts.request.events.created}${comment}`;
-        case 'assigned':
-            return `${texts.request.events.assigned}${payloadExecutor(event)}${comment}`;
-        case 'status_changed':
-            return `${statusLabel(event.to_status)}${comment}`;
-        case 'redirected':
-            return `${texts.request.events.redirected}${comment}`;
-        case 'returned':
-            return `${texts.request.events.returned}${comment}`;
-        case 'confirmed':
-            return `${texts.request.events.confirmed}${comment}`;
-        case 'comment':
-            return `${texts.request.events.comment}${comment}`;
-        case 'photo_added':
-            return texts.request.events.photoAdded;
-        case 'participant_joined':
-            return texts.request.events.participantJoined;
-        case 'notification':
-            return texts.request.events.notification;
-        case 'reminder':
-            return texts.request.events.reminder;
-    }
-}
-
-function statusLabel(status: string | null | undefined): string {
-    if (!status) return texts.request.events.statusChanged;
-    return isRequestStatus(status) ? STATUS_LABEL[status] : status;
-}
-
-function isRequestStatus(value: string): value is RequestStatus {
-    return value in STATUS_LABEL;
-}
-
-function payloadExecutor(event: RequestEvent): string {
-    const executor = event.payload?.executor;
-    return typeof executor === 'string' && executor ? `: ${executor}` : '';
 }

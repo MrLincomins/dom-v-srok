@@ -201,7 +201,7 @@ function CloseRequestForm({
                             <img
                                 src={preview.url}
                                 alt={preview.name}
-                                className="h-128 w-128 rounded-card object-cover"
+                                className="request-photo"
                             />
                             <button
                                 type="button"

@@ -49,4 +49,29 @@ describe('screen states', () => {
         expect(onGone).toHaveBeenCalledOnce();
         vi.useRealTimers();
     });
+
+    it('does not hide the notice while the user types', () => {
+        vi.useFakeTimers();
+        const onGone = vi.fn();
+        render(
+            <>
+                <textarea aria-label="Комментарий" />
+                <Notice text="Нет связи" onGone={onGone} />
+            </>,
+        );
+        act(() => {
+            vi.advanceTimersByTime(2000);
+        });
+        fireEvent.input(screen.getByLabelText('Комментарий'), { target: { value: 'а' } });
+        act(() => {
+            vi.advanceTimersByTime(2000);
+        });
+        expect(screen.getByRole('status')).not.toHaveClass('is-leaving');
+        expect(onGone).not.toHaveBeenCalled();
+        act(() => {
+            vi.advanceTimersByTime(2400);
+        });
+        expect(screen.getByRole('status')).toHaveClass('is-leaving');
+        vi.useRealTimers();
+    });
 });

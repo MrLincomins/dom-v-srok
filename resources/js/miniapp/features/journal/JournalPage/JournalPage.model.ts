@@ -9,10 +9,10 @@ import type { JournalStat } from './JournalPage.types';
 export const JOURNAL_STATS: JournalStat[] = [
     { key: 'total', label: texts.journal.summary.total },
     { key: 'open', label: texts.journal.summary.open },
-    { key: 'overdue', label: texts.journal.summary.overdue, alert: true },
+    { key: 'overdue', label: texts.journal.summary.overdue },
     { key: 'closed', label: texts.journal.summary.closed },
     { key: 'on_time', label: texts.journal.summary.on_time },
-    { key: 'late', label: texts.journal.summary.late, alert: true },
+    { key: 'late', label: texts.journal.summary.late },
     { key: 'returned', label: texts.journal.summary.returned },
     { key: 'redirected', label: texts.journal.summary.redirected },
 ];

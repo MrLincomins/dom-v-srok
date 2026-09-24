@@ -8,7 +8,7 @@ export function SettingsField({
 }: { label: string; error?: string } & Omit<ComponentProps<'input'>, 'size'>) {
     return (
         <div className="min-w-0">
-            <label className={`settings-field${error ? ' is-invalid' : ''}`}>
+            <label className={`settings-field${error ? ' is-invalid' : ''}${props.type === 'date' ? ' is-date' : ''}`}>
                 <input
                     className="settings-field-value"
                     placeholder={placeholder || ' '}

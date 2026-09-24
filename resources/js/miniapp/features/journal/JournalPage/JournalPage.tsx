@@ -105,10 +105,7 @@ function JournalStats({ summary }: { summary: JournalSummary }) {
     return (
         <div className="journal-stats">
             {JOURNAL_STATS.map((stat) => (
-                <div
-                    key={stat.key}
-                    className={`journal-stat${stat.alert && summary[stat.key] > 0 ? ' is-alert' : ''}`}
-                >
+                <div key={stat.key} className="journal-stat">
                     <span className="journal-stat-value tabular">{summary[stat.key]}</span>
                     <span className="journal-stat-label">{stat.label}</span>
                 </div>

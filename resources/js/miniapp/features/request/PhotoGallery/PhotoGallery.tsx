@@ -2,38 +2,34 @@ import type { Attachment } from '@/api/types';
 import { texts } from '@/app/texts';
 import { CellHeading } from '@/components/CellHeading';
 import { openExternalLink } from '@/bridge/maxWebApp';
+import { photosWithUrl } from '@/features/request/EventTimeline/EventTimeline.model';
+
+export function RequestPhoto({ url, alt }: { url: string; alt: string }) {
+    return (
+        <button type="button" className="request-photo-btn" onClick={() => openExternalLink(url)}>
+            <img src={url} alt={alt} className="request-photo" loading="lazy" decoding="async" />
+        </button>
+    );
+}
 
 export function PhotoGallery({ attachments }: { attachments: Attachment[] | undefined }) {
-    const visible =
-        attachments?.filter(
-            (attachment): attachment is Attachment & { url: string } =>
-                typeof attachment.url === 'string' && attachment.url.length > 0,
-        ) ?? [];
+    const visible = photosWithUrl(attachments);
     if (visible.length === 0) return null;
 
     return (
         <section className="request-block flex min-w-0 flex-col gap-8">
             <CellHeading>{texts.request.photos}</CellHeading>
-            <div className="flex snap-x snap-mandatory gap-12 overflow-x-auto px-12 pb-8 scroll-px-12">
+            <div className="history-photos is-gallery">
                 {visible.map((attachment, index) => (
-                    <button
-                        type="button"
+                    <RequestPhoto
                         key={attachment.id}
-                        className="block shrink-0 snap-start overflow-hidden rounded-card"
-                        onClick={() => openExternalLink(attachment.url)}
-                    >
-                        <img
-                            src={attachment.url}
-                            alt={
-                                attachment.kind === 'closing'
-                                    ? `${texts.request.closingPhoto} ${index + 1}`
-                                    : `${texts.request.residentPhoto} ${index + 1}`
-                            }
-                            loading="lazy"
-                            decoding="async"
-                            className="h-128 w-128 object-cover"
-                        />
-                    </button>
+                        url={attachment.url}
+                        alt={
+                            attachment.kind === 'closing'
+                                ? `${texts.request.closingPhoto} ${index + 1}`
+                                : `${texts.request.residentPhoto} ${index + 1}`
+                        }
+                    />
                 ))}
             </div>
         </section>

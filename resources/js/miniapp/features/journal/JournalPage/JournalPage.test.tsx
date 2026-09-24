@@ -3,7 +3,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { openExternalLink } from '@/bridge/maxWebApp';
 import { JournalPage } from '@/features/journal/JournalPage';
+
+vi.mock('@/bridge/maxWebApp', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/bridge/maxWebApp')>();
+    return {
+        ...actual,
+        openExternalLink: vi.fn(),
+    };
+});
 
 const summary = {
     total: 8,
@@ -18,19 +27,13 @@ const summary = {
 };
 
 beforeEach(() => {
+    vi.mocked(openExternalLink).mockClear();
     vi.stubGlobal(
         'fetch',
         vi.fn(async (input: RequestInfo | URL) => {
             const url = String(input);
-            if (url.includes('/journal.csv')) {
-                return new Response('№;Адрес\n', {
-                    status: 200,
-                    headers: {
-                        'Content-Type': 'text/csv; charset=UTF-8',
-                        'Content-Disposition':
-                            'attachment; filename="zhurnal-zayavok-2026-09-01-2026-09-21.csv"',
-                    },
-                });
+            if (url.includes('/journal/csv-link')) {
+                return json({ data: { url: 'https://example.test/journal.csv?signature=x' } });
             }
             if (url.includes('/journal')) {
                 return json({
@@ -85,8 +88,6 @@ describe('журнал заявок', () => {
     });
 
     it('скачивает csv за выбранный период', async () => {
-        const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:journal');
-        const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
         renderPage();
         await screen.findByText(/№ 12/);
         fireEvent.click(screen.getByRole('button', { name: 'Скачать CSV' }));
@@ -94,13 +95,11 @@ describe('журнал заявок', () => {
             expect(
                 vi
                     .mocked(fetch)
-                    .mock.calls.some((call) => String(call[0]).includes('/journal.csv?from=2026-09-01')),
+                    .mock.calls.some((call) => String(call[0]).includes('/journal/csv-link?from=2026-09-01')),
             ).toBe(true);
         });
-        expect(createObjectURL).toHaveBeenCalled();
-        expect(await screen.findByRole('status')).toHaveTextContent('Файл скачан');
-        createObjectURL.mockRestore();
-        revokeObjectURL.mockRestore();
+        expect(openExternalLink).toHaveBeenCalledWith('https://example.test/journal.csv?signature=x');
+        expect(await screen.findByRole('status')).toHaveTextContent('CSV скачивается в браузере');
     });
 });
 

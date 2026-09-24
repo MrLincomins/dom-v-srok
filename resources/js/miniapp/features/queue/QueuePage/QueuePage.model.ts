@@ -1,5 +1,6 @@
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { getQueue } from '@/api/requests';
+import { LIVE_REFETCH_MS } from '@/app/live';
 import type { QueueQuery } from '@/api/types';
 
 export type QueueTab = 'new' | 'in_progress' | 'overdue' | 'closed';
@@ -37,5 +38,6 @@ export function useQueue(tab: QueueTab, search: string) {
         getNextPageParam: (lastPage) =>
             lastPage.meta.current_page < lastPage.meta.last_page ? lastPage.meta.current_page + 1 : undefined,
         placeholderData: keepPreviousData,
+        refetchInterval: LIVE_REFETCH_MS,
     });
 }
