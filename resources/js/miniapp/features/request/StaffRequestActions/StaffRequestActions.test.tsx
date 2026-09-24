@@ -62,6 +62,7 @@ describe('действия диспетчера', () => {
         );
 
         expect(await screen.findByText('Иван')).toBeInTheDocument();
+        expect(screen.getByText('Выбрать')).toBeInTheDocument();
         fireEvent.click(screen.getByText('Иван'));
 
         await waitFor(() => {

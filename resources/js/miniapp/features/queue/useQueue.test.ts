@@ -22,14 +22,27 @@ describe('tabToQuery', () => {
 describe('countersForSearch', () => {
     const counters = { new: 1, in_progress: 3, overdue: 1, closed: 4 };
 
-    it('меняет счётчик текущей вкладки на total поиска', () => {
-        expect(countersForSearch(counters, 'in_progress', 'te', 1)).toEqual({
-            ...counters,
+    it('подставляет total поиска во все вкладки', () => {
+        expect(
+            countersForSearch(counters, 'te', { new: 0, in_progress: 1, overdue: 0, closed: 0 }),
+        ).toEqual({
+            new: 0,
             in_progress: 1,
+            overdue: 0,
+            closed: 0,
         });
     });
 
     it('не трогает счётчики без поисковой строки', () => {
-        expect(countersForSearch(counters, 'in_progress', '  ', 1)).toEqual(counters);
+        expect(countersForSearch(counters, '  ', { in_progress: 1 })).toEqual(counters);
+    });
+
+    it('без total поиска не оставляет общие счётчики', () => {
+        expect(countersForSearch(counters, 'te')).toEqual({
+            new: 0,
+            in_progress: 0,
+            overdue: 0,
+            closed: 0,
+        });
     });
 });

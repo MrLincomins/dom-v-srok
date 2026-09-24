@@ -833,6 +833,23 @@ body {
 }
 
 .settings-phone {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 2px;
+}
+
+.settings-phone-caption {
+    color: var(--fg-label);
+    font-size: 13px;
+    font-weight: 590;
+    letter-spacing: -0.2px;
+    line-height: 16px;
+}
+
+.settings-phone-row {
+    display: flex;
+    min-width: 0;
     align-items: center;
     gap: 8px;
 }
@@ -852,7 +869,7 @@ body {
 }
 
 .settings-phone .settings-field-value::placeholder {
-    color: var(--fg-label);
+    color: transparent;
 }
 
 .settings-hint {
@@ -952,6 +969,16 @@ body {
     white-space: nowrap;
 }
 
+.assign-pick {
+    flex-shrink: 0;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 590;
+    letter-spacing: -0.2px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
 .request-card [class*='CellSimple__title'] {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -976,7 +1003,7 @@ body {
     flex-direction: column;
     gap: 0;
     overflow: hidden;
-    padding: 16px 16px 8px;
+    padding: 16px 16px;
     border-radius: 10px;
     background: var(--bg-card);
 }
@@ -1061,6 +1088,10 @@ body {
 .history-body {
     min-width: 0;
     padding-bottom: 16px;
+}
+
+.history-step:last-child .history-body {
+    padding-bottom: 0;
 }
 
 .history-title {
@@ -1643,8 +1674,8 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 14px;
-    background: var(--accent-muted);
-    color: var(--accent);
+    background: var(--info-muted);
+    color: var(--info);
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.2px;
@@ -2150,6 +2181,7 @@ body {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
     button,
     [role='button'],
     [role='tab'],
@@ -2216,9 +2248,12 @@ body {
         color: var(--fg);
     }
 
-    .settings-card [class*='CellSimple']:hover,
-    .request-card [class*='CellSimple']:hover {
+    .request-card [class*='CellSimple_height_']:hover {
         background: var(--bg-card-soft);
+    }
+
+    .settings-card [class*='CellSimple']:hover {
+        background: transparent;
     }
 }
 

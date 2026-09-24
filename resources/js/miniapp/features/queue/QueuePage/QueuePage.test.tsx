@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
@@ -101,7 +101,51 @@ describe('очередь заявок', () => {
         expect(search).toHaveValue('');
         expect(screen.queryByRole('button', { name: 'Очистить' })).not.toBeInTheDocument();
     });
+
+    it('в поиске считает заявки по каждой вкладке', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = new URL(String(input), 'http://localhost');
+                const q = url.searchParams.get('q') ?? '';
+                if (q === '') {
+                    return queuePage(3, { new: 3, in_progress: 3, overdue: 1, closed: 4 });
+                }
+                const status = url.searchParams.get('status');
+                const overdue = url.searchParams.get('overdue');
+                if (status === 'new') return queuePage(2);
+                if (status === 'active') return queuePage(1);
+                if (status === 'open' && overdue === '1') return queuePage(0);
+                if (status === 'closed') return queuePage(0);
+                return queuePage(0);
+            }),
+        );
+        renderQueue();
+        expect(await screen.findByRole('tab', { name: /Новые/ })).toHaveTextContent('3');
+        fireEvent.change(screen.getByLabelText('Найти: номер, квартира или улица'), {
+            target: { value: 'проф' },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole('tab', { name: /Новые/ })).toHaveTextContent('2');
+        });
+        expect(screen.getByRole('tab', { name: /В работе/ })).toHaveTextContent('1');
+        expect(screen.getByRole('tab', { name: /Просрочено/ })).not.toHaveTextContent(/\d/);
+        expect(screen.getByRole('tab', { name: /Закрытые/ })).not.toHaveTextContent(/\d/);
+    });
 });
+
+function queuePage(total: number, counters = { new: 0, in_progress: 0, overdue: 0, closed: 0 }) {
+    return json({
+        data: [],
+        meta: {
+            current_page: 1,
+            last_page: 1,
+            per_page: 30,
+            total,
+            counters,
+        },
+    });
+}
 
 function json(body: unknown) {
     return new Response(JSON.stringify(body), {

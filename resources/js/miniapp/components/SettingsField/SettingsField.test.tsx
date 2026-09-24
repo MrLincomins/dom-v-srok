@@ -43,6 +43,12 @@ describe('очистка полей', () => {
         expect(onChange).toHaveBeenCalledWith('');
     });
 
+    it('оставляет подпись службы у заполненного телефона', () => {
+        render(<PhoneField label="Аварийная служба" value="8430000001" onChange={() => undefined} />);
+        expect(screen.getByLabelText('Аварийная служба')).toHaveValue('(843) 000-00-01');
+        expect(screen.getByText('Аварийная служба')).toBeVisible();
+    });
+
     it('показывает крестик в CompactNote, когда есть текст', () => {
         const onChange = vi.fn();
         render(<CompactNote value="Течёт" placeholder="Комментарий" onChange={onChange} />);
