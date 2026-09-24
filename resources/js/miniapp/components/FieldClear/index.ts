@@ -1,1 +1,1 @@
-export { FieldClear } from './FieldClear';
+export { ClearMark, FieldClear } from './FieldClear';

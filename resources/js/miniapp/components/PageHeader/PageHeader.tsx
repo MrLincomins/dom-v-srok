@@ -1,4 +1,3 @@
-import { Typography } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { useScreenBack } from '@/lib/navigation';
 
@@ -15,23 +14,18 @@ export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
     if (showHeaderBack) {
         return (
             <header className="page-header">
-                <div className="grid min-h-[44px] grid-cols-[44px_minmax(0,1fr)_44px] items-center py-8">
+                <div className="page-header-bar">
                     <button
                         type="button"
-                        className="flex h-44 w-44 items-center justify-start text-ink active:opacity-60"
+                        className="page-header-back"
                         onClick={goBack}
                         aria-label={texts.app.back}
                     >
                         <BackChevron />
                     </button>
-                    <Typography.Headline
-                        variant="small"
-                        className="min-w-0 truncate text-center"
-                        role="heading"
-                        aria-level={titleLevel}
-                    >
+                    <p className="page-header-title" role="heading" aria-level={titleLevel}>
                         {title}
-                    </Typography.Headline>
+                    </p>
                     <div className="page-header-trailing">{right}</div>
                 </div>
             </header>
@@ -54,11 +48,11 @@ export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
 
 function BackChevron() {
     return (
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
+        <svg viewBox="0 0 8 16" fill="none" aria-hidden>
             <path
-                d="M17.5 6.5 9.5 14l8 7.5"
+                d="M7 1 1 8l6 7"
                 stroke="currentColor"
-                strokeWidth="2.4"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />

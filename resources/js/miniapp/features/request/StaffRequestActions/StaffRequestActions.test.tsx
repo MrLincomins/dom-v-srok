@@ -103,6 +103,66 @@ describe('действия диспетчера', () => {
         expect(screen.getByPlaceholderText('Что сказать жителю')).toBeInTheDocument();
     });
 
+    it('передаёт заявку без телефона', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = String(input);
+                if (url.endsWith('/organization/executors')) {
+                    return json({ data: [] });
+                }
+                if (url.includes('/requests/17/redirect')) {
+                    return json({ data: { ...card, status: 'redirected' } });
+                }
+                return json({ data: card });
+            }),
+        );
+
+        renderActions(card);
+        fireEvent.click(screen.getByRole('button', { name: 'Передать другой службе' }));
+        fireEvent.change(screen.getByLabelText('Какой службе передать'), {
+            target: { value: 'Горсвет' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Передать заявку' }));
+
+        await waitFor(() => {
+            expect(
+                vi.mocked(fetch).mock.calls.some(([url, init]) => {
+                    if (!String(url).includes('/requests/17/redirect')) return false;
+                    const body = JSON.parse(String(init?.body ?? '{}')) as { name?: string; phone?: string };
+                    return body.name === 'Горсвет' && body.phone === undefined;
+                }),
+            ).toBe(true);
+        });
+    });
+
+    it('не требует телефон при передаче, но не принимает неполный номер', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/organization/executors')) {
+                    return json({ data: [] });
+                }
+                return json({ data: card });
+            }),
+        );
+
+        renderActions(card);
+        fireEvent.click(screen.getByRole('button', { name: 'Передать другой службе' }));
+        fireEvent.change(screen.getByLabelText('Какой службе передать'), {
+            target: { value: 'Горсвет' },
+        });
+        fireEvent.change(screen.getByLabelText('Телефон, если есть'), {
+            target: { value: '917' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Передать заявку' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Введите 10 цифр, без +7');
+        expect(
+            vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/requests/17/redirect')),
+        ).toBe(false);
+    });
+
     it('подставляет шаблон в комментарий', async () => {
         vi.stubGlobal(
             'fetch',
@@ -154,6 +214,43 @@ describe('действия диспетчера', () => {
         expect(await screen.findByRole('status')).toHaveTextContent('Нет доступа к этому действию.');
     });
 
+    it('показывает уведомление, когда заявку берут в работу', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).includes('/requests/17/status')) {
+                    return json({ data: { ...card, status: 'in_progress' } });
+                }
+                return json({ data: [] });
+            }),
+        );
+        renderActions({
+            ...card,
+            status: 'assigned',
+            allowed_transitions: ['in_progress', 'redirected'],
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'В работу' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Заявка взята в работу');
+        expect(screen.getByRole('status')).toHaveClass('is-success');
+    });
+
+    it('показывает уведомление, когда комментарий добавлен', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/requests/17/comments')) {
+                    return json({ data: card });
+                }
+                return json({ data: [] });
+            }),
+        );
+        renderActions(card);
+        fireEvent.click(await screen.findByRole('button', { name: 'Выехал' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Написать комментарий' }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Комментарий добавлен');
+        expect(screen.getByRole('status')).toHaveClass('is-success');
+    });
+
     it('открывает форму закрытия только по «Завершить»', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
         renderActions({
@@ -162,9 +259,43 @@ describe('действия диспетчера', () => {
             allowed_transitions: ['done', 'redirected'],
         });
         expect(await screen.findByRole('button', { name: 'Завершить' })).toBeInTheDocument();
-        expect(screen.queryByText('Работа закончена?')).not.toBeInTheDocument();
+        const fold = document.querySelector('.section-fold');
+        expect(fold).not.toHaveClass('is-open');
+        expect(fold).toHaveAttribute('aria-hidden', 'true');
         fireEvent.click(screen.getByRole('button', { name: 'Завершить' }));
+        expect(fold).toHaveClass('is-open');
+        expect(fold).toHaveAttribute('aria-hidden', 'false');
         expect(screen.getByText('Работа закончена?')).toBeInTheDocument();
+    });
+
+    it('сохраняет комментарий и фото при повторном «Завершить»', async () => {
+        const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:finish-photo');
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+        vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
+        renderActions({
+            ...card,
+            status: 'in_progress',
+            allowed_transitions: ['done', 'redirected'],
+        });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Завершить' }));
+        fireEvent.change(screen.getByPlaceholderText('Напишите, что сделали'), {
+            target: { value: 'Протечку устранили' },
+        });
+        fireEvent.change(document.querySelector('input[type="file"]')!, {
+            target: { files: [new File(['img'], 'leak.jpg', { type: 'image/jpeg' })] },
+        });
+        expect(screen.getByAltText('leak.jpg')).toHaveAttribute('src', 'blob:finish-photo');
+
+        const fold = document.querySelector('.section-fold');
+        fireEvent.click(screen.getByRole('button', { name: 'Завершить' }));
+        expect(fold).not.toHaveClass('is-open');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Завершить' }));
+        expect(fold).toHaveClass('is-open');
+        expect(screen.getByPlaceholderText('Напишите, что сделали')).toHaveValue('Протечку устранили');
+        expect(screen.getByAltText('leak.jpg')).toHaveAttribute('src', 'blob:finish-photo');
+        vi.restoreAllMocks();
     });
 });
 

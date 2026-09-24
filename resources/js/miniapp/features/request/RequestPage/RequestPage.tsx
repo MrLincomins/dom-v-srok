@@ -50,7 +50,11 @@ export function RequestPage() {
                         audience={user?.role === 'resident' ? 'resident' : 'staff'}
                     />
                     <ResponsibleSection card={request.data} />
-                    <PhotoGallery attachments={request.data.attachments} />
+                    <PhotoGallery
+                        attachments={request.data.attachments}
+                        events={request.data.events}
+                        description={request.data.description}
+                    />
                     <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />
                     <EventTimeline events={request.data.events} attachments={request.data.attachments} />
                 </div>

@@ -2,20 +2,22 @@ import { useEffect, useState } from 'react';
 import { Button } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { CompactNote } from '@/components/CompactNote';
-import { Notice } from '@/components/Notice';
-import { useErrorNotice } from '@/components/Notice/useErrorNotice';
+import { Notice, useNoticeState } from '@/components/Notice';
+import { describeError } from '@/lib/describeError';
 import { useResidentRequestActions } from './ResidentRequestActions.model';
 
 export function ResidentRequestActions({ requestId }: { requestId: number }) {
     const actions = useResidentRequestActions(requestId);
-    const { text: noticeText, show: showNotice, clear: clearNotice } = useErrorNotice();
+    const notice = useNoticeState();
     const [comment, setComment] = useState('');
     const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
     const busy = actions.confirm.isPending;
 
     useEffect(() => {
-        if (actions.confirm.error) showNotice(actions.confirm.error, actions.confirm.failureCount);
-    }, [actions.confirm.error, actions.confirm.failureCount, showNotice]);
+        if (actions.confirm.error) {
+            notice.show(describeError(actions.confirm.error, actions.confirm.failureCount), 'error');
+        }
+    }, [actions.confirm.error, actions.confirm.failureCount, notice.show]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-8">
@@ -29,6 +31,7 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                 <Button
                     size="medium"
                     variant="primary"
+                    stretched
                     className="btn-done"
                     loading={busy && choice === 'yes'}
                     disabled={busy}
@@ -39,7 +42,10 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                                 resolved: true,
                                 comment: comment.trim() || undefined,
                             },
-                            { onSettled: () => setChoice(null) },
+                            {
+                                onSuccess: () => notice.show(texts.request.confirmedDone, 'success'),
+                                onSettled: () => setChoice(null),
+                            },
                         );
                     }}
                 >
@@ -48,6 +54,7 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                 <Button
                     size="medium"
                     variant="secondary"
+                    stretched
                     loading={busy && choice === 'no'}
                     disabled={busy}
                     onClick={() => {
@@ -57,14 +64,22 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                                 resolved: false,
                                 comment: comment.trim() || undefined,
                             },
-                            { onSettled: () => setChoice(null) },
+                            {
+                                onSuccess: () => notice.show(texts.request.returnedToWork, 'success'),
+                                onSettled: () => setChoice(null),
+                            },
                         );
                     }}
                 >
                     {texts.request.confirmNo}
                 </Button>
             </div>
-            <Notice text={noticeText} tone="error" onGone={clearNotice} />
+            <Notice
+                text={notice.text}
+                tone={notice.tone}
+                revision={notice.revision}
+                onGone={notice.clear}
+            />
         </section>
     );
 }

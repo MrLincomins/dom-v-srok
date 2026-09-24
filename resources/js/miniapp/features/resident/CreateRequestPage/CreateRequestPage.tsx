@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { Button, CellSimple } from '@maxhub/max-ui';
@@ -8,7 +8,9 @@ import type { Category } from '@/api/types';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
 import { CompactNote } from '@/components/CompactNote';
+import { ClearMark } from '@/components/FieldClear';
 import { EmptyState } from '@/components/EmptyState';
+import { PhotoGrid } from '@/components/PhotoGrid';
 import { InlineLoader } from '@/components/LineLoader';
 import { ErrorState } from '@/components/ErrorState';
 import { RequestSection } from '@/components/RequestSection';
@@ -16,6 +18,7 @@ import { Screen } from '@/components/Screen';
 import { SettingsField } from '@/components/SettingsField';
 import { Notice } from '@/components/Notice';
 import { MutationError } from '@/features/request/MutationError';
+import { usePhotoPreviews } from '@/lib/photoPreviews';
 
 type Step = 'emergency' | 'category' | 'subcategory' | 'details' | 'address' | 'preview';
 
@@ -288,17 +291,15 @@ function DetailsStep({
                 accept="image/jpeg,image/png,image/webp"
                 multiple
                 onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                    onPhotos(Array.from(event.target.files ?? []));
+                    const selected = Array.from(event.target.files ?? []);
+                    onPhotos([...photos, ...selected].slice(0, 5));
                     event.target.value = '';
                 }}
             />
             {previews.length > 0 && (
-                <div
-                    className="flex snap-x snap-mandatory gap-12 overflow-x-auto"
-                    aria-label={texts.request.photos}
-                >
+                <PhotoGrid label={texts.request.photos}>
                     {previews.map((preview, index) => (
-                        <div key={preview.url} className="relative shrink-0 snap-start">
+                        <div key={preview.url} className="relative">
                             <img
                                 src={preview.url}
                                 alt={preview.name}
@@ -306,15 +307,15 @@ function DetailsStep({
                             />
                             <button
                                 type="button"
-                                className="absolute top-8 right-8 flex h-32 w-32 items-center justify-center rounded-full bg-black/70 text-white"
+                                className="photo-remove"
                                 onClick={() => onPhotos(photos.filter((_, current) => current !== index))}
                                 aria-label={texts.request.removePhoto(preview.name)}
                             >
-                                ×
+                                <ClearMark />
                             </button>
                         </div>
                     ))}
-                </div>
+                </PhotoGrid>
             )}
             <Button
                 type="button"
@@ -446,18 +447,4 @@ function PreviewStep({
             <MutationError error={error} />
         </div>
     );
-}
-
-function usePhotoPreviews(files: File[]): Array<{ name: string; url: string }> {
-    const previews = useMemo(
-        () => files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
-        [files],
-    );
-    useEffect(
-        () => () => {
-            previews.forEach((preview) => URL.revokeObjectURL(preview.url));
-        },
-        [previews],
-    );
-    return previews;
 }

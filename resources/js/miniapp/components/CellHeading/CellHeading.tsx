@@ -1,4 +1,4 @@
-import { CellHeader, Tappable } from '@maxhub/max-ui';
+import { CellHeader } from '@maxhub/max-ui';
 import type { ReactNode } from 'react';
 
 export function CellHeading({
@@ -21,14 +21,13 @@ export function CellHeading({
     if (!onClick) return header;
 
     return (
-        <Tappable
-            as="button"
+        <button
             type="button"
             className="cell-heading-open"
             aria-expanded={expanded}
             onClick={onClick}
         >
             {header}
-        </Tappable>
+        </button>
     );
 }

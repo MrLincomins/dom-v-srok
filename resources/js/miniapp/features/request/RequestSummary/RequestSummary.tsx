@@ -35,7 +35,11 @@ export function RequestSummary({ card, audience }: { card: RequestCard; audience
                         {statusExplain(card.status, card.is_overdue, audience)}
                     </span>
                 }
-                subtitle={deadline?.text}
+                subtitle={
+                    deadline ? (
+                        <span className={deadline.overdue ? 'deadline-overdue' : undefined}>{deadline.text}</span>
+                    ) : undefined
+                }
             />
             <CellSimple
                 title={texts.request.what}

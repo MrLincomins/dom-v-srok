@@ -10,10 +10,12 @@ export function AssignExecutor({
     currentName,
     action,
     disabled,
+    onAssigned,
 }: {
     currentName?: string | null;
     action: StaffRequestActionMutations['assign'];
     disabled: boolean;
+    onAssigned?: () => void;
 }) {
     const executors = useQuery({
         queryKey: ['organization', 'executors'],
@@ -35,7 +37,7 @@ export function AssignExecutor({
                         title={executor.name}
                         subtitle={[executor.specialty, executor.phone].filter(Boolean).join(' · ') || undefined}
                         disabled={disabled || action.isPending}
-                        onClick={() => action.mutate(executor.id)}
+                        onClick={() => action.mutate(executor.id, { onSuccess: onAssigned })}
                     />
                 ))}
             </RequestSection>

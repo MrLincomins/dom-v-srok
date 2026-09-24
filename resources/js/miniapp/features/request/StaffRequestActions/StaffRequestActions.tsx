@@ -1,12 +1,25 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    type ChangeEvent,
+    type Dispatch,
+    type FormEvent,
+    type SetStateAction,
+} from 'react';
 import { Button } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
 import { CellHeading } from '@/components/CellHeading';
 import { CompactNote } from '@/components/CompactNote';
-import { Notice } from '@/components/Notice';
-import { useErrorNotice } from '@/components/Notice/useErrorNotice';
+import { ClearMark } from '@/components/FieldClear';
+import { Notice, useNoticeState } from '@/components/Notice';
+import { PhotoGrid } from '@/components/PhotoGrid';
+import { PhoneField } from '@/components/PhoneField';
 import { SettingsField } from '@/components/SettingsField';
+import { describeError } from '@/lib/describeError';
+import { usePhotoPreviews } from '@/lib/photoPreviews';
+import { isCompletePhone, toStoredPhone } from '@/lib/phone';
 import { staffPrimaryAction } from '@/lib/status';
 import { AssignExecutor } from '@/features/request/AssignExecutor';
 import { MutationError } from '@/features/request/MutationError';
@@ -17,10 +30,13 @@ import {
 
 export function StaffRequestActions({ card }: { card: RequestCard }) {
     const actions = useStaffRequestActions(card.id);
-    const { text: noticeText, show: showNotice, clear: clearNotice } = useErrorNotice();
+    const notice = useNoticeState();
     const [comment, setComment] = useState('');
     const [redirectOpen, setRedirectOpen] = useState(false);
     const [finishOpen, setFinishOpen] = useState(false);
+    const [finishComment, setFinishComment] = useState('');
+    const [finishPhotos, setFinishPhotos] = useState<File[]>([]);
+    const [finishPhotoError, setFinishPhotoError] = useState<string | null>(null);
     const busy =
         actions.status.isPending ||
         actions.assign.isPending ||
@@ -34,13 +50,18 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
         ) ?? null;
 
     useEffect(() => {
-        if (failed?.error) showNotice(failed.error, failed.failureCount);
-    }, [failed, showNotice]);
+        if (failed?.error) notice.show(describeError(failed.error, failed.failureCount), 'error');
+    }, [failed, notice.show]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-24">
             {primary === 'assign' && (
-                <AssignExecutor currentName={card.executor?.name} action={actions.assign} disabled={busy} />
+                <AssignExecutor
+                    currentName={card.executor?.name}
+                    action={actions.assign}
+                    disabled={busy}
+                    onAssigned={() => notice.show(texts.request.executorAssigned, 'success')}
+                />
             )}
 
             {primary === 'start' && card.allowed_transitions.includes('in_progress') && (
@@ -50,14 +71,19 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                     stretched
                     loading={actions.status.isPending}
                     disabled={busy}
-                    onClick={() => actions.status.mutate({ status: 'in_progress' })}
+                    onClick={() =>
+                        actions.status.mutate(
+                            { status: 'in_progress' },
+                            { onSuccess: () => notice.show(texts.request.takenWork, 'success') },
+                        )
+                    }
                 >
                     {texts.request.takeWork}
                 </Button>
             )}
 
             {primary === 'finish' && card.allowed_transitions.includes('done') && (
-                <div className="flex min-w-0 flex-col gap-8">
+                <div className="flex min-w-0 flex-col">
                     <Button
                         size="medium"
                         variant="primary"
@@ -69,11 +95,27 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                     >
                         {texts.request.finish}
                     </Button>
-                    {finishOpen && (
-                        <div className="open-pulse">
-                            <CloseRequestForm action={actions.close} disabled={busy} />
+                    <div
+                        className={`section-fold${finishOpen ? ' is-open' : ''}`}
+                        aria-hidden={!finishOpen}
+                        inert={!finishOpen}
+                    >
+                        <div className="section-fold-inner">
+                            <div className="section-fold-body">
+                                <CloseRequestForm
+                                    action={actions.close}
+                                    disabled={busy}
+                                    comment={finishComment}
+                                    photos={finishPhotos}
+                                    photoError={finishPhotoError}
+                                    onCommentChange={setFinishComment}
+                                    onPhotosChange={setFinishPhotos}
+                                    onPhotoErrorChange={setFinishPhotoError}
+                                    onDone={() => notice.show(texts.request.workDone, 'success')}
+                                />
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
 
@@ -93,7 +135,10 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                             <RedirectRequestForm
                                 action={actions.redirect}
                                 disabled={busy}
-                                onSuccess={() => setRedirectOpen(false)}
+                                onSuccess={() => {
+                                    setRedirectOpen(false);
+                                    notice.show(texts.request.requestRedirected, 'success');
+                                }}
                             />
                         </div>
                     )}
@@ -128,13 +173,23 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                     disabled={busy || comment.trim() === ''}
                     loading={actions.addComment.isPending}
                     onClick={() =>
-                        actions.addComment.mutate(comment.trim(), { onSuccess: () => setComment('') })
+                        actions.addComment.mutate(comment.trim(), {
+                            onSuccess: () => {
+                                setComment('');
+                                notice.show(texts.request.commentAdded, 'success');
+                            },
+                        })
                     }
                 >
                     {texts.request.actions.comment}
                 </Button>
             </div>
-            <Notice text={noticeText} tone="error" onGone={clearNotice} />
+            <Notice
+                text={notice.text}
+                tone={notice.tone}
+                revision={notice.revision}
+                onGone={notice.clear}
+            />
         </section>
     );
 }
@@ -142,20 +197,34 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
 function CloseRequestForm({
     action,
     disabled,
+    comment,
+    photos,
+    photoError,
+    onCommentChange,
+    onPhotosChange,
+    onPhotoErrorChange,
+    onDone,
 }: {
     action: StaffRequestActionMutations['close'];
     disabled: boolean;
+    comment: string;
+    photos: File[];
+    photoError: string | null;
+    onCommentChange: Dispatch<SetStateAction<string>>;
+    onPhotosChange: Dispatch<SetStateAction<File[]>>;
+    onPhotoErrorChange: Dispatch<SetStateAction<string | null>>;
+    onDone: () => void;
 }) {
-    const [comment, setComment] = useState('');
-    const [photos, setPhotos] = useState<File[]>([]);
-    const [photoError, setPhotoError] = useState<string | null>(null);
     const photoInput = useRef<HTMLInputElement>(null);
     const previews = usePhotoPreviews(photos);
 
     const selectPhotos = (event: ChangeEvent<HTMLInputElement>) => {
         const selected = Array.from(event.target.files ?? []);
-        setPhotoError(selected.length > 5 ? texts.request.photoLimit : null);
-        setPhotos(selected.slice(0, 5));
+        onPhotosChange((current) => {
+            const next = [...current, ...selected];
+            onPhotoErrorChange(next.length > 5 ? texts.request.photoLimit : null);
+            return next.slice(0, 5);
+        });
         event.target.value = '';
     };
 
@@ -168,9 +237,10 @@ function CloseRequestForm({
                     { comment: comment.trim(), photos },
                     {
                         onSuccess: () => {
-                            setComment('');
-                            setPhotos([]);
-                            setPhotoError(null);
+                            onCommentChange('');
+                            onPhotosChange([]);
+                            onPhotoErrorChange(null);
+                            onDone();
                         },
                     },
                 );
@@ -180,7 +250,7 @@ function CloseRequestForm({
                 label={texts.request.finishTitle}
                 placeholder={texts.request.finishComment}
                 value={comment}
-                onChange={(event) => setComment(event.target.value)}
+                onChange={(event) => onCommentChange(event.target.value)}
             />
             <input
                 ref={photoInput}
@@ -190,14 +260,10 @@ function CloseRequestForm({
                 multiple
                 onChange={selectPhotos}
             />
-            {photoError && <MutationError error={photoError} />}
             {previews.length > 0 && (
-                <div
-                    className="flex snap-x snap-mandatory gap-12 overflow-x-auto scroll-px-16"
-                    aria-label="Выбранные фотографии"
-                >
+                <PhotoGrid label="Выбранные фотографии">
                     {previews.map((preview, index) => (
-                        <div key={preview.url} className="relative shrink-0 snap-start">
+                        <div key={preview.url} className="relative">
                             <img
                                 src={preview.url}
                                 alt={preview.name}
@@ -205,25 +271,27 @@ function CloseRequestForm({
                             />
                             <button
                                 type="button"
-                                className="absolute top-8 right-8 flex h-32 w-32 items-center justify-center rounded-full bg-black/70 text-[16px] text-white"
+                                className="photo-remove"
                                 onClick={() =>
-                                    setPhotos((current) =>
+                                    onPhotosChange((current) =>
                                         current.filter((_, currentIndex) => currentIndex !== index),
                                     )
                                 }
                                 aria-label={texts.request.removePhoto(preview.name)}
                             >
-                                ×
+                                <ClearMark />
                             </button>
                         </div>
                     ))}
-                </div>
+                </PhotoGrid>
             )}
+            {photoError && <MutationError error={photoError} />}
             <div className="request-action-row">
                 <Button
                     size="medium"
                     variant="secondary"
                     type="button"
+                    stretched
                     onClick={() => photoInput.current?.click()}
                 >
                     {texts.request.addPhoto}
@@ -232,6 +300,7 @@ function CloseRequestForm({
                     type="submit"
                     variant="primary"
                     size="medium"
+                    stretched
                     className="btn-done"
                     loading={action.isPending}
                     disabled={disabled}
@@ -254,14 +323,19 @@ function RedirectRequestForm({
 }) {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [phoneError, setPhoneError] = useState('');
     const [note, setNote] = useState('');
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (phone.length > 0 && !isCompletePhone(phone)) {
+            setPhoneError(texts.organization.phoneError);
+            return;
+        }
         action.mutate(
             {
                 name: name.trim(),
-                phone: phone.trim() || undefined,
+                phone: toStoredPhone(phone) ?? undefined,
                 note: note.trim() || undefined,
             },
             { onSuccess },
@@ -276,11 +350,14 @@ function RedirectRequestForm({
                 required
                 onChange={(event) => setName(event.target.value)}
             />
-            <SettingsField
+            <PhoneField
                 label={texts.request.redirectPhone}
                 value={phone}
-                inputMode="tel"
-                onChange={(event) => setPhone(event.target.value)}
+                error={phoneError}
+                onChange={(next) => {
+                    setPhone(next);
+                    if (phoneError) setPhoneError('');
+                }}
             />
             <CompactNote
                 placeholder={texts.request.redirectNote}
@@ -300,18 +377,3 @@ function RedirectRequestForm({
     );
 }
 
-function usePhotoPreviews(files: File[]): Array<{ name: string; url: string }> {
-    const previews = useMemo(
-        () => files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
-        [files],
-    );
-
-    useEffect(
-        () => () => {
-            previews.forEach((preview) => URL.revokeObjectURL(preview.url));
-        },
-        [previews],
-    );
-
-    return previews;
-}

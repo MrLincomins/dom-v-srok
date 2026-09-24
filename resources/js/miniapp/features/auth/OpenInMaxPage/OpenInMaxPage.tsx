@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input, Typography } from '@maxhub/max-ui';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
+import { FieldClear } from '@/components/FieldClear';
 import { describeError } from '@/lib/describeError';
 
 function demoLoginEnabled(): boolean {
@@ -56,6 +57,10 @@ export function OpenInMaxPage() {
                                     onChange={(e) => setLogin(e.target.value)}
                                     autoComplete="username"
                                     required
+                                    withClearButton={false}
+                                    iconAfter={
+                                        login.length > 0 ? <FieldClear onClear={() => setLogin('')} /> : undefined
+                                    }
                                 />
                                 <Input
                                     type={passwordVisible ? 'text' : 'password'}
@@ -70,20 +75,29 @@ export function OpenInMaxPage() {
                                     }}
                                     autoComplete="current-password"
                                     required
+                                    withClearButton={false}
                                     iconAfter={
                                         password.length > 0 ? (
-                                            <PasswordVisibility
-                                                visible={passwordVisible}
-                                                onToggle={() => setPasswordVisible((open) => !open)}
-                                            />
+                                            <span className="flex items-center gap-4">
+                                                <FieldClear
+                                                    onClear={() => {
+                                                        setPassword('');
+                                                        setPasswordVisible(false);
+                                                    }}
+                                                />
+                                                <PasswordVisibility
+                                                    visible={passwordVisible}
+                                                    onToggle={() => setPasswordVisible((open) => !open)}
+                                                />
+                                            </span>
                                         ) : undefined
                                     }
                                 />
                             </div>
                             {error && (
-                                <Typography.Body variant="small" className="text-negative" role="alert">
+                                <p className="form-error" role="alert">
                                     {error}
-                                </Typography.Body>
+                                </p>
                             )}
                             <Button type="submit" variant="primary" size="large" stretched loading={busy}>
                                 {texts.auth.submit}
