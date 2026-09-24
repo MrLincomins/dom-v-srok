@@ -1,1 +1,1 @@
-export { tabToQuery, useQueue, type QueueTab } from './QueuePage/QueuePage.model';
+export { countersForSearch, tabToQuery, useQueue, type QueueTab } from './QueuePage/QueuePage.model';

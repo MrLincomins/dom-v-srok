@@ -7,9 +7,9 @@ import { describeDeadline } from '@/lib/deadline';
 import { statusExplain, statusTone, type StatusTone } from '@/lib/status';
 
 const TONE_TEXT: Record<StatusTone, string> = {
-    fresh: 'text-fresh',
     accepted: 'text-accepted-blue',
-    work: 'text-work',
+    progress: 'text-progress-blue',
+    ready: 'text-ready-blue',
     done: 'text-done',
     late: 'text-late',
     muted: 'text-muted',

@@ -1,6 +1,5 @@
 import { createPortal } from 'react-dom';
 import { texts } from '@/app/texts';
-import { UserContextBar } from '@/components/UserContextBar';
 import { HouseDetails } from '@/features/resident/HouseDetails';
 import { useHouseSheet } from './HouseSheet.model';
 import type { HouseSheetProps } from './HouseSheet.types';
@@ -59,8 +58,9 @@ export function HouseSheet({ open, onClose }: HouseSheetProps) {
                 <h2 id="house-sheet-title" className="sheet-title">
                     {texts.home.house}
                 </h2>
-                <UserContextBar />
-                <HouseDetails />
+                <div className="sheet-body">
+                    <HouseDetails showName />
+                </div>
             </div>
         </div>,
         document.body,

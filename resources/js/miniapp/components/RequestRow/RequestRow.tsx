@@ -43,11 +43,13 @@ export function RequestRow({
             onClick={() => onOpen(item.id)}
             aria-label={`${texts.request.openRow} № ${item.id}. ${item.category}. ${status}`}
         >
-            <span className="request-tile-name tabular">
-                № {item.id}. {item.category}
+            <span className="request-tile-body">
+                <span className="request-tile-name tabular">
+                    № {item.id}. {item.category}
+                </span>
+                {meta ? <span className="request-tile-meta">{meta}</span> : null}
+                <span className="request-tile-place">{place}</span>
             </span>
-            {meta ? <span className="request-tile-meta">{meta}</span> : null}
-            <span className="request-tile-place">{place}</span>
             <span className="request-tile-foot">
                 <StatusChip status={item.status} overdue={item.is_overdue} />
                 <DeadlineChip

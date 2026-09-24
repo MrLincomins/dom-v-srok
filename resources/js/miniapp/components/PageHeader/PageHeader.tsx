@@ -18,7 +18,7 @@ export function PageHeader({ title, backTo, right, titleLevel = 1 }: Props) {
                 <div className="grid min-h-[44px] grid-cols-[44px_minmax(0,1fr)_44px] items-center py-8">
                     <button
                         type="button"
-                        className="flex h-44 w-44 items-center justify-start text-white active:opacity-60"
+                        className="flex h-44 w-44 items-center justify-start text-ink active:opacity-60"
                         onClick={goBack}
                         aria-label={texts.app.back}
                     >

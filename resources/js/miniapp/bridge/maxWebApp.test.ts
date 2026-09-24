@@ -1,9 +1,26 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { openExternalLink } from './maxWebApp';
+import { getColorScheme, openExternalLink } from './maxWebApp';
 
 afterEach(() => {
     delete window.WebApp;
     vi.unstubAllGlobals();
+});
+
+describe('getColorScheme', () => {
+    it('берёт схему из MAX, иначе из системы', () => {
+        window.WebApp = { colorScheme: 'light' };
+        expect(getColorScheme()).toBe('light');
+
+        window.WebApp = { colorScheme: 'dark' };
+        expect(getColorScheme()).toBe('dark');
+
+        delete window.WebApp;
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+        );
+        expect(getColorScheme()).toBe('light');
+    });
 });
 
 describe('openExternalLink', () => {

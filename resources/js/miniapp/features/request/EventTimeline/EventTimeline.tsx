@@ -4,18 +4,18 @@ import { formatDateTime } from '@/lib/dates';
 import { STATUS_LABEL, type StatusTone } from '@/lib/status';
 
 const TONE_TEXT: Record<StatusTone, string> = {
-    fresh: ' text-fresh',
     accepted: ' text-accepted-blue',
-    work: ' text-work',
+    progress: ' text-progress-blue',
+    ready: ' text-ready-blue',
     done: ' text-done',
     late: ' text-late',
     muted: ' text-muted',
 };
 
 const TONE_DOT: Record<StatusTone, string> = {
-    fresh: ' is-fresh',
-    accepted: ' is-current',
-    work: ' is-current',
+    accepted: ' is-accepted',
+    progress: ' is-progress',
+    ready: ' is-ready',
     done: ' is-done',
     late: ' is-late',
     muted: '',
@@ -76,9 +76,10 @@ function ArrowDown() {
 
 function eventTone(event: RequestEvent): StatusTone {
     if (event.type === 'confirmed' || event.to_status === 'confirmed') return 'done';
-    if (event.type === 'returned' || event.to_status === 'returned') return 'late';
     if (event.type === 'redirected' || event.to_status === 'redirected') return 'muted';
-    return 'work';
+    if (event.to_status === 'done') return 'ready';
+    if (event.to_status === 'in_progress' || event.type === 'returned') return 'progress';
+    return 'accepted';
 }
 function eventLine(event: RequestEvent): string {
     const comment = event.comment ? ` — ${event.comment}` : '';

@@ -4,6 +4,16 @@ import type { QueueQuery } from '@/api/types';
 
 export type QueueTab = 'new' | 'in_progress' | 'overdue' | 'closed';
 
+export function countersForSearch(
+    counters: Partial<Record<QueueTab, number>> | undefined,
+    tab: QueueTab,
+    search: string,
+    total: number | undefined,
+): Partial<Record<QueueTab, number>> | undefined {
+    if (!counters || total == null || search.trim() === '') return counters;
+    return { ...counters, [tab]: total };
+}
+
 export function tabToQuery(tab: QueueTab, search: string): QueueQuery {
     const q = search.trim() || undefined;
     switch (tab) {

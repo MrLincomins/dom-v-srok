@@ -100,7 +100,7 @@ function PasswordVisibility({ visible, onToggle }: { visible: boolean; onToggle:
     return (
         <button
             type="button"
-            className="flex h-24 w-24 items-center justify-center text-white/56 active:opacity-60"
+            className="flex h-24 w-24 items-center justify-center text-muted active:opacity-60"
             onClick={onToggle}
             aria-label={visible ? texts.auth.hidePassword : texts.auth.showPassword}
             aria-pressed={visible}

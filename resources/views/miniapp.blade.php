@@ -9,6 +9,14 @@
     <title>{{ config('app.name') }} — кабинет</title>
     {{-- В обычном браузере bridge не загрузит сессию, и приложение покажет демо-вход. --}}
     <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <script>
+        document.documentElement.dataset.colorScheme =
+            window.WebApp && (window.WebApp.colorScheme === 'light' || window.WebApp.colorScheme === 'dark')
+                ? window.WebApp.colorScheme
+                : window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'dark'
+                  : 'light';
+    </script>
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/miniapp/main.tsx'])
 </head>

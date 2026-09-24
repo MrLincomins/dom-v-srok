@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
 import { openExternalLink } from '@/bridge/maxWebApp';
+import { Notice } from '@/components/Notice';
 import { Screen } from '@/components/Screen';
 import { HouseSheet } from '@/features/resident/HouseSheet';
 import { MyRequestsList } from '@/features/resident/MyRequestsPage';
@@ -9,9 +10,15 @@ import { MyRequestsList } from '@/features/resident/MyRequestsPage';
 export function ResidentCabinet() {
     const { user } = useAuth();
     const [houseOpen, setHouseOpen] = useState(false);
+    const [notice, setNotice] = useState<string | null>(null);
     const closeHouse = useCallback(() => setHouseOpen(false), []);
     const house = user?.house;
     const startUrl = house?.start_url;
+    const openChat = useCallback(() => {
+        if (!startUrl) return;
+        setNotice(texts.home.createRequestNotice);
+        openExternalLink(startUrl);
+    }, [startUrl]);
 
     return (
         <Screen
@@ -32,7 +39,7 @@ export function ResidentCabinet() {
             }
         >
             {startUrl ? (
-                <button type="button" className="cabinet-cta" onClick={() => openExternalLink(startUrl)}>
+                <button type="button" className="cabinet-cta" onClick={openChat}>
                     <span className="cabinet-cta-body">
                         <span className="cabinet-cta-title">{texts.home.createRequest}</span>
                         <span className="cabinet-cta-hint">{texts.home.createRequestHint}</span>
@@ -44,6 +51,7 @@ export function ResidentCabinet() {
             ) : null}
             <MyRequestsList />
             <HouseSheet open={houseOpen} onClose={closeHouse} />
+            <Notice text={notice} onGone={() => setNotice(null)} />
         </Screen>
     );
 }

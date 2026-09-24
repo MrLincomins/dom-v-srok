@@ -2,9 +2,9 @@ import type { RequestStatus } from '@/api/types';
 import { STATUS_LABEL, statusTone, type StatusTone } from '@/lib/status';
 
 const TONE_CLASS: Record<StatusTone, string> = {
-    fresh: 'bg-fresh/15 text-fresh',
     accepted: 'bg-accepted-blue/15 text-accepted-blue',
-    work: 'bg-work/15 text-work',
+    progress: 'bg-progress-blue/15 text-progress-blue',
+    ready: 'bg-ready-blue/15 text-ready-blue',
     done: 'bg-done/15 text-done',
     late: 'bg-late/15 text-late',
     muted: 'bg-page-secondary text-muted',

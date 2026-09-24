@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { PageHeader } from '@/components/PageHeader';
+import { ScrollArea } from '@/components/ScrollArea';
 
 interface ScreenProps {
     title: string;
@@ -28,10 +29,12 @@ export function Screen({
 
     return (
         <main ref={screenRef} tabIndex={-1} className={`screen outline-none ${className}`}>
-            <div className={`screen-content ${contentClassName}`}>
-                <PageHeader title={title} backTo={backTo} right={right} titleLevel={titleLevel} />
-                {children}
-            </div>
+            <ScrollArea>
+                <div className={`screen-content ${contentClassName}`}>
+                    <PageHeader title={title} backTo={backTo} right={right} titleLevel={titleLevel} />
+                    {children}
+                </div>
+            </ScrollArea>
         </main>
     );
 }

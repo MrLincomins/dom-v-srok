@@ -33,17 +33,7 @@ final class RequestQuery
         if ($houseId !== null) {
             $q->where('house_id', $houseId);
         }
-        if ($search !== null && trim($search) !== '') {
-            $term = trim($search);
-            $q->where(function (Builder $w) use ($term): void {
-                if (ctype_digit($term)) {
-                    $w->orWhere('id', (int) $term);
-                }
-                $w->orWhere('flat', $term)
-                    ->orWhere('description', 'ilike', '%'.$term.'%')
-                    ->orWhereHas('house', fn (Builder $h) => $h->where('address', 'ilike', '%'.$term.'%'));
-            });
-        }
+        $this->applySearch($q, $search);
 
         return $q->orderByRaw('deadline_fix_at ASC NULLS LAST')->orderBy('created_at');
     }
@@ -60,9 +50,14 @@ final class RequestQuery
     }
 
     /** счётчики для вкладок */
-    public function counters(int $organizationId): array
+    public function counters(int $organizationId, ?string $search = null): array
     {
-        $base = fn () => ServiceRequest::query()->forOrganization($organizationId);
+        $base = function () use ($organizationId, $search): Builder {
+            $q = ServiceRequest::query()->forOrganization($organizationId);
+            $this->applySearch($q, $search);
+
+            return $q;
+        };
 
         return [
             'new' => $base()->where('status', RequestStatus::New->value)->count(),
@@ -70,5 +65,23 @@ final class RequestQuery
             'overdue' => $base()->overdue()->count(),
             'closed' => $base()->closed()->count(),
         ];
+    }
+
+    /** @param Builder<ServiceRequest> $q */
+    private function applySearch(Builder $q, ?string $search): void
+    {
+        if ($search === null || trim($search) === '') {
+            return;
+        }
+
+        $term = trim($search);
+        $q->where(function (Builder $w) use ($term): void {
+            if (ctype_digit($term)) {
+                $w->orWhere('id', (int) $term);
+            }
+            $w->orWhere('flat', $term)
+                ->orWhere('description', 'ilike', '%'.$term.'%')
+                ->orWhereHas('house', fn (Builder $h) => $h->where('address', 'ilike', '%'.$term.'%'));
+        });
     }
 }

@@ -1,1 +1,0 @@
-export { UserContextBar } from './UserContextBar';

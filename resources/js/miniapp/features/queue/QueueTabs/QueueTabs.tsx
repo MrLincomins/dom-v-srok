@@ -45,7 +45,11 @@ export function QueueTabs({
                         aria-controls="queue-panel"
                     >
                         {texts.queue.tabs[item]}
-                        {count > 0 ? <span className="ios-tab-count">{count}</span> : null}
+                        {count > 0 ? (
+                            <span key={count} className="ios-tab-count">
+                                {count}
+                            </span>
+                        ) : null}
                     </button>
                 );
             })}

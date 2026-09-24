@@ -97,16 +97,20 @@ describe('главный экран по роли', () => {
         expect(screen.queryByRole('button', { name: /Прошлые заявки/ })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Сообщить о проблеме/ }));
         expect(open).toHaveBeenCalledWith('https://max.ru/start', '_blank', 'noopener,noreferrer');
+        expect(screen.getByRole('status')).toHaveTextContent('О проблеме пишут в чате дома');
         expect(screen.queryByText('Тестовый пользователь')).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /Дом и контакты/ }));
-        const sheet = screen.getByRole('dialog', { name: 'Дом и контакты' });
+        fireEvent.click(screen.getByRole('button', { name: /Вы/ }));
+        const sheet = screen.getByRole('dialog', { name: 'Вы' });
         expect(within(sheet).getByText('Тестовый пользователь')).toBeInTheDocument();
-        expect(within(sheet).getAllByText('Мира, 12').length).toBeGreaterThan(0);
-        expect(within(sheet).getByText('Подъезд 2 · Квартира 45')).toBeInTheDocument();
+        expect(within(sheet).getAllByText('Мира, 12')).toHaveLength(1);
+        expect(within(sheet).getByText('Подъезд')).toBeInTheDocument();
+        expect(within(sheet).getByText('2')).toBeInTheDocument();
+        expect(within(sheet).getByText('Квартира')).toBeInTheDocument();
+        expect(within(sheet).getByText('45')).toBeInTheDocument();
         expect(within(sheet).getByText('ТСЖ «Демо»')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
         await waitFor(() => {
-            expect(screen.queryByRole('dialog', { name: 'Дом и контакты' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('dialog', { name: 'Вы' })).not.toBeInTheDocument();
         });
         expect(screen.queryByText('Выйти')).not.toBeInTheDocument();
     });
@@ -122,13 +126,13 @@ describe('главный экран по роли', () => {
         });
 
         expect(await screen.findByRole('heading', { name: 'Кабинет' })).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /Дом и контакты/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Вы/ }));
         const grab = screen.getByRole('button', { name: 'Закрыть' });
         fireEvent.pointerDown(grab, { clientX: 120, clientY: 40, pointerId: 1 });
         fireEvent.pointerMove(grab, { clientX: 120, clientY: 130, pointerId: 1 });
         fireEvent.pointerUp(grab, { clientX: 120, clientY: 130, pointerId: 1 });
         await waitFor(() => {
-            expect(screen.queryByRole('dialog', { name: 'Дом и контакты' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('dialog', { name: 'Вы' })).not.toBeInTheDocument();
         });
     });
 });

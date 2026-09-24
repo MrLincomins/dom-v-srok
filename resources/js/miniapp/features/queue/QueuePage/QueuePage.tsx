@@ -10,7 +10,7 @@ import { RequestRow } from '@/components/RequestRow';
 import { Screen } from '@/components/Screen';
 import { QueueSearch } from '@/features/queue/QueueSearch';
 import { QueueTabs } from '@/features/queue/QueueTabs';
-import { useQueue, type QueueTab } from '@/features/queue/useQueue';
+import { countersForSearch, useQueue, type QueueTab } from '@/features/queue/useQueue';
 
 export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const navigate = useNavigate();
@@ -36,7 +36,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
 
     const pages = queue.data?.pages;
     const items = useMemo(() => pages?.flatMap((page) => page.data) ?? [], [pages]);
-    const counters = pages?.[0]?.meta.counters;
+    const counters = countersForSearch(pages?.[0]?.meta.counters, tab, search, pages?.[0]?.meta.total);
     const ready = Boolean(queue.data) && !queue.isPlaceholderData;
 
     if (queue.isPending && !queue.data) {
@@ -68,7 +68,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                 id="queue-panel"
                 role="tabpanel"
                 aria-labelledby={`queue-tab-${tab}`}
-                className={`flex min-w-0 flex-col gap-12 ${queue.isPlaceholderData ? 'opacity-60' : ''}`}
+                className="flex min-w-0 flex-col gap-12"
             >
                 {queue.isError && !queue.data && (
                     <ErrorState error={queue.error} onRetry={() => void queue.refetch()} />
@@ -76,7 +76,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                 {ready && items.length === 0 && !queue.isError && (
                     <EmptyState text={texts.queue.empty[tab]} />
                 )}
-                <div className="request-list">
+                <div className={`request-list${queue.isPlaceholderData ? ' is-updating' : ''}`}>
                     {items.map((item) => (
                         <RequestRow
                             key={item.id}

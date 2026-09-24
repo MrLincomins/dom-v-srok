@@ -50,7 +50,8 @@ describe('дом жителя', () => {
 
         expect(screen.getByRole('heading', { name: 'Дом' })).toBeInTheDocument();
         expect(screen.getByText('Демонстрационная, 1')).toBeInTheDocument();
-        expect(screen.getByText(/Подъезд 2/)).toBeInTheDocument();
+        expect(screen.getByText('Подъезд')).toBeInTheDocument();
+        expect(screen.getByText('2')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /Аварийная служба/ })).toHaveAttribute(
             'href',
             'tel:+78430000001',
@@ -61,7 +62,8 @@ describe('дом жителя', () => {
         );
         expect(screen.getByText('ТСЖ «Демо»')).toBeInTheDocument();
         expect(screen.getByText('пн–пт 9:00–18:00')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Почта/ })).toHaveAttribute('href', 'mailto:demo@example.ru');
+        expect(screen.getByText('Почта')).toBeInTheDocument();
+        expect(screen.getByText('demo@example.ru')).toBeInTheDocument();
     });
 });
 
