@@ -86,6 +86,12 @@ checks:
     role: dispatcher
     expect: { status: [200], content_type: text/csv }
 
+  - id: journal-csv-link
+    method: GET
+    path: /journal/csv-link
+    role: dispatcher
+    expect: { status: [200], content_type: application/json, required: [data.url, data.expires_at] }
+
   - id: catalog
     method: GET
     path: /catalog/categories

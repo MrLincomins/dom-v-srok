@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { Button, Typography } from '@maxhub/max-ui';
-import { downloadJournalCsv, getJournal } from '@/api/journal';
+import { getJournal, getJournalCsvLink } from '@/api/journal';
 import type { JournalSummary } from '@/api/types';
 import { texts } from '@/app/texts';
+import { isInsideMax, openFileLink } from '@/bridge/maxWebApp';
 import { DelayedSkeleton } from '@/components/DelayedSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
@@ -49,8 +50,11 @@ export function JournalPage() {
     });
 
     const csv = useMutation({
-        mutationFn: () => downloadJournalCsv({ from, to }),
-        onSuccess: () => setNotice(texts.journal.csvDone),
+        mutationFn: async () => {
+            const link = await getJournalCsvLink({ from, to });
+            openFileLink(link.url);
+        },
+        onSuccess: () => setNotice(isInsideMax() ? texts.journal.csvOpened : texts.journal.csvStarted),
     });
 
     const setPeriod = (key: 'from' | 'to', value: string) => {

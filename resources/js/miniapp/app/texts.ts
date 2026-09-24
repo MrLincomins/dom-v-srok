@@ -167,7 +167,8 @@ export const texts = {
         periodTooLong: 'Период журнала не длиннее года.',
         empty: 'За этот период заявок нет.',
         csv: 'Скачать CSV',
-        csvDone: 'Файл скачан',
+        csvOpened: 'Файл откроется в браузере, сохраните его там',
+        csvStarted: 'Файл скачивается',
         summary: {
             total: 'Принято',
             open: 'Открыто',

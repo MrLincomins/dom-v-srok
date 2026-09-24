@@ -1,5 +1,5 @@
-import { api, downloadFile } from './client';
-import type { JournalMeta, JournalQuery, JournalRow } from './types';
+import { api } from './client';
+import type { JournalCsvLink, JournalMeta, JournalQuery, JournalRow } from './types';
 
 export interface JournalPage {
     data: JournalRow[];
@@ -10,9 +10,6 @@ export function getJournal(query: JournalQuery, signal?: AbortSignal): Promise<J
     return api<JournalPage>('/journal', { query, signal });
 }
 
-export function downloadJournalCsv(query: Pick<JournalQuery, 'from' | 'to'>): Promise<void> {
-    return downloadFile('/journal.csv', {
-        query,
-        filename: `zhurnal-zayavok-${query.from ?? ''}-${query.to ?? ''}.csv`,
-    });
+export async function getJournalCsvLink(query: Pick<JournalQuery, 'from' | 'to'>): Promise<JournalCsvLink> {
+    return (await api<{ data: JournalCsvLink }>('/journal/csv-link', { query })).data;
 }

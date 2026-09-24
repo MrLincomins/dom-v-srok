@@ -83,6 +83,20 @@ export function openExternalLink(url: string): void {
     window.open(target.href, '_blank', 'noopener,noreferrer');
 }
 
+export function openFileLink(url: string): void {
+    if (isInsideMax() && getWebApp()?.openLink) {
+        openExternalLink(url);
+        return;
+    }
+    let target: URL;
+    try {
+        target = new URL(url, window.location.origin);
+    } catch {
+        return;
+    }
+    if (target.protocol === 'http:' || target.protocol === 'https:') window.location.assign(target.href);
+}
+
 export function signalReady(): void {
     try {
         getWebApp()?.ready?.();
