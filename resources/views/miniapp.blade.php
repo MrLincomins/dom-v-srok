@@ -7,16 +7,19 @@
     <meta name="demo-login" content="{{ config('demo.accounts_enabled') ? '1' : '0' }}">
     <meta name="app-name" content="{{ config('app.name') }}">
     <title>{{ config('app.name') }} — кабинет</title>
-    {{-- В обычном браузере bridge не загрузит сессию, и приложение покажет демо-вход. --}}
-    <script src="https://st.max.ru/js/max-web-app.js"></script>
+    {{-- Тему ставим сразу, не дожидаясь MAX: иначе страница мелькает белым. --}}
     <script>
         document.documentElement.dataset.colorScheme =
-            window.WebApp && (window.WebApp.colorScheme === 'light' || window.WebApp.colorScheme === 'dark')
-                ? window.WebApp.colorScheme
-                : window.matchMedia('(prefers-color-scheme: dark)').matches
-                  ? 'dark'
-                  : 'light';
+            window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        function applyMaxColorScheme() {
+            var scheme = window.WebApp && window.WebApp.colorScheme;
+            if (scheme === 'light' || scheme === 'dark') {
+                document.documentElement.dataset.colorScheme = scheme;
+            }
+        }
     </script>
+    {{-- В обычном браузере bridge не загрузит сессию, и приложение покажет демо-вход. --}}
+    <script defer src="https://st.max.ru/js/max-web-app.js" onload="applyMaxColorScheme()"></script>
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/miniapp/main.tsx'])
 </head>

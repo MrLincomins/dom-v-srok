@@ -5,12 +5,13 @@ import { describeError } from '@/lib/describeError';
 interface Props {
     error?: unknown;
     message?: string;
+    failureCount?: number;
     onRetry?: () => void;
     fullscreen?: boolean;
 }
 
-export function ErrorState({ error, message, onRetry, fullscreen = false }: Props) {
-    const text = message ?? describeError(error);
+export function ErrorState({ error, message, failureCount, onRetry, fullscreen = false }: Props) {
+    const text = message ?? describeError(error, failureCount);
     return (
         <div
             className={`flex flex-col items-center justify-center gap-16 px-16 py-48 text-center ${fullscreen ? 'app-shell min-h-dvh' : ''}`}

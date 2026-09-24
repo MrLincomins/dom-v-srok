@@ -22,6 +22,12 @@ export function useOrganizationPage() {
     const loading =
         organization.isPending || houses.isPending || executors.isPending || contractors.isPending;
     const error = organization.error ?? houses.error ?? executors.error ?? contractors.error;
+    const failureCount = Math.max(
+        organization.failureCount,
+        houses.failureCount,
+        executors.failureCount,
+        contractors.failureCount,
+    );
 
     const retry = () => {
         void organization.refetch();
@@ -30,5 +36,5 @@ export function useOrganizationPage() {
         void contractors.refetch();
     };
 
-    return { organization, houses, loading, error, retry };
+    return { organization, houses, loading, error, failureCount, retry };
 }

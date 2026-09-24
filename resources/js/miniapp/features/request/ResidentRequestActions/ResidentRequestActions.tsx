@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { CompactNote } from '@/components/CompactNote';
-import { MutationError } from '@/features/request/MutationError';
+import { Notice } from '@/components/Notice';
+import { useErrorNotice } from '@/components/Notice/useErrorNotice';
 import { useResidentRequestActions } from './ResidentRequestActions.model';
 
 export function ResidentRequestActions({ requestId }: { requestId: number }) {
     const actions = useResidentRequestActions(requestId);
+    const { text: noticeText, show: showNotice, clear: clearNotice } = useErrorNotice();
     const [comment, setComment] = useState('');
     const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
     const busy = actions.confirm.isPending;
+
+    useEffect(() => {
+        if (actions.confirm.error) showNotice(actions.confirm.error, actions.confirm.failureCount);
+    }, [actions.confirm.error, actions.confirm.failureCount, showNotice]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-8">
@@ -52,7 +58,7 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                     {texts.request.confirmNo}
                 </Button>
             </div>
-            <MutationError error={actions.confirm.error} />
+            <Notice text={noticeText} onGone={clearNotice} />
         </section>
     );
 }

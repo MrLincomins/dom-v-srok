@@ -1,5 +1,6 @@
 import type { RequestEvent, RequestStatus } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CellHeading } from '@/components/CellHeading';
 import { formatDateTime } from '@/lib/dates';
 import { STATUS_LABEL, type StatusTone } from '@/lib/status';
 
@@ -26,7 +27,7 @@ export function EventTimeline({ events }: { events: RequestEvent[] | undefined }
 
     return (
         <section className="request-block flex min-w-0 flex-col gap-8">
-            <h3 className="request-block-title">{texts.request.history}</h3>
+            <CellHeading>{texts.request.history}</CellHeading>
             <div className="history-card">
                 {items.length === 0 ? (
                     <p className="history-empty">{texts.request.historyEmpty}</p>

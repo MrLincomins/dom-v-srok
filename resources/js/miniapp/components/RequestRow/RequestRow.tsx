@@ -3,11 +3,12 @@ import { texts } from '@/app/texts';
 import { DeadlineChip } from '@/components/DeadlineChip';
 import { StatusChip } from '@/components/StatusChip';
 import { withoutMarks } from '@/lib/address';
-import { statusExplain } from '@/lib/status';
+import { statusExplain, type StatusAudience } from '@/lib/status';
 
 export function RequestRow({
     item,
     detail,
+    audience,
     onOpen,
 }: {
     item: Pick<
@@ -23,9 +24,10 @@ export function RequestRow({
         | 'deadline_fix_at'
     >;
     detail?: string;
+    audience?: StatusAudience;
     onOpen: (id: number) => void;
 }) {
-    const status = statusExplain(item.status, item.is_overdue);
+    const status = statusExplain(item.status, item.is_overdue, audience ?? 'staff');
     const place = [
         withoutMarks(item.address),
         item.entrance ? `подъезд ${item.entrance}` : null,

@@ -1,4 +1,4 @@
-import { CellList } from '@maxhub/max-ui';
+import { CellHeader, CellList } from '@maxhub/max-ui';
 import type { ReactNode } from 'react';
 
 export function Section({
@@ -12,8 +12,18 @@ export function Section({
 }) {
     return (
         <div className="request-block flex min-w-0 flex-col gap-8">
-            {title ? <h3 className="request-block-title">{title}</h3> : null}
-            <CellList mode="island" filled className={className}>
+            <CellList
+                mode="island"
+                filled
+                className={className}
+                header={
+                    title ? (
+                        <CellHeader titleStyle="caps" role="heading" aria-level={3}>
+                            {title}
+                        </CellHeader>
+                    ) : undefined
+                }
+            >
                 {children}
             </CellList>
         </div>

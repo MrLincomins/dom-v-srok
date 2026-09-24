@@ -14,7 +14,7 @@ import { useOrganizationPage } from './OrganizationPage.model';
 
 export function OrganizationPage() {
     const navigate = useNavigate();
-    const { organization, houses, loading, error, retry } = useOrganizationPage();
+    const { organization, houses, loading, error, failureCount, retry } = useOrganizationPage();
 
     if (loading && !organization.data) {
         return <FullscreenSpinner />;
@@ -22,7 +22,9 @@ export function OrganizationPage() {
 
     return (
         <Screen title={texts.organization.title} backTo="/" contentClassName="flex min-w-0 flex-col gap-24">
-            {error && !organization.data && <ErrorState error={error} onRetry={retry} />}
+            {error && !organization.data && (
+                <ErrorState error={error} failureCount={failureCount} onRetry={retry} />
+            )}
             {organization.data && (
                 <>
                     <Section>

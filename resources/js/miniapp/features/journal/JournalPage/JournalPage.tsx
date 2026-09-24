@@ -66,7 +66,11 @@ export function JournalPage() {
             <MutationError error={page.csv.error} />
             {page.summary && page.periodError === null && <JournalStats summary={page.summary} />}
             {page.journal.isError && !page.journal.data && (
-                <ErrorState error={page.journal.error} onRetry={() => void page.journal.refetch()} />
+                <ErrorState
+                    error={page.journal.error}
+                    failureCount={page.journal.failureCount}
+                    onRetry={() => void page.journal.refetch()}
+                />
             )}
             {page.ready && page.items.length === 0 && !page.journal.isError && (
                 <EmptyState text={texts.journal.empty} />

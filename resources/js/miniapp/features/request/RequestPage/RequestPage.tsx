@@ -37,11 +37,18 @@ export function RequestPage() {
             contentClassName="flex min-w-0 flex-col gap-24"
         >
             {request.isError && (
-                <ErrorState error={request.error} onRetry={() => void request.refetch()} />
+                <ErrorState
+                    error={request.error}
+                    failureCount={request.failureCount}
+                    onRetry={() => void request.refetch()}
+                />
             )}
             {request.data && (
                 <div className="request-layout">
-                    <RequestSummary card={request.data} />
+                    <RequestSummary
+                        card={request.data}
+                        audience={user?.role === 'resident' ? 'resident' : 'staff'}
+                    />
                     <ResponsibleSection card={request.data} />
                     <PhotoGallery attachments={request.data.attachments} />
                     <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />

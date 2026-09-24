@@ -71,7 +71,11 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                 className="flex min-w-0 flex-col gap-12"
             >
                 {queue.isError && !queue.data && (
-                    <ErrorState error={queue.error} onRetry={() => void queue.refetch()} />
+                    <ErrorState
+                        error={queue.error}
+                        failureCount={queue.failureCount}
+                        onRetry={() => void queue.refetch()}
+                    />
                 )}
                 {ready && items.length === 0 && !queue.isError && (
                     <EmptyState text={texts.queue.empty[tab]} />

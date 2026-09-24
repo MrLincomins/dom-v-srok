@@ -4,7 +4,7 @@ import { texts } from '@/app/texts';
 import { RequestSection } from '@/components/RequestSection';
 import { withoutMarks } from '@/lib/address';
 import { describeDeadline } from '@/lib/deadline';
-import { statusExplain, statusTone, type StatusTone } from '@/lib/status';
+import { statusExplain, statusTone, type StatusAudience, type StatusTone } from '@/lib/status';
 
 const TONE_TEXT: Record<StatusTone, string> = {
     accepted: 'text-accepted-blue',
@@ -15,7 +15,7 @@ const TONE_TEXT: Record<StatusTone, string> = {
     muted: 'text-muted',
 };
 
-export function RequestSummary({ card }: { card: RequestCard }) {
+export function RequestSummary({ card, audience }: { card: RequestCard; audience: StatusAudience }) {
     const closed = card.status === 'confirmed' || card.status === 'redirected';
     const deadline = closed ? null : describeDeadline(card.deadline_fix_at);
     const tone = statusTone(card.status, card.is_overdue);
@@ -31,7 +31,9 @@ export function RequestSummary({ card }: { card: RequestCard }) {
         <RequestSection>
             <CellSimple
                 title={
-                    <span className={TONE_TEXT[tone]}>{statusExplain(card.status, card.is_overdue)}</span>
+                    <span className={TONE_TEXT[tone]}>
+                        {statusExplain(card.status, card.is_overdue, audience)}
+                    </span>
                 }
                 subtitle={deadline?.text}
             />
@@ -40,7 +42,6 @@ export function RequestSummary({ card }: { card: RequestCard }) {
                 subtitle={[card.category.name, card.description].filter(Boolean).join('. ')}
             />
             <CellSimple title={texts.request.where} subtitle={place} />
-            {card.status === 'done' && <CellSimple title={texts.request.awaitingResident} />}
             {card.returned_count > 0 && <CellSimple title={texts.request.returnedBadge} />}
             {card.participants_count > 0 && (
                 <CellSimple

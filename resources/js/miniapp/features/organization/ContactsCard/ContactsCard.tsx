@@ -1,6 +1,7 @@
 import { Button } from '@maxhub/max-ui';
 import type { Organization } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CellHeading } from '@/components/CellHeading';
 import { Notice } from '@/components/Notice';
 import { SettingsField } from '@/components/SettingsField';
 import { MutationError } from '@/features/request/MutationError';
@@ -19,7 +20,7 @@ export function ContactsCard({ organization }: { organization: Organization }) {
             }}
         >
             <div className="request-block flex min-w-0 flex-col gap-8">
-                <h3 className="request-block-title">{texts.organization.types[organization.type]}</h3>
+                <CellHeading>{texts.organization.types[organization.type]}</CellHeading>
                 <div className="org-contacts-grid">
                     <SettingsField
                         label={texts.organization.name}

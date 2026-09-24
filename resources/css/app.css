@@ -246,6 +246,10 @@ body {
     transition: background-color 0.18s ease;
 }
 
+.request-tile:active {
+    background: var(--bg-card-hover);
+}
+
 .request-tile-body {
     display: flex;
     min-width: 0;
@@ -256,16 +260,16 @@ body {
 }
 
 .request-tile-name {
-    display: block;
+    display: -webkit-box;
     width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     color: var(--fg);
     font-size: 17px;
     font-weight: 590;
     letter-spacing: -0.4px;
     line-height: 22px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .request-tile-meta,
@@ -301,13 +305,13 @@ body {
 
 .request-tile-chevron {
     position: absolute;
-    top: 16px;
+    top: 50%;
     right: 16px;
-    height: 22px;
-    align-items: center;
     display: flex;
+    align-items: center;
     color: var(--fg-subtle);
     pointer-events: none;
+    transform: translateY(-50%);
 }
 
 .settings-card [class*='CellSimple_height_'] {
@@ -323,6 +327,35 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.cell-heading-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+}
+
+.open-pulse {
+    animation: open-pulse 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes open-pulse {
+    0% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    55% {
+        transform: scale(1.012);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .request-block-title,

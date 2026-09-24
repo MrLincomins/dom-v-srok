@@ -1,5 +1,6 @@
 import type { Attachment } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CellHeading } from '@/components/CellHeading';
 import { openExternalLink } from '@/bridge/maxWebApp';
 
 export function PhotoGallery({ attachments }: { attachments: Attachment[] | undefined }) {
@@ -12,7 +13,7 @@ export function PhotoGallery({ attachments }: { attachments: Attachment[] | unde
 
     return (
         <section className="request-block flex min-w-0 flex-col gap-8">
-            <h3 className="request-block-title">{texts.request.photos}</h3>
+            <CellHeading>{texts.request.photos}</CellHeading>
             <div className="flex snap-x snap-mandatory gap-12 overflow-x-auto px-12 pb-8 scroll-px-12">
                 {visible.map((attachment, index) => (
                     <button

@@ -120,8 +120,64 @@ describe('действия диспетчера', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'Выехал' }));
         expect(screen.getByPlaceholderText('Напишите, что сделали или что мешает')).toHaveValue('Выехал');
+        expect(screen.queryByRole('button', { name: 'В работу' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Завершить' })).not.toBeInTheDocument();
+    });
+
+    it('у назначенной заявки показывает только «В работу»', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
+        renderActions({
+            ...card,
+            status: 'assigned',
+            allowed_transitions: ['in_progress', 'redirected'],
+        });
+        expect(await screen.findByRole('button', { name: 'В работу' })).toBeInTheDocument();
+        expect(screen.queryByText('Назначить')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Завершить' })).not.toBeInTheDocument();
+    });
+
+    it('показывает уведомление на 403 без текста сервера', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/organization/executors')) {
+                    return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
+                }
+                return new Response(JSON.stringify({ error: { message: 'Access denied raw' } }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }),
+        );
+        renderActions(card);
+        fireEvent.click(await screen.findByText('Иван'));
+        expect(await screen.findByRole('status')).toHaveTextContent('Нет доступа к этому действию.');
+    });
+
+    it('открывает форму закрытия только по «Завершить»', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => json({ data: [] })));
+        renderActions({
+            ...card,
+            status: 'in_progress',
+            allowed_transitions: ['done', 'redirected'],
+        });
+        expect(await screen.findByRole('button', { name: 'Завершить' })).toBeInTheDocument();
+        expect(screen.queryByText('Работа закончена?')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Завершить' }));
+        expect(screen.getByText('Работа закончена?')).toBeInTheDocument();
     });
 });
+
+function renderActions(value: RequestCard) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+        <MaxUI platform="android" colorScheme="light">
+            <QueryClientProvider client={client}>
+                <StaffRequestActions card={value} />
+            </QueryClientProvider>
+        </MaxUI>,
+    );
+}
 
 function json(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {

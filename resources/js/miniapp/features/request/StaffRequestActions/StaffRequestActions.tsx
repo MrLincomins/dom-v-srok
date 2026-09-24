@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { Button } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CellHeading } from '@/components/CellHeading';
 import { CompactNote } from '@/components/CompactNote';
+import { Notice } from '@/components/Notice';
+import { useErrorNotice } from '@/components/Notice/useErrorNotice';
 import { SettingsField } from '@/components/SettingsField';
-import { transitionLabel } from '@/lib/status';
+import { staffPrimaryAction } from '@/lib/status';
 import { AssignExecutor } from '@/features/request/AssignExecutor';
 import { MutationError } from '@/features/request/MutationError';
 import {
@@ -14,53 +17,64 @@ import {
 
 export function StaffRequestActions({ card }: { card: RequestCard }) {
     const actions = useStaffRequestActions(card.id);
+    const { text: noticeText, show: showNotice, clear: clearNotice } = useErrorNotice();
     const [comment, setComment] = useState('');
     const [redirectOpen, setRedirectOpen] = useState(false);
+    const [finishOpen, setFinishOpen] = useState(false);
     const busy =
         actions.status.isPending ||
         actions.assign.isPending ||
         actions.redirect.isPending ||
         actions.close.isPending ||
         actions.addComment.isPending;
-    const canAssign =
-        card.status === 'new' ||
-        card.status === 'assigned' ||
-        card.status === 'in_progress' ||
-        card.status === 'returned';
-    // assigned только через POST /assign, не PATCH /status
-    const directTransitions = card.allowed_transitions.filter((status) => status === 'in_progress');
+    const primary = staffPrimaryAction(card.status);
+    const failed =
+        [actions.status, actions.assign, actions.redirect, actions.close, actions.addComment].find(
+            (action) => action.error,
+        ) ?? null;
+
+    useEffect(() => {
+        if (failed?.error) showNotice(failed.error, failed.failureCount);
+    }, [failed, showNotice]);
 
     return (
         <section className="request-actions flex min-w-0 flex-col gap-24">
-            {canAssign && (
+            {primary === 'assign' && (
                 <AssignExecutor currentName={card.executor?.name} action={actions.assign} disabled={busy} />
             )}
 
-            {directTransitions.length > 0 && (
-                <div className="flex min-w-0 flex-col gap-8">
-                    {directTransitions.map((status) => (
-                        <Button
-                            key={status}
-                            size="medium"
-                            variant="primary"
-                            loading={actions.status.isPending}
-                            disabled={busy}
-                            onClick={() =>
-                                actions.status.mutate(
-                                    { status, comment: comment.trim() || undefined },
-                                    { onSuccess: () => setComment('') },
-                                )
-                            }
-                        >
-                            {transitionLabel(status, card.status)}
-                        </Button>
-                    ))}
-                    <MutationError error={actions.status.error} />
-                </div>
+            {primary === 'start' && card.allowed_transitions.includes('in_progress') && (
+                <Button
+                    size="medium"
+                    variant="primary"
+                    stretched
+                    loading={actions.status.isPending}
+                    disabled={busy}
+                    onClick={() => actions.status.mutate({ status: 'in_progress' })}
+                >
+                    {texts.request.takeWork}
+                </Button>
             )}
 
-            {card.allowed_transitions.includes('done') && (
-                <CloseRequestForm action={actions.close} disabled={busy} />
+            {primary === 'finish' && card.allowed_transitions.includes('done') && (
+                <div className="flex min-w-0 flex-col gap-8">
+                    <Button
+                        size="medium"
+                        variant="primary"
+                        stretched
+                        className="btn-done"
+                        disabled={busy}
+                        aria-expanded={finishOpen}
+                        onClick={() => setFinishOpen((open) => !open)}
+                    >
+                        {texts.request.finish}
+                    </Button>
+                    {finishOpen && (
+                        <div className="open-pulse">
+                            <CloseRequestForm action={actions.close} disabled={busy} />
+                        </div>
+                    )}
+                </div>
             )}
 
             {card.allowed_transitions.includes('redirected') && (
@@ -75,16 +89,19 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                         {texts.request.actions.redirect}
                     </Button>
                     {redirectOpen && (
-                        <RedirectRequestForm
-                            action={actions.redirect}
-                            disabled={busy}
-                            onSuccess={() => setRedirectOpen(false)}
-                        />
+                        <div className="open-pulse">
+                            <RedirectRequestForm
+                                action={actions.redirect}
+                                disabled={busy}
+                                onSuccess={() => setRedirectOpen(false)}
+                            />
+                        </div>
                     )}
                 </div>
             )}
 
-            <div className="flex min-w-0 flex-col gap-8">
+            <div className="request-block flex min-w-0 flex-col gap-8">
+                <CellHeading>{texts.request.commentTitle}</CellHeading>
                 <div className="request-templates" role="group" aria-label={texts.request.templates}>
                     {texts.request.templateOptions.map((template) => (
                         <button
@@ -116,8 +133,8 @@ export function StaffRequestActions({ card }: { card: RequestCard }) {
                 >
                     {texts.request.actions.comment}
                 </Button>
-                <MutationError error={actions.addComment.error} />
             </div>
+            <Notice text={noticeText} onGone={clearNotice} />
         </section>
     );
 }
@@ -222,7 +239,6 @@ function CloseRequestForm({
                     {texts.request.finishSubmit}
                 </Button>
             </div>
-            <MutationError error={action.error} />
         </form>
     );
 }
@@ -280,7 +296,6 @@ function RedirectRequestForm({
             >
                 {texts.request.redirectSubmit}
             </Button>
-            <MutationError error={action.error} />
         </form>
     );
 }

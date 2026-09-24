@@ -1,6 +1,8 @@
 import type { RequestStatus } from '@/api/types';
 
 export type StatusTone = 'accepted' | 'progress' | 'ready' | 'done' | 'late' | 'muted';
+export type StatusAudience = 'staff' | 'resident';
+export type StaffPrimaryAction = 'assign' | 'start' | 'finish';
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
     new: 'Принято',
@@ -12,8 +14,17 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
     redirected: 'Переадресовано',
 };
 
-/** Коротко и прямо: что сейчас происходит с заявкой. */
-export const STATUS_EXPLAIN: Record<RequestStatus, string> = {
+const STAFF_EXPLAIN: Record<RequestStatus, string> = {
+    new: 'Заявку приняли',
+    assigned: 'Назначили мастера',
+    in_progress: 'Сейчас делают',
+    done: 'Ждём, что скажет житель',
+    confirmed: 'Проблема решена',
+    returned: 'Житель вернул: ещё не готово',
+    redirected: 'Передали другой службе',
+};
+
+const RESIDENT_EXPLAIN: Record<RequestStatus, string> = {
     new: 'Заявку приняли',
     assigned: 'Назначили мастера',
     in_progress: 'Сейчас делают',
@@ -23,11 +34,22 @@ export const STATUS_EXPLAIN: Record<RequestStatus, string> = {
     redirected: 'Передали другой службе',
 };
 
-export function statusExplain(status: RequestStatus, overdue: boolean): string {
-    const text = STATUS_EXPLAIN[status];
+export function statusExplain(
+    status: RequestStatus,
+    overdue: boolean,
+    audience: StatusAudience,
+): string {
+    const text = (audience === 'staff' ? STAFF_EXPLAIN : RESIDENT_EXPLAIN)[status];
     if (!overdue) return text;
     if (status === 'confirmed' || status === 'redirected') return text;
     return `Срок вышел. ${text}`;
+}
+
+export function staffPrimaryAction(status: RequestStatus): StaffPrimaryAction | null {
+    if (status === 'new' || status === 'returned') return 'assign';
+    if (status === 'assigned') return 'start';
+    if (status === 'in_progress') return 'finish';
+    return null;
 }
 
 export function statusTone(status: RequestStatus, overdue: boolean): StatusTone {
@@ -39,8 +61,3 @@ export function statusTone(status: RequestStatus, overdue: boolean): StatusTone 
     return 'accepted';
 }
 
-export function transitionLabel(status: RequestStatus, current: RequestStatus): string {
-    if (status === 'in_progress') return current === 'returned' ? 'Снова в работу' : 'Взять в работу';
-    if (status === 'done') return 'Отметить выполненной';
-    return STATUS_LABEL[status];
-}

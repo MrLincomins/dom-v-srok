@@ -51,13 +51,24 @@ export function MyRequestsList() {
                 </button>
             </nav>
             {list.isPending && <InlineLoader />}
-            {list.isError && <ErrorState error={list.error} onRetry={() => void list.refetch()} />}
+            {list.isError && (
+                <ErrorState
+                    error={list.error}
+                    failureCount={list.failureCount}
+                    onRetry={() => void list.refetch()}
+                />
+            )}
             {list.data && requests.length === 0 && !list.isError && (
                 <EmptyState text={past ? texts.resident.emptyPast : texts.resident.empty} />
             )}
             <div className="request-list">
                 {requests.map((item) => (
-                    <RequestRow key={item.id} item={item} onOpen={(id) => navigate(`/requests/${id}`)} />
+                    <RequestRow
+                        key={item.id}
+                        item={item}
+                        audience="resident"
+                        onOpen={(id) => navigate(`/requests/${id}`)}
+                    />
                 ))}
             </div>
             {list.hasNextPage && !list.isError && (

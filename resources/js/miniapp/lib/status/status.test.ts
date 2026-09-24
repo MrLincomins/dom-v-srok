@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { statusTone, transitionLabel } from './status';
+import { staffPrimaryAction, statusExplain, statusTone } from './status';
 
 describe('status helpers', () => {
     it('prioritizes overdue tone', () => {
@@ -19,11 +19,16 @@ describe('status helpers', () => {
         expect(statusTone('redirected', true)).toBe('muted');
     });
 
-    it('uses a return-specific action label', () => {
-        expect(transitionLabel('in_progress', 'returned')).toBe('Снова в работу');
+    it('пишет сводку по роли', () => {
+        expect(statusExplain('done', false, 'staff')).toBe('Ждём, что скажет житель');
+        expect(statusExplain('done', false, 'resident')).toBe('Сделали. Подтвердите, что всё хорошо');
     });
 
-    it('labels completion through the close flow', () => {
-        expect(transitionLabel('done', 'in_progress')).toBe('Отметить выполненной');
+    it('выбирает главную кнопку диспетчера', () => {
+        expect(staffPrimaryAction('new')).toBe('assign');
+        expect(staffPrimaryAction('returned')).toBe('assign');
+        expect(staffPrimaryAction('assigned')).toBe('start');
+        expect(staffPrimaryAction('in_progress')).toBe('finish');
+        expect(staffPrimaryAction('done')).toBeNull();
     });
 });

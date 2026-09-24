@@ -4,6 +4,7 @@ import { useAuth } from './app/authContext';
 import { texts } from './app/texts';
 import { FullscreenSpinner } from './components/FullscreenSpinner';
 import { ErrorState } from './components/ErrorState';
+import { RouteError } from './components/RouteError';
 import { HomePage } from './features/home/HomePage';
 import { HousePage } from './features/resident/HousePage';
 
@@ -68,6 +69,7 @@ export const router = createBrowserRouter(
     [
         {
             element: <Gate />,
+            errorElement: <RouteError />,
             children: [
                 { index: true, element: <HomePage /> },
                 { path: 'requests/:id', element: <RequestPage /> },

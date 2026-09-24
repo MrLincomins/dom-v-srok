@@ -1,6 +1,7 @@
 import { CellSimple } from '@maxhub/max-ui';
 import type { House } from '@/api/types';
 import { texts } from '@/app/texts';
+import { CellHeading } from '@/components/CellHeading';
 import { Section } from '@/components/Section';
 import { SettingsField } from '@/components/SettingsField';
 import { openExternalLink } from '@/bridge/maxWebApp';
@@ -12,7 +13,7 @@ export function HouseQr({ house, onDownloaded }: { house: House; onDownloaded: (
 
     return (
         <div className="house-qr-block">
-            <h3 className="request-block-title">{texts.organization.qr}</h3>
+            <CellHeading>{texts.organization.qr}</CellHeading>
             <div className="house-qr">
                 <img src={qr.src} alt={texts.organization.qrAlt} />
             </div>
