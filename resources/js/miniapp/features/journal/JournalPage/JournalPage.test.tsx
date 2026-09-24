@@ -2,18 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { openExternalLink } from '@/bridge/maxWebApp';
-import type * as maxWebApp from '@/bridge/maxWebApp';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JournalPage } from '@/features/journal/JournalPage';
 
-vi.mock('@/bridge/maxWebApp', async (importOriginal) => {
-    const actual = await importOriginal<typeof maxWebApp>();
-    return {
-        ...actual,
-        openExternalLink: vi.fn(),
-    };
-});
+const CSV_URL =
+    'https://example.test/api/v1/journal/export.csv?organization=1&from=2026-09-01&to=2026-09-21&expires=1&signature=abc';
 
 const summary = {
     total: 8,
@@ -28,13 +21,12 @@ const summary = {
 };
 
 beforeEach(() => {
-    vi.mocked(openExternalLink).mockClear();
     vi.stubGlobal(
         'fetch',
         vi.fn(async (input: RequestInfo | URL) => {
             const url = String(input);
             if (url.includes('/journal/csv-link')) {
-                return json({ data: { url: 'https://example.test/journal.csv?signature=x' } });
+                return json({ data: { url: CSV_URL, expires_at: '2026-09-21T10:10:00Z' } });
             }
             if (url.includes('/journal')) {
                 return json({
@@ -73,6 +65,10 @@ beforeEach(() => {
     );
 });
 
+afterEach(() => {
+    delete window.WebApp;
+});
+
 describe('журнал заявок', () => {
     it('показывает сводку и строку за период', async () => {
         renderPage();
@@ -88,19 +84,21 @@ describe('журнал заявок', () => {
         ).toBe(true);
     });
 
-    it('скачивает csv за выбранный период', async () => {
+    it('открывает csv за выбранный период в браузере через MAX', async () => {
+        const openLink = vi.fn();
+        window.WebApp = { initData: 'query_id=1&hash=abc', openLink };
         renderPage();
         await screen.findByText(/№ 12/);
         fireEvent.click(screen.getByRole('button', { name: 'Скачать CSV' }));
-        await waitFor(() => {
-            expect(
-                vi
-                    .mocked(fetch)
-                    .mock.calls.some((call) => String(call[0]).includes('/journal/csv-link?from=2026-09-01')),
-            ).toBe(true);
-        });
-        expect(openExternalLink).toHaveBeenCalledWith('https://example.test/journal.csv?signature=x');
-        expect(await screen.findByRole('status')).toHaveTextContent('CSV скачивается в браузере');
+        await waitFor(() => expect(openLink).toHaveBeenCalledWith(CSV_URL));
+        expect(
+            vi
+                .mocked(fetch)
+                .mock.calls.some((call) =>
+                    String(call[0]).includes('/journal/csv-link?from=2026-09-01&to=2026-09-21'),
+                ),
+        ).toBe(true);
+        expect(await screen.findByRole('status')).toHaveTextContent('Файл откроется в браузере');
     });
 });
 

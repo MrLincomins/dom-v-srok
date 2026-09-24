@@ -19,6 +19,7 @@ export type ContractorInput = components['schemas']['ContractorInput'];
 export type JournalRow = components['schemas']['JournalRow'];
 export type JournalSummary = components['schemas']['JournalSummary'];
 export type JournalMeta = components['schemas']['JournalMeta'];
+export type JournalCsvLink = components['schemas']['JournalCsvLink'];
 export type QueueQuery = NonNullable<operations['listRequests']['parameters']['query']>;
 export type JournalQuery = NonNullable<operations['journal']['parameters']['query']>;
 type Counters = components['schemas']['Counters'];

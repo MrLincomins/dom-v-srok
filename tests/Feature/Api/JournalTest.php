@@ -109,3 +109,31 @@ it('rejects a broken period and hides the journal from residents', function () {
     asToken($this->resident)->getJson('/api/v1/journal')->assertStatus(403);
     asToken($this->resident)->get('/api/v1/journal.csv')->assertStatus(403);
 });
+
+it('gives a ten-minute signed link to the same CSV that opens without a token', function () {
+    $response = asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$this->from}&to={$this->to}")
+        ->assertValidRequest()->assertValidResponse(200);
+    $link = $response->json('data.url');
+    $expected = asToken($this->dispatcher)->get("/api/v1/journal.csv?from={$this->from}&to={$this->to}")->getContent();
+
+    app('auth')->forgetGuards();
+    $file = $this->withoutToken()->get($link)
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
+        ->assertHeader('Content-Disposition', 'attachment; filename="zhurnal-zayavok-'.$this->from.'-'.$this->to.'.csv"');
+    expect($file->getContent())->toBe($expected)
+        ->and(now()->diffInMinutes(CarbonImmutable::parse($response->json('data.expires_at'))))->toBeGreaterThan(9.0)->toBeLessThanOrEqual(10.0);
+
+    $this->get(str_replace('organization=', 'organization=9', $link))->assertStatus(403)->assertJsonPath('error.code', 'forbidden');
+    $this->get("/api/v1/journal/export.csv?from={$this->from}&to={$this->to}")->assertStatus(403);
+
+    $this->travel(11)->minutes();
+    $this->get($link)->assertStatus(403);
+});
+
+it('does not give the CSV link to residents or for a broken period', function () {
+    asToken($this->resident)->getJson('/api/v1/journal/csv-link')->assertStatus(403);
+    asToken($this->dispatcher)->getJson('/api/v1/journal/csv-link?from=2026-09-10&to=2026-09-01')
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+});

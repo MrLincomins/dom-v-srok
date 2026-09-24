@@ -433,6 +433,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/journal/csv-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Подписанная ссылка на CSV журнала за период на 10 минут; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может */
+        get: operations["journalCsvLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** CSV журнала по подписанной ссылке из /journal/csv-link, тот же файл, что /journal.csv */
+        get: operations["journalCsvSigned"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/attachments/{id}": {
         parameters: {
             query?: never;
@@ -838,6 +872,15 @@ export interface components {
             links?: {
                 [key: string]: unknown;
             };
+        };
+        JournalCsvLink: {
+            /** @description подписанная ссылка на CSV журнала за период; открывается без токена, например в браузере телефона */
+            url: string;
+            /**
+             * Format: date-time
+             * @description после этого времени ссылка отвечает 403
+             */
+            expires_at: string;
         };
     };
     responses: {
@@ -1700,6 +1743,62 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+        };
+    };
+    journalCsvLink: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ссылка на файл */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["JournalCsvLink"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    journalCsvSigned: {
+        parameters: {
+            query: {
+                organization: number;
+                from: string;
+                to: string;
+                expires: number;
+                signature: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Файл */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getAttachment: {

@@ -482,6 +482,12 @@ components:
           items: { $ref: '#/components/schemas/JournalRow' }
         meta: { $ref: '#/components/schemas/JournalMeta' }
         links: { type: object, additionalProperties: true }
+    JournalCsvLink:
+      type: object
+      required: [url, expires_at]
+      properties:
+        url: { type: string, description: 'подписанная ссылка на CSV журнала за период; открывается без токена, например в браузере телефона' }
+        expires_at: { type: string, format: date-time, description: 'после этого времени ссылка отвечает 403' }
 paths:
   /auth/max:
     post:
@@ -1080,6 +1086,46 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
+  /journal/csv-link:
+    get:
+      tags: [journal]
+      operationId: journalCsvLink
+      summary: Подписанная ссылка на CSV журнала за период на 10 минут; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может
+      parameters:
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Ссылка на файл
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/JournalCsvLink' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+  /journal/export.csv:
+    get:
+      tags: [journal]
+      operationId: journalCsvSigned
+      security: []
+      summary: CSV журнала по подписанной ссылке из /journal/csv-link, тот же файл, что /journal.csv
+      parameters:
+        - { in: query, name: organization, required: true, schema: { type: integer } }
+        - { in: query, name: from, required: true, schema: { type: string, format: date } }
+        - { in: query, name: to, required: true, schema: { type: string, format: date } }
+        - { in: query, name: expires, required: true, schema: { type: integer } }
+        - { in: query, name: signature, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Файл
+          content:
+            text/csv: { schema: { type: string } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /attachments/{id}:
     get:
       tags: [attachments]

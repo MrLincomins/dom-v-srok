@@ -25,6 +25,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
     Route::get('catalog/categories', [CatalogController::class, 'categories'])->name('catalog.categories');
     Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('signed')->name('attachments.show');
     Route::get('organization/houses/{house}/qr.png', [HouseQrController::class, 'show'])->middleware('signed')->whereNumber('house')->name('organization.houses.qr');
+    Route::get('journal/export.csv', [JournalController::class, 'export'])->middleware('signed')->name('journal.export');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
@@ -58,6 +59,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
 
             Route::get('journal', [JournalController::class, 'index'])->name('journal.index');
             Route::get('journal.csv', [JournalController::class, 'csv'])->name('journal.csv');
+            Route::get('journal/csv-link', [JournalController::class, 'csvLink'])->name('journal.csv-link');
         });
     });
 });

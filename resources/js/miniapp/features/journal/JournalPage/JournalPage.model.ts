@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query';
-import { downloadJournalCsv, getJournal } from '@/api/journal';
+import { getJournal, getJournalCsvLink } from '@/api/journal';
 import { texts } from '@/app/texts';
+import { isInsideMax, openFileLink } from '@/bridge/maxWebApp';
 import { useNoticeState } from '@/components/Notice';
 import { daysBetween, formatDateInput, startOfMonthInput } from '@/lib/dates';
 import type { JournalStat } from './JournalPage.types';
@@ -49,9 +50,12 @@ export function useJournalPage() {
     });
 
     const csv = useMutation({
-        mutationFn: () => downloadJournalCsv({ from, to }),
+        mutationFn: async () => {
+            const link = await getJournalCsvLink({ from, to });
+            openFileLink(link.url);
+        },
         onSuccess: () => {
-            notice.show(texts.journal.csvDone, 'success');
+            showNotice(isInsideMax() ? texts.journal.csvOpened : texts.journal.csvStarted, 'success');
         },
     });
 
