@@ -1,6 +1,7 @@
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
 import { ContactPhones } from '@/components/ContactPhones';
+import { LogoutButton } from '@/components/LogoutButton';
 import { withoutCity, withoutMarks } from '@/lib/address';
 
 export function HouseDetails({ showName = false }: { showName?: boolean }) {
@@ -74,6 +75,7 @@ export function HouseDetails({ showName = false }: { showName?: boolean }) {
                 </div>
             ) : null}
             <ContactPhones ads={organization?.phone_ads} dispatch={organization?.phone_dispatch} />
+            <LogoutButton />
         </div>
     );
 }

@@ -652,6 +652,7 @@ body {
     border: 0;
     background: transparent;
     color: var(--fg);
+    color-scheme: inherit;
     font-family: inherit;
     font-size: 17px;
     font-weight: 400;
@@ -670,6 +671,93 @@ body {
 
 .settings-field-value[type='date'] {
     color-scheme: inherit;
+}
+
+.auth-screen {
+    box-sizing: border-box;
+    height: 100%;
+    overflow: auto;
+    padding: 32px 16px 48px;
+    padding-bottom: max(48px, calc(24px + env(safe-area-inset-bottom)));
+    background: var(--bg-page);
+    color: var(--fg);
+}
+
+.auth-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    width: min(400px, 100%);
+    min-height: min(100%, 560px);
+    margin-inline: auto;
+}
+
+.auth-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.auth-mark {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 590;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+
+.auth-title {
+    margin: 0;
+    color: var(--fg);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    line-height: 34px;
+}
+
+.auth-lead,
+.auth-hint {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: -0.2px;
+    line-height: 20px;
+}
+
+.auth-form,
+.auth-fields {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-form {
+    gap: 16px;
+}
+
+.auth-fields {
+    gap: 12px;
+}
+
+.auth-eye {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+}
+
+.auth-logout {
+    margin-top: 8px;
 }
 
 .settings-field.is-date .settings-field-value[type='date'] {
@@ -726,6 +814,7 @@ body {
 }
 
 .settings-field:focus-within .field-clear,
+.settings-field.has-extra .field-clear,
 .compact-note-field:focus-within .field-clear,
 [class*='Input']:focus-within .field-clear {
     display: flex;

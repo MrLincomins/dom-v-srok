@@ -15,3 +15,11 @@ export function describeError(error: unknown, failureCount = 1): string {
     if (failureCount >= 3) return texts.errors.later;
     return texts.errors.generic;
 }
+
+export function describeLoginError(error: unknown): string {
+    if (error instanceof ApiError) {
+        if (error.isAuth || error.status === 422) return texts.auth.badCredentials;
+        if (error.status === 404) return texts.auth.unavailable;
+    }
+    return describeError(error);
+}

@@ -1,4 +1,4 @@
-import { useState, useRef, type ComponentProps } from 'react';
+import { useState, useRef, type ComponentProps, type ReactNode } from 'react';
 import { FieldClear } from '@/components/FieldClear';
 
 export function SettingsField({
@@ -6,6 +6,8 @@ export function SettingsField({
     placeholder,
     error,
     invalid,
+    after,
+    clearable = true,
     onChange,
     onInput,
     disabled,
@@ -13,13 +15,20 @@ export function SettingsField({
     defaultValue,
     type,
     ...props
-}: { label: string; error?: string; invalid?: boolean } & Omit<ComponentProps<'input'>, 'size'>) {
+}: {
+    label: string;
+    error?: string;
+    invalid?: boolean;
+    after?: ReactNode;
+    clearable?: boolean;
+} & Omit<ComponentProps<'input'>, 'size'>) {
     const marked = Boolean(error || invalid);
     const inputRef = useRef<HTMLInputElement>(null);
     const controlled = value !== undefined;
     const [localFilled, setLocalFilled] = useState(() => String(defaultValue ?? '').length > 0);
     const filled = controlled ? String(value ?? '').length > 0 : localFilled;
-    const canClear = type !== 'date' && !disabled && filled && (controlled ? Boolean(onChange) : true);
+    const canClear =
+        clearable && type !== 'date' && type !== 'password' && !disabled && filled && (controlled ? Boolean(onChange) : true);
 
     const handleInput: ComponentProps<'input'>['onInput'] = (event) => {
         if (!controlled) setLocalFilled(event.currentTarget.value.length > 0);
@@ -43,7 +52,9 @@ export function SettingsField({
 
     return (
         <div className="min-w-0">
-            <label className={`settings-field${marked ? ' is-invalid' : ''}${type === 'date' ? ' is-date' : ''}`}>
+            <label
+                className={`settings-field${marked ? ' is-invalid' : ''}${type === 'date' ? ' is-date' : ''}${after ? ' has-extra' : ''}`}
+            >
                 <input
                     ref={inputRef}
                     className="settings-field-value"
@@ -59,6 +70,7 @@ export function SettingsField({
                 />
                 <span className="settings-field-label">{label}</span>
                 {canClear ? <FieldClear onClear={clear} /> : null}
+                {after}
             </label>
             {error ? (
                 <p className="settings-field-error" role="alert">

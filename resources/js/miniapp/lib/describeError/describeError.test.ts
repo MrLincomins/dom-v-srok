@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/api/client';
-import { describeError } from './describeError';
+import { describeError, describeLoginError } from './describeError';
 
 describe('describeError', () => {
     it('разбирает 403 и 404 без текста сервера', () => {
@@ -18,6 +18,15 @@ describe('describeError', () => {
         );
         expect(describeError(new ApiError('server', 'SQLSTATE boom', 500), 3)).toBe(
             'Извините, повторите позже.',
+        );
+    });
+
+    it('для входа отличает неверный пароль от истекшей сессии', () => {
+        expect(describeLoginError(new ApiError('unauthenticated', 'Неверный логин или пароль', 401))).toBe(
+            'Неверный логин или пароль',
+        );
+        expect(describeError(new ApiError('unauthenticated', 'token expired', 401))).toBe(
+            'Сессия истекла. Откройте кабинет заново.',
         );
     });
 

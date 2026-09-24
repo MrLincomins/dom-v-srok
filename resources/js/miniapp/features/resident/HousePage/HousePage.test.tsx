@@ -64,6 +64,7 @@ describe('дом жителя', () => {
         expect(screen.getByText('пн–пт 9:00–18:00')).toBeInTheDocument();
         expect(screen.getByText('Почта')).toBeInTheDocument();
         expect(screen.getByText('demo@example.ru')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
     });
 });
 

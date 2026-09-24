@@ -3,6 +3,7 @@ export const texts = {
     app: { back: 'Назад', loading: 'Загрузка…', copied: 'Скопировано', clear: 'Очистить' },
     auth: {
         loading: 'Входим…',
+        title: 'Вход в кабинет',
         openInMax: 'Откройте кабинет из бота в MAX',
         openInMaxHint: 'Мини-приложение работает внутри MAX. Нажмите «Кабинет» в боте.',
         demoTitle: 'Проверка в браузере',
@@ -13,6 +14,8 @@ export const texts = {
         hidePassword: 'Скрыть пароль',
         submit: 'Войти',
         logout: 'Выйти',
+        badCredentials: 'Неверный логин или пароль',
+        unavailable: 'Вход по паролю сейчас недоступен',
     },
     home: {
         title: 'Кабинет',

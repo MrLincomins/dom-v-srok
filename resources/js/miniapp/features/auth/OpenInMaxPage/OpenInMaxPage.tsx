@@ -1,111 +1,115 @@
 import { useState, type FormEvent } from 'react';
-import { Button, Input, Typography } from '@maxhub/max-ui';
+import { Button } from '@maxhub/max-ui';
 import { useAuth } from '@/app/authContext';
 import { texts } from '@/app/texts';
-import { FieldClear } from '@/components/FieldClear';
-import { describeError } from '@/lib/describeError';
+import { Notice, useNoticeState } from '@/components/Notice';
+import { SettingsField } from '@/components/SettingsField';
+import { describeLoginError } from '@/lib/describeError';
 
 function demoLoginEnabled(): boolean {
     return document.querySelector<HTMLMetaElement>('meta[name="demo-login"]')?.content === '1';
 }
 
+function appName(): string {
+    return document.querySelector<HTMLMetaElement>('meta[name="app-name"]')?.content || 'Дом в срок';
+}
+
 /** Форма с паролем нужна только проверяющим; обычный пользователь входит через MAX без неё. */
 export function OpenInMaxPage() {
     const { loginDemo } = useAuth();
+    const notice = useNoticeState();
+    const demo = demoLoginEnabled();
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [invalid, setInvalid] = useState(false);
+    const canSubmit = login.trim() !== '' && password !== '';
 
-    const submit = async (e: FormEvent) => {
-        e.preventDefault();
+    const submit = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!canSubmit || busy) return;
         setBusy(true);
-        setError(null);
+        setInvalid(false);
         try {
             await loginDemo(login.trim(), password);
         } catch (err) {
-            setError(describeError(err));
+            const message = describeLoginError(err);
+            setInvalid(true);
+            notice.show(message, 'error');
+            document.getElementById('auth-password')?.focus({ preventScroll: true });
         } finally {
             setBusy(false);
         }
     };
 
     return (
-        <main className="screen outline-none">
-            <div className="screen-content flex min-h-full flex-col justify-center gap-24">
-                <div className="auth-panel flex flex-col gap-24">
-                    <div className="flex flex-col gap-12">
-                        <Typography.Headline variant="medium">{texts.auth.openInMax}</Typography.Headline>
-                        <Typography.Body variant="medium" className="text-muted">
-                            {texts.auth.openInMaxHint}
-                        </Typography.Body>
-                    </div>
-
-                    {demoLoginEnabled() && (
-                        <form onSubmit={submit} className="flex min-w-0 flex-col gap-16">
-                            <Typography.Title variant="small-strong">{texts.auth.demoTitle}</Typography.Title>
-                            <Typography.Body variant="small" className="text-muted">
-                                {texts.auth.demoHint}
-                            </Typography.Body>
-                            <div className="flex min-w-0 flex-col gap-12">
-                                <Input
-                                    size="large"
-                                    placeholder={texts.auth.login}
-                                    aria-label={texts.auth.login}
-                                    value={login}
-                                    onChange={(e) => setLogin(e.target.value)}
-                                    autoComplete="username"
-                                    required
-                                    withClearButton={false}
-                                    iconAfter={
-                                        login.length > 0 ? <FieldClear onClear={() => setLogin('')} /> : undefined
-                                    }
-                                />
-                                <Input
-                                    type={passwordVisible ? 'text' : 'password'}
-                                    size="large"
-                                    placeholder={texts.auth.password}
-                                    aria-label={texts.auth.password}
-                                    value={password}
-                                    onChange={(e) => {
-                                        const next = e.target.value;
-                                        setPassword(next);
-                                        if (next.length === 0) setPasswordVisible(false);
-                                    }}
-                                    autoComplete="current-password"
-                                    required
-                                    withClearButton={false}
-                                    iconAfter={
-                                        password.length > 0 ? (
-                                            <span className="flex items-center gap-4">
-                                                <FieldClear
-                                                    onClear={() => {
-                                                        setPassword('');
-                                                        setPasswordVisible(false);
-                                                    }}
-                                                />
-                                                <PasswordVisibility
-                                                    visible={passwordVisible}
-                                                    onToggle={() => setPasswordVisible((open) => !open)}
-                                                />
-                                            </span>
-                                        ) : undefined
-                                    }
-                                />
-                            </div>
-                            {error && (
-                                <p className="form-error" role="alert">
-                                    {error}
-                                </p>
-                            )}
-                            <Button type="submit" variant="primary" size="large" stretched loading={busy}>
-                                {texts.auth.submit}
-                            </Button>
-                        </form>
-                    )}
+        <main className="auth-screen">
+            <div className="auth-card">
+                <div className="auth-intro">
+                    <p className="auth-mark">{appName()}</p>
+                    <h1 className="auth-title">{demo ? texts.auth.title : texts.auth.openInMax}</h1>
+                    <p className="auth-lead">{demo ? texts.auth.demoTitle : texts.auth.openInMaxHint}</p>
                 </div>
+
+                {demo ? (
+                    <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+                        <p className="auth-hint">{texts.auth.demoHint}</p>
+                        <div className="auth-fields">
+                            <SettingsField
+                                id="auth-login"
+                                label={texts.auth.login}
+                                value={login}
+                                invalid={invalid}
+                                autoComplete="username"
+                                onChange={(event) => {
+                                    setLogin(event.target.value);
+                                    if (invalid) setInvalid(false);
+                                }}
+                            />
+                            <SettingsField
+                                id="auth-password"
+                                label={texts.auth.password}
+                                type={passwordVisible ? 'text' : 'password'}
+                                clearable={false}
+                                value={password}
+                                invalid={invalid}
+                                autoComplete="current-password"
+                                onChange={(event) => {
+                                    const next = event.target.value;
+                                    setPassword(next);
+                                    if (next.length === 0) setPasswordVisible(false);
+                                    if (invalid) setInvalid(false);
+                                }}
+                                after={
+                                    password.length > 0 ? (
+                                        <PasswordVisibility
+                                            visible={passwordVisible}
+                                            onToggle={() => setPasswordVisible((open) => !open)}
+                                        />
+                                    ) : undefined
+                                }
+                            />
+                        </div>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="large"
+                            stretched
+                            loading={busy}
+                            disabled={!canSubmit || busy}
+                        >
+                            {texts.auth.submit}
+                        </Button>
+                    </form>
+                ) : null}
             </div>
+            <Notice
+                text={notice.text}
+                tone={notice.tone}
+                revision={notice.revision}
+                onGone={notice.clear}
+            />
         </main>
     );
 }
@@ -114,7 +118,7 @@ function PasswordVisibility({ visible, onToggle }: { visible: boolean; onToggle:
     return (
         <button
             type="button"
-            className="flex h-24 w-24 items-center justify-center text-muted active:opacity-60"
+            className="auth-eye"
             onClick={onToggle}
             aria-label={visible ? texts.auth.hidePassword : texts.auth.showPassword}
             aria-pressed={visible}

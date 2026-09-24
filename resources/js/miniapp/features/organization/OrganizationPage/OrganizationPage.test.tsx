@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MaxUI } from '@maxhub/max-ui';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthContext, type AuthState } from '@/app/authContext';
 import { OrganizationPage, OrganizationSectionPage } from '@/features/organization/OrganizationPage';
 
 const organization = {
@@ -87,6 +88,13 @@ beforeEach(() => {
 });
 
 describe('организация', () => {
+    it('даёт выйти из демо-учётки', async () => {
+        const logout = vi.fn().mockResolvedValue(undefined);
+        renderPage('/organization', logout);
+        fireEvent.click(await screen.findByRole('button', { name: 'Выйти' }));
+        expect(logout).toHaveBeenCalledOnce();
+    });
+
     it('открывает разделы с хаба', async () => {
         renderPage('/organization');
         expect(await screen.findByText('Журнал заявок')).toBeInTheDocument();
@@ -374,16 +382,26 @@ function json(body: unknown, status = 200) {
     });
 }
 
-function renderPage(path: string) {
+function renderPage(path: string, logout = vi.fn()) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const auth: AuthState = {
+        status: 'ready',
+        user: { id: 1, name: 'Диспетчер', role: 'dispatcher', is_demo: true },
+        error: null,
+        loginDemo: vi.fn(),
+        logout,
+        refresh: vi.fn(),
+    };
     return render(
         <MaxUI platform="android" colorScheme="light">
             <MemoryRouter initialEntries={[path]}>
                 <QueryClientProvider client={client}>
-                    <Routes>
-                        <Route path="/organization" element={<OrganizationPage />} />
-                        <Route path="/organization/:section" element={<OrganizationSectionPage />} />
-                    </Routes>
+                    <AuthContext.Provider value={auth}>
+                        <Routes>
+                            <Route path="/organization" element={<OrganizationPage />} />
+                            <Route path="/organization/:section" element={<OrganizationSectionPage />} />
+                        </Routes>
+                    </AuthContext.Provider>
                 </QueryClientProvider>
             </MemoryRouter>
         </MaxUI>,

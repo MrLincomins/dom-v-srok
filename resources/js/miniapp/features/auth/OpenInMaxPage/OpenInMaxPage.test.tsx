@@ -49,7 +49,10 @@ describe('форма входа', () => {
             </MaxUI>,
         );
         await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+        expect(screen.getByRole('heading', { name: 'Вход в кабинет' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Войти' })).toBeDisabled();
         fireEvent.change(screen.getByLabelText('Логин'), { target: { value: 'demo_dispatcher' } });
+        expect(screen.getByRole('button', { name: 'Войти' })).toBeDisabled();
         fireEvent.change(screen.getByLabelText('Пароль'), { target: { value: 'secret' } });
         fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
         await waitFor(() => expect(calls.some((c) => c.url.includes('/api/v1/auth/login'))).toBe(true), {
@@ -60,5 +63,38 @@ describe('форма входа', () => {
             timeout: 3000,
         });
         expect(screen.getByTestId('user').textContent).toBe('Диспетчер Демо');
+    });
+
+    it('показывает уведомление при неверном пароле', async () => {
+        vi.stubGlobal('fetch', async (url: URL | string) => {
+            if (String(url).includes('/auth/login')) {
+                return new Response(JSON.stringify({ error: { code: 'unauthenticated', message: 'nope' } }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+            return new Response(JSON.stringify({ data: null }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        });
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <MaxUI platform="android" colorScheme="dark">
+                <QueryClientProvider client={client}>
+                    <AuthProvider>
+                        <Probe />
+                    </AuthProvider>
+                </QueryClientProvider>
+            </MaxUI>,
+        );
+        await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+        fireEvent.change(screen.getByLabelText('Логин'), { target: { value: 'demo_dispatcher' } });
+        fireEvent.change(screen.getByLabelText('Пароль'), { target: { value: 'nope' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Войти' }));
+        expect(await screen.findByText('Неверный логин или пароль')).toBeInTheDocument();
+        expect(screen.getByLabelText('Логин')).toBeInvalid();
+        expect(screen.getByLabelText('Пароль')).toBeInvalid();
+        expect(screen.getByTestId('status').textContent).toBe('anonymous');
     });
 });

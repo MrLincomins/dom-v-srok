@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { CellSimple } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
+import { LogoutButton } from '@/components/LogoutButton';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { ORGANIZATION_SECTIONS } from './OrganizationPage.model';
@@ -28,6 +29,7 @@ export function OrganizationPage() {
                     />
                 ))}
             </Section>
+            <LogoutButton />
         </Screen>
     );
 }
