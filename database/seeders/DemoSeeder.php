@@ -58,7 +58,7 @@ class DemoSeeder extends Seeder
             'direct_hot_water' => false,
             'direct_heat' => false,
             'direct_power' => false,
-            'direct_tko' => true,
+            'direct_tko' => false,
             'is_demo' => true,
         ]);
 

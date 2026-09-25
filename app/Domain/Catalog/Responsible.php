@@ -6,7 +6,6 @@ namespace App\Domain\Catalog;
 
 use App\Domain\Requests\Enums\ResponsibleKind;
 
-/** кто отвечает - результат резолвера, копируется в заявку */
 final readonly class Responsible
 {
     public function __construct(
