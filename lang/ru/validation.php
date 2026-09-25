@@ -177,6 +177,7 @@ return [
         'house_id' => 'дом',
         'q' => 'поиск',
         'responsible_party_id' => 'кто отвечает',
+        'contractor_id' => 'подрядчик',
         'name' => 'название',
         'phone' => 'телефон',
         'note' => 'примечание',
