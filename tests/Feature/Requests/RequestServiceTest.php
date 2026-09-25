@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Organizations\Models\House;
+use App\Domain\Requests\Dto\Actor;
+use App\Domain\Requests\Dto\ClosingPhoto;
 use App\Domain\Requests\Dto\CreateRequestData;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
@@ -13,7 +15,9 @@ use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(fn () => $this->seed(DatabaseSeeder::class));
 
@@ -45,4 +49,21 @@ it('records the resident rating in the request feed', function () {
     $event = $request->events()->where('type', EventType::Comment->value)->latest('id')->firstOrFail();
     expect($event->comment)->toBe('Оценка жителя: 4')
         ->and($event->payload)->toBe(['rating' => 4]);
+});
+
+it('removes stored closing photos when closing fails', function () {
+    $disk = (string) config('attachments.disk');
+    Storage::fake($disk);
+    $request = ServiceRequest::query()->where('status', RequestStatus::InProgress->value)->firstOrFail();
+    $dispatcher = User::query()->where('login', 'demo_dispatcher')->firstOrFail();
+    $photos = [
+        new ClosingPhoto(UploadedFile::fake()->image('done.jpg'), 'image/jpeg'),
+        new ClosingPhoto(new SplFileInfo('/nonexistent/photo.jpg'), 'image/jpeg'),
+    ];
+
+    expect(fn () => app(RequestService::class)->close($request, Actor::dispatcher($dispatcher), 'Готово', $photos))
+        ->toThrow(ErrorException::class);
+
+    expect(Storage::disk($disk)->allFiles())->toBe([])
+        ->and($request->refresh()->status)->toBe(RequestStatus::InProgress);
 });

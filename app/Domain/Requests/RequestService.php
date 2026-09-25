@@ -11,6 +11,7 @@ use App\Domain\Catalog\ResponsibleResolver;
 use App\Domain\Organizations\Models\Executor;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\Actor;
+use App\Domain\Requests\Dto\ClosingPhoto;
 use App\Domain\Requests\Dto\CreateRequestData;
 use App\Domain\Requests\Dto\RedirectData;
 use App\Domain\Requests\Enums\ActorRole;
@@ -28,9 +29,13 @@ use App\Domain\Requests\Exceptions\NotAllowed;
 use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
+use App\Support\Images\ImageSanitizer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 final class RequestService
@@ -39,6 +44,7 @@ final class RequestService
         private readonly CatalogService $catalog,
         private readonly ResponsibleResolver $resolver,
         private readonly DeadlineCalculator $deadlines,
+        private readonly ImageSanitizer $images,
     ) {}
 
     public function create(CreateRequestData $data): ServiceRequest
@@ -102,26 +108,10 @@ final class RequestService
         return $request->refresh();
     }
 
+    /** @param array<string,mixed> $payload */
     public function transition(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment = null, array $payload = []): ServiceRequest
     {
-        return DB::transaction(function () use ($request, $to, $by, $comment, $payload): ServiceRequest {
-            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
-            $from = $locked->status;
-
-            if (! $from->canTransitionTo($to)) {
-                throw InvalidTransition::between($from, $to);
-            }
-
-            $now = CarbonImmutable::now();
-            $locked->status = $to;
-            $this->stamp($locked, $to, $by, $now);
-            $locked->save();
-
-            $event = $this->log($locked, EventType::StatusChanged, $by, $comment, $payload, $from, $to);
-            $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
-
-            return $locked;
-        });
+        return DB::transaction(fn (): ServiceRequest => $this->move($request, $to, $by, $comment, $payload)[0]);
     }
 
     public function assign(ServiceRequest $request, Executor $executor, Actor $by, ?string $comment = null): ServiceRequest
@@ -152,9 +142,28 @@ final class RequestService
         return $this->transition($request, RequestStatus::InProgress, $by, $comment);
     }
 
-    public function close(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
+    /** @param list<ClosingPhoto> $photos */
+    public function close(ServiceRequest $request, Actor $by, ?string $comment = null, array $photos = []): ServiceRequest
     {
-        return $this->transition($request, RequestStatus::Done, $by, $comment);
+        $disk = (string) config('attachments.disk');
+        $written = [];
+
+        try {
+            return DB::transaction(function () use ($request, $by, $comment, $photos, $disk, &$written): ServiceRequest {
+                [$locked, $event] = $this->move($request, RequestStatus::Done, $by, $comment);
+                foreach ($photos as $photo) {
+                    $written[] = $this->storeClosingPhoto($locked, $event, $photo, $disk, $by);
+                }
+
+                return $locked;
+            });
+        } catch (Throwable $e) {
+            if ($written !== []) {
+                Storage::disk($disk)->delete($written);
+            }
+
+            throw $e;
+        }
     }
 
     public function confirm(ServiceRequest $request, Actor $by, ConfirmedBy $how, ?string $comment = null): ServiceRequest
@@ -251,6 +260,57 @@ final class RequestService
 
             return $locked;
         });
+    }
+
+    /**
+     * @param  array<string,mixed>  $payload
+     * @return array{0:ServiceRequest,1:RequestEvent}
+     */
+    private function move(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment = null, array $payload = []): array
+    {
+        $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+        $from = $locked->status;
+
+        if (! $from->canTransitionTo($to)) {
+            throw InvalidTransition::between($from, $to);
+        }
+
+        $now = CarbonImmutable::now();
+        $locked->status = $to;
+        $this->stamp($locked, $to, $by, $now);
+        $locked->save();
+
+        $event = $this->log($locked, EventType::StatusChanged, $by, $comment, $payload, $from, $to);
+        $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
+
+        return [$locked, $event];
+    }
+
+    private function storeClosingPhoto(ServiceRequest $request, RequestEvent $event, ClosingPhoto $photo, string $disk, Actor $by): string
+    {
+        $original = file_get_contents($photo->file->getPathname());
+        if ($original === false) {
+            throw new RuntimeException('Не удалось прочитать фото закрытия');
+        }
+        $bytes = $this->images->sanitize($original, $photo->mime);
+        unset($original);
+
+        $path = sprintf('attachments/%d/%s.%s', $request->id, Str::uuid(), ImageSanitizer::extension($photo->mime));
+        if (! Storage::disk($disk)->put($path, $bytes)) {
+            throw new RuntimeException('Не удалось сохранить фото закрытия');
+        }
+
+        $request->attachments()->create([
+            'event_id' => $event->id,
+            'kind' => AttachmentKind::Closing,
+            'disk' => $disk,
+            'path' => $path,
+            'mime' => $photo->mime,
+            'size_bytes' => strlen($bytes),
+            'uploaded_by' => $by->userId,
+        ]);
+
+        return $path;
     }
 
     private function stamp(ServiceRequest $request, RequestStatus $to, Actor $by, CarbonImmutable $now): void

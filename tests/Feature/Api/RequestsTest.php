@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Bot\Models\OutboxMessage;
+use App\Domain\Requests\Enums\AttachmentKind;
+use App\Domain\Requests\Models\Attachment;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spectator\Spectator;
 
 beforeEach(function () {
@@ -130,4 +134,32 @@ it('refuses to assign an executor to a closed request with 409', function () {
         ->assertJsonPath('error.code', 'invalid_transition');
 
     $this->assertDatabaseMissing('request_events', ['request_id' => $confirmed, 'type' => 'assigned']);
+});
+
+it('closes a request with photos and asks the resident to confirm', function () {
+    $disk = (string) config('attachments.disk');
+    Storage::fake($disk);
+    User::query()->where('login', 'demo_resident')->update(['max_user_id' => 700100, 'bot_started_at' => now()]);
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=in_progress')->json('data.0.id');
+
+    asToken($this->dispatcher)->post("/api/v1/requests/{$id}/close", [
+        'comment' => 'Заменили лампу',
+        'photos' => [UploadedFile::fake()->image('before.jpg', 40, 30), UploadedFile::fake()->image('after.png', 20, 20)],
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'done')
+        ->assertJsonCount(2, 'data.attachments');
+
+    $event = ServiceRequest::query()->findOrFail($id)->events()->where('to_status', 'done')->firstOrFail();
+    $photos = Attachment::query()->where('request_id', $id)->where('kind', AttachmentKind::Closing->value)->orderBy('id')->get();
+    expect($photos)->toHaveCount(2)
+        ->and($photos->pluck('event_id')->unique()->all())->toBe([$event->id])
+        ->and($photos->pluck('mime')->all())->toBe(['image/jpeg', 'image/png']);
+    foreach ($photos as $photo) {
+        Storage::disk($disk)->assertExists($photo->path);
+        expect($photo->size_bytes)->toBe(strlen((string) Storage::disk($disk)->get($photo->path)));
+    }
+
+    $texts = OutboxMessage::query()->where('request_id', $id)->get()->map(fn (OutboxMessage $m) => $m->body['text'] ?? '')->all();
+    expect($texts)->toContain(botText('request.done_confirm', ['number' => $id, 'status' => 'Выполнено', 'comment' => 'Заменили лампу']));
 });

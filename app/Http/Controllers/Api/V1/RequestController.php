@@ -6,10 +6,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Organizations\Models\Executor;
 use App\Domain\Requests\Dto\Actor;
+use App\Domain\Requests\Dto\ClosingPhoto;
 use App\Domain\Requests\Dto\RedirectData;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
-use App\Domain\Requests\Exceptions\InvalidTransition;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestQuery;
 use App\Domain\Requests\RequestService;
@@ -26,8 +26,8 @@ use App\Http\Resources\RequestResource;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\UploadedFile;
 
-/** заявки: очередь и действия диспетчера, карточка и подтверждение жителя. логика в RequestService */
 final class RequestController extends Controller
 {
     public function __construct(private readonly RequestService $service, private readonly RequestQuery $query) {}
@@ -78,21 +78,11 @@ final class RequestController extends Controller
     public function close(CloseRequest $request, ServiceRequest $serviceRequest): RequestResource
     {
         $this->authorize('manage', $serviceRequest);
-        if (! $serviceRequest->status->canTransitionTo(RequestStatus::Done)) {
-            throw InvalidTransition::between($serviceRequest->status, RequestStatus::Done);
-        }
-        foreach ($request->file('photos', []) as $photo) {
-            $path = $photo->store('attachments/'.$serviceRequest->id, 'private');
-            $serviceRequest->attachments()->create([
-                'kind' => 'closing',
-                'disk' => 'private',
-                'path' => $path,
-                'mime' => (string) $photo->getMimeType(),
-                'size_bytes' => max(1, (int) $photo->getSize()),
-                'uploaded_by' => $request->user()->id,
-            ]);
-        }
-        $updated = $this->service->close($serviceRequest, Actor::dispatcher($request->user()), $request->validated('comment'));
+        $photos = array_map(
+            fn (UploadedFile $file): ClosingPhoto => new ClosingPhoto($file, (string) $file->getMimeType()),
+            array_values($request->file('photos', [])),
+        );
+        $updated = $this->service->close($serviceRequest, Actor::dispatcher($request->user()), $request->validated('comment'), $photos);
 
         return $this->card($updated);
     }
@@ -118,7 +108,6 @@ final class RequestController extends Controller
         return $this->card($serviceRequest->refresh());
     }
 
-    /** житель: «да, решено» / «нет», то же что кнопки в боте */
     public function confirm(ConfirmRequest $request, ServiceRequest $serviceRequest): RequestResource
     {
         $this->authorize('confirm', $serviceRequest);
