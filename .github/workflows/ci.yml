@@ -99,14 +99,23 @@ jobs:
             type=gha,scope=php
             type=gha,scope=caddy
           cache-to: type=gha,scope=caddy,mode=max
-      - name: Secrets scan
-        run: |
-          if git grep -nE "(MAX_BOT_TOKEN|PASSWORD|SECRET)=[A-Za-z0-9]{8,}" -- ':!*.md' ':!.env.example'; then
-            echo "удали сикрет в репо"; exit 1; fi
+
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [php, js, docker]
+    needs: [php, js, docker, secrets]
     runs-on: ubuntu-latest
     permissions:
       contents: read
