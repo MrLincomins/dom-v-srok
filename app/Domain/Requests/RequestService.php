@@ -131,14 +131,19 @@ final class RequestService
         }
 
         return DB::transaction(function () use ($request, $executor, $by, $comment): ServiceRequest {
-            $request->executor_id = $executor->id;
-            $request->assigned_at = CarbonImmutable::now();
-            $request->save();
-            $this->log($request, EventType::Assigned, $by, $comment, ['executor_id' => $executor->id, 'executor' => $executor->name]);
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if (! $locked->status->isOpen()) {
+                throw InvalidTransition::between($locked->status, RequestStatus::Assigned);
+            }
 
-            return $request->status->canTransitionTo(RequestStatus::Assigned)
-                ? $this->transition($request, RequestStatus::Assigned, $by, null, ['executor' => $executor->name])
-                : $request;
+            $locked->executor_id = $executor->id;
+            $locked->assigned_at = CarbonImmutable::now();
+            $locked->save();
+            $this->log($locked, EventType::Assigned, $by, $comment, ['executor_id' => $executor->id, 'executor' => $executor->name]);
+
+            return $locked->status->canTransitionTo(RequestStatus::Assigned)
+                ? $this->transition($locked, RequestStatus::Assigned, $by, null, ['executor' => $executor->name])
+                : $locked;
         });
     }
 
@@ -171,11 +176,16 @@ final class RequestService
         }
 
         return DB::transaction(function () use ($request, $by, $data, $party, $name): ServiceRequest {
-            $request->redirected_party_id = $party?->id;
-            $request->redirect_note = $data->note;
-            $request->save();
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if (! $locked->status->canTransitionTo(RequestStatus::Redirected)) {
+                throw InvalidTransition::between($locked->status, RequestStatus::Redirected);
+            }
 
-            return $this->transition($request, RequestStatus::Redirected, $by, $data->note, [
+            $locked->redirected_party_id = $party?->id;
+            $locked->redirect_note = $data->note;
+            $locked->save();
+
+            return $this->transition($locked, RequestStatus::Redirected, $by, $data->note, [
                 'to' => $name,
                 'phone' => $party->phone ?? $data->phone,
             ]);
@@ -224,17 +234,23 @@ final class RequestService
 
     public function rate(ServiceRequest $request, User $user, int $rating, ?string $comment = null): ServiceRequest
     {
-        if ($request->resident_user_id !== $user->id) {
-            throw new NotAllowed('Оценить может только автор заявки');
-        }
-        if ($request->status !== RequestStatus::Confirmed) {
-            throw new NotAllowed('Оценить можно после подтверждения');
-        }
-        $request->rating = max(1, min(5, $rating));
-        $request->rating_comment = $comment;
-        $request->save();
+        return DB::transaction(function () use ($request, $user, $rating, $comment): ServiceRequest {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if ($locked->resident_user_id !== $user->id) {
+                throw new NotAllowed('Оценить может только автор заявки');
+            }
+            if ($locked->status !== RequestStatus::Confirmed) {
+                throw new NotAllowed('Оценить можно после подтверждения');
+            }
 
-        return $request;
+            $value = max(1, min(5, $rating));
+            $locked->rating = $value;
+            $locked->rating_comment = $comment;
+            $locked->save();
+            $this->log($locked, EventType::Comment, Actor::resident($user), 'Оценка жителя: '.$value, ['rating' => $value]);
+
+            return $locked;
+        });
     }
 
     private function stamp(ServiceRequest $request, RequestStatus $to, Actor $by, CarbonImmutable $now): void

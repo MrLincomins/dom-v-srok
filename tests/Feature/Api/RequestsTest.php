@@ -120,3 +120,14 @@ it('resets the demo organisation on request', function () {
     asToken($this->dispatcher)->postJson('/api/v1/demo/reset')->assertOk();
     asToken($this->dispatcher)->getJson('/api/v1/requests')->assertOk()->assertJsonPath('meta.total', 8);
 });
+
+it('refuses to assign an executor to a closed request with 409', function () {
+    $confirmed = asToken($this->dispatcher)->getJson('/api/v1/requests?status=confirmed')->json('data.0.id');
+    $executor = asToken($this->dispatcher)->getJson('/api/v1/organization/executors')->json('data.0.id');
+
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$confirmed}/assign", ['executor_id' => $executor])
+        ->assertValidResponse(409)
+        ->assertJsonPath('error.code', 'invalid_transition');
+
+    $this->assertDatabaseMissing('request_events', ['request_id' => $confirmed, 'type' => 'assigned']);
+});

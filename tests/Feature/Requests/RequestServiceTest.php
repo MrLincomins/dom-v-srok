@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\CreateRequestData;
+use App\Domain\Requests\Enums\EventType;
+use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\RequestCreated;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
@@ -32,4 +34,15 @@ it('keeps the request when a listener fails', function () {
 
     expect($request->exists)->toBeTrue();
     $this->assertDatabaseHas('requests', ['id' => $request->id, 'description' => 'Течёт крыша']);
+});
+
+it('records the resident rating in the request feed', function () {
+    $request = ServiceRequest::query()->where('status', RequestStatus::Confirmed->value)->firstOrFail();
+
+    app(RequestService::class)->rate($request, $request->resident, 4);
+
+    expect($request->refresh()->rating)->toBe(4);
+    $event = $request->events()->where('type', EventType::Comment->value)->latest('id')->firstOrFail();
+    expect($event->comment)->toBe('Оценка жителя: 4')
+        ->and($event->payload)->toBe(['rating' => 4]);
 });
