@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Bot\BotIdentity;
 use App\Bot\Client\MaxClient;
 use App\Support\Models\AppSetting;
 use Illuminate\Console\Command;
 
-/** подписка на вебхук, старые сносятся, регистрирует APP_URL + /max/webhook с секретом. */
 final class BotSubscribe extends Command
 {
     protected $signature = 'bot:subscribe';
 
     protected $description = 'подписать бота на обновления через вебхук (только https)';
 
-    public function handle(MaxClient $client): int
+    public function handle(MaxClient $client, BotIdentity $identity): int
     {
         $url = rtrim((string) config('app.url'), '/').config('max.webhook_path');
         $secret = (string) config('max.webhook_secret');
@@ -30,6 +30,8 @@ final class BotSubscribe extends Command
 
             return self::FAILURE;
         }
+
+        $identity->remember($client->getMe());
 
         $alive = false;
         foreach ($client->subscriptions() as $subscription) {

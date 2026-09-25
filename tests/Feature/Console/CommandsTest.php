@@ -13,6 +13,7 @@ use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
 use App\Jobs\SendOutboxMessage;
+use App\Support\Models\AppSetting;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Process;
@@ -55,7 +56,7 @@ it('marks overdue requests once and warns staff who started the bot', function (
         ->and($max->sent)->toHaveCount(1)
         ->and($max->sent[0]['id'])->toBe(7001)
         ->and(lastText($max))->toBe(botText('request.overdue_staff', ['number' => $overdue->id, 'what' => $overdue->category->name, 'address' => $overdue->house->address.', подъезд 3']))
-        ->and(lastButtons($max))->toBe([(string) config('max.miniapp_url')])
+        ->and(lastButtons($max))->toBe([(string) config('max.bot_username')])
         ->and(OutboxMessage::query()->where('kind', 'request.overdue_staff')->where('target_id', $started->max_user_id)->count())->toBe(1);
 
     $this->artisan('requests:overdue-scan')->expectsOutputToContain('Срок вышел у заявок: 0')->assertSuccessful();
@@ -105,5 +106,6 @@ it('sets the bot commands from the texts table', function () {
     $this->artisan('bot:commands')->assertSuccessful();
 
     expect(array_column($fake->commands, 'name'))->toBe(['start', 'menu', 'dispatcher', 'delete_me'])
-        ->and($fake->commands[1]['description'])->toBe(botText('command.menu'));
+        ->and($fake->commands[1]['description'])->toBe(botText('command.menu'))
+        ->and(AppSetting::get('bot')['id'])->toBe(405671160);
 });
