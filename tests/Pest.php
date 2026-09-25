@@ -93,6 +93,18 @@ function startUpdate(int $userId, ?string $payload = null): array
     ];
 }
 
+/** @return array<string,mixed> */
+function botAddedUpdate(int $chatId, int $userId, bool $channel = false): array
+{
+    return [
+        'update_type' => 'bot_added',
+        'timestamp' => 1758100002000,
+        'chat_id' => $chatId,
+        'user' => ['user_id' => $userId, 'first_name' => 'Админ', 'is_bot' => false],
+        'is_channel' => $channel,
+    ];
+}
+
 /** @param array<string,mixed> $raw */
 function runUpdate(array $raw): void
 {

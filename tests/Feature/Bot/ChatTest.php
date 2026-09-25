@@ -181,3 +181,15 @@ it('offers to join an open request when a chat message matches a category and th
     runUpdate(chatMessageUpdate(556, $this->chatId, 'Кто знает телефон управляющей?', 'mid.k4'));
     expect($this->max->sent)->toHaveCount(1);
 });
+
+it('explains how to bind the chat when it is added to a group and stays silent in channels', function () {
+    runUpdate(botAddedUpdate($this->chatId, 777));
+    $last = end($this->max->sent);
+    expect($last['target'])->toBe('chat')
+        ->and($last['id'])->toBe($this->chatId)
+        ->and(lastText($this->max))->toBe(botText('chat.added'));
+
+    $count = count($this->max->sent);
+    runUpdate(botAddedUpdate(9003, 777, true));
+    expect($this->max->sent)->toHaveCount($count);
+});
