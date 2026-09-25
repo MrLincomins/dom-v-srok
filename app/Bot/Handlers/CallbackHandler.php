@@ -174,7 +174,7 @@ final class CallbackHandler
         if ($request === null) {
             return;
         }
-        $rows = $request->status === RequestStatus::Done
+        $rows = $request->status === RequestStatus::Done && $request->resident_user_id === $user->id
             ? [[['label' => 'Да, решено', 'action' => CallbackAction::Resolved->payload($request->id)], ['label' => 'Нет, не решено', 'action' => CallbackAction::NotResolved->payload($request->id)]]]
             : [];
         $rows[] = [['label' => 'Мои заявки', 'action' => 'my'], ['label' => 'Меню', 'action' => 'menu']];
@@ -185,6 +185,16 @@ final class CallbackHandler
     {
         $request = $this->ownRequest($user, $id);
         if ($request === null) {
+            return;
+        }
+        if ($request->resident_user_id !== $user->id) {
+            $this->ctx->reply($user, 'request.author_only', ['number' => $request->id]);
+
+            return;
+        }
+        if ($request->status === RequestStatus::Confirmed) {
+            $this->ctx->reply($user, 'request.already_confirmed', ['number' => $request->id]);
+
             return;
         }
         if ($resolved) {
