@@ -6,9 +6,10 @@ namespace App\Support\Auth;
 
 use Illuminate\Auth\AuthenticationException;
 
-/** проверка initData как в доке маха: пары key=value без hash, url-декод, сортировка по ключу, склейка через \n, secret = hmac(WebAppData, токен), подпись = hmac(secret, строка), сравниваем с hash */
 final class InitDataValidator
 {
+    private const CLOCK_SKEW_SECONDS = 60;
+
     /**
      * @return array{user:array<string,mixed>,auth_date:int,query_id:string|null,start_param:string|null,chat:array<string,mixed>|null}
      *
@@ -59,8 +60,12 @@ final class InitDataValidator
         }
 
         $authDate = (int) ($pairs['auth_date'] ?? 0);
-        if ($authDate <= 0 || time() - $authDate > $ttl) {
+        $now = now()->getTimestamp();
+        if ($authDate <= 0 || $now - $authDate > $ttl) {
             throw new AuthenticationException('initData устарел, откройте мини-приложение заново');
+        }
+        if ($authDate - $now > self::CLOCK_SKEW_SECONDS) {
+            throw new AuthenticationException('Данные запуска недействительны, откройте мини-приложение заново');
         }
 
         $user = json_decode($pairs['user'] ?? '', true);
@@ -78,7 +83,7 @@ final class InitDataValidator
         ];
     }
 
-    /** собрать подписанный initData для тестов и локалки */
+    /** @param array<string,string> $params */
     public static function sign(array $params, string $botToken): string
     {
         ksort($params, SORT_STRING);
