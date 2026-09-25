@@ -84,12 +84,26 @@ final class FakeMaxClient extends MaxClient
         return ['success' => true];
     }
 
+    public ?MaxApiException $answerFailure = null;
+
     public function answerCallback(string $callbackId, ?string $notification = null, ?array $message = null): array
     {
+        if ($message !== null && $this->answerFailure !== null) {
+            throw $this->answerFailure;
+        }
         $this->answered[] = $callbackId;
         $this->answers[] = ['id' => $callbackId, 'notification' => $notification, 'message' => $message];
+        if ($message !== null) {
+            $this->sent[] = ['target' => 'answer', 'id' => 0, 'callback' => $callbackId, 'body' => $message];
+        }
 
         return ['success' => true];
+    }
+
+    /** @return list<array{target:string,id:int,body:array<string,mixed>,mid?:string}> */
+    public function messages(): array
+    {
+        return array_values(array_filter($this->sent, fn (array $m) => $m['target'] !== 'answer'));
     }
 
     public function texts(): array

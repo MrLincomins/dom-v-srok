@@ -81,7 +81,7 @@ class MaxClient
     {
         $json = array_filter([
             'notification' => $notification,
-            'message' => $message !== null ? $this->messageBody($message) : null,
+            'message' => $message !== null ? $this->messageBody($message) + ['attachments' => []] : null,
         ], fn ($v) => $v !== null);
 
         return $this->call('POST', '/answers', query: ['callback_id' => $callbackId], json: $json === [] ? new \stdClass : $json);

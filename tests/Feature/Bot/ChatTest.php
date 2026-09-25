@@ -122,7 +122,7 @@ it('lets a neighbour join from the chat and asks them to start the bot', functio
         ->and($answer['id'])->toBe('cb.join.1')
         ->and($answer['notification'])->toBe(botText('chat.join_start', ['number' => $request->id]))
         ->and($answer['message']['text'] ?? '')->toContain(botText('chat.neighbours', ['count' => 1]))
-        ->and($this->max->sent)->toBe([])
+        ->and($this->max->messages())->toBe([])
         ->and(OutboxMessage::query()->where('target_id', 888)->exists())->toBeFalse();
 });
 

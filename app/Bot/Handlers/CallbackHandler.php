@@ -10,6 +10,9 @@ use App\Bot\Cards\RequestCard;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 use App\Bot\Fsm\SessionStore;
+use App\Bot\Models\OutboxMessage;
+use App\Bot\Outbox\Events\OutboxMessageSent;
+use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Updates\Update;
 use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Enums\ConfirmedBy;
@@ -18,13 +21,9 @@ use App\Domain\Requests\Exceptions\DomainException;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
-/**
- * кнопки работают всегда, независимо от состояния диалога.
- * на callback сразу answerCallback, чтобы кнопки не висели.
- * сценарий заявки (report, em, cat, sub, house, addr, send, unsure, cancel, again) в ReportFlowHandler.
- */
 final class CallbackHandler
 {
     public function __construct(
@@ -45,8 +44,13 @@ final class CallbackHandler
 
             return;
         }
-        $this->acknowledge($update);
-        $this->replacePressedMessage($update, $user);
+
+        $inDialog = $update->isPrivate() && $user->max_user_id !== null;
+        if ($inDialog) {
+            $this->ctx->outbox()->captureNextForUser((int) $user->max_user_id, $update->messageId());
+        } else {
+            $this->acknowledge($update);
+        }
 
         try {
             if ($parsed === null) {
@@ -58,17 +62,40 @@ final class CallbackHandler
         } catch (DomainException $e) {
             $this->ctx->replyRaw($user, $e->getMessage(), [[['label' => 'Меню', 'action' => 'menu']]]);
         } finally {
-            $this->ctx->outbox()->clearReplacement();
+            if ($inDialog) {
+                $this->answerWith($update, $this->ctx->outbox()->takeCaptured());
+            }
         }
     }
 
-    private function replacePressedMessage(Update $update, User $user): void
+    private function answerWith(Update $update, ?OutboxMessage $message): void
     {
-        $messageId = $update->messageId();
-        if ($messageId === null || $user->max_user_id === null || ! $update->isPrivate()) {
+        if ($message === null) {
+            $this->acknowledge($update);
+
             return;
         }
-        $this->ctx->outbox()->replaceNextForUser($user->max_user_id, $messageId);
+        $callbackId = $update->callbackId();
+        if ($callbackId === null || ! $this->client->isConfigured()) {
+            $this->ctx->outbox()->dispatch($message);
+
+            return;
+        }
+        try {
+            $this->client->answerCallback($callbackId, null, $message->body);
+        } catch (MaxApiException $e) {
+            Log::info('bot.answer_fallback', ['outbox_id' => $message->id, 'error' => $e->getMessage()]);
+            $this->ctx->outbox()->dispatch($message);
+
+            return;
+        }
+        $message->update([
+            'status' => OutboxStatus::Sent,
+            'sent_at' => CarbonImmutable::now(),
+            'attempts' => 1,
+            'max_message_id' => $message->edit_message_id,
+        ]);
+        event(new OutboxMessageSent($message));
     }
 
     private function route(ParsedCallback $callback, User $user): void
@@ -86,7 +113,7 @@ final class CallbackHandler
             CallbackAction::Again => $this->report->start($user, $callback->intArg(0)),
             CallbackAction::Emergency, CallbackAction::Category, CallbackAction::Subcategory, CallbackAction::House,
             CallbackAction::Address, CallbackAction::Send, CallbackAction::Unsure, CallbackAction::Cancel => $this->report->callback($callback, $user),
-            CallbackAction::Join => null, // ответил ChatHandler::join из handle(), сюда не доходит
+            CallbackAction::Join => null,
         };
     }
 
@@ -165,7 +192,6 @@ final class CallbackHandler
         } else {
             $this->requests->returnToWork($request, Actor::resident($user), 'Житель: проблема не решена');
         }
-        // сообщения о новом статусе из NotifyResidentOfRequestChange.
     }
 
     private function rate(User $user, ?int $id, ?int $rating): void
