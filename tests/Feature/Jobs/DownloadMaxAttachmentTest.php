@@ -43,12 +43,12 @@ it('stores the photo in private storage and fills mime and size', function () {
     Http::fake(['https://cdn.example/*' => Http::response(pngBytes(), 200)]);
     $attachment = pendingAttachment();
 
-    (new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'))->handle();
+    app()->call([new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'), 'handle']);
 
     $attachment->refresh();
     expect($attachment->path)->toStartWith('attachments/'.$attachment->request_id.'/')
         ->and($attachment->mime)->toBe('image/png')
-        ->and($attachment->size_bytes)->toBe(strlen(pngBytes()));
+        ->and($attachment->size_bytes)->toBe(strlen((string) Storage::disk('private')->get($attachment->path)));
     Storage::disk('private')->assertExists($attachment->path);
 });
 
@@ -57,7 +57,27 @@ it('drops the attachment when MAX returns something that is not an image', funct
     Http::fake(['https://cdn.example/*' => Http::response('not an image', 200)]);
     $attachment = pendingAttachment();
 
-    (new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'))->handle();
+    app()->call([new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'), 'handle']);
+
+    $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
+});
+
+it('drops the attachment when the photo is larger than the limit', function () {
+    Storage::fake('private');
+    config(['attachments.max_mb' => 1]);
+    Http::fake(['https://cdn.example/*' => Http::response(pngBytes().str_repeat("\0", 1024 * 1024), 200)]);
+    $attachment = pendingAttachment();
+
+    app()->call([new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'), 'handle']);
+
+    $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
+    expect(Storage::disk('private')->allFiles())->toBe([]);
+});
+
+it('removes the empty attachment when every download attempt failed', function () {
+    $attachment = pendingAttachment();
+
+    (new DownloadMaxAttachment($attachment->id, 'https://cdn.example/1.png'))->failed(new RuntimeException('MAX не ответил'));
 
     $this->assertDatabaseMissing('attachments', ['id' => $attachment->id]);
 });
