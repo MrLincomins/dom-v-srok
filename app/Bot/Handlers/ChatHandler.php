@@ -11,11 +11,11 @@ use App\Bot\Client\MaxClient;
 use App\Bot\Keyboards\Keyboards;
 use App\Bot\Updates\Update;
 use App\Domain\Catalog\CatalogService;
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
+use App\Support\Max\DeepLinks;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 

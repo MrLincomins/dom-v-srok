@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Bot\Cards\RequestCard;
 use App\Bot\Models\OutboxMessage;
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
+use App\Support\Max\DeepLinks;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 
