@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Requests;
 
+use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Users\Enums\Role;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 final class RequestQuery
 {
@@ -74,6 +77,43 @@ final class RequestQuery
                 ->where('type', EventType::Reminder->value)
                 ->where('payload->kind', RequestEvent::DUE_SOON_KIND))
             ->orderBy('id');
+    }
+
+    /** @return Builder<Organization> */
+    public function organizationsWithMessageableStaff(): Builder
+    {
+        return Organization::query()
+            ->whereHas('staff', fn (Builder $users) => $users
+                ->where('role', '!=', Role::Resident->value)
+                ->whereNotNull('max_user_id')
+                ->whereNotNull('bot_started_at'))
+            ->orderBy('id');
+    }
+
+    /** @return array{new:int,active:int,overdue:int,waiting:int} */
+    public function digestCounters(int $organizationId): array
+    {
+        $base = fn () => ServiceRequest::query()->forOrganization($organizationId);
+
+        return [
+            'new' => $base()->where('status', RequestStatus::New->value)->count(),
+            'active' => $base()->active()->count(),
+            'overdue' => $base()->overdue()->count(),
+            'waiting' => $base()->where('status', RequestStatus::Done->value)->count(),
+        ];
+    }
+
+    /** @return Collection<int, ServiceRequest> */
+    public function earliestOpen(int $organizationId, int $limit = 3): Collection
+    {
+        return ServiceRequest::query()
+            ->with(['category', 'house.region'])
+            ->forOrganization($organizationId)
+            ->open()
+            ->orderByRaw('deadline_fix_at ASC NULLS LAST')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
     }
 
     /** @return array{new:int,in_progress:int,overdue:int,closed:int} */

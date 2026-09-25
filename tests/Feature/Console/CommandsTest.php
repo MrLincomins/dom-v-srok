@@ -166,3 +166,48 @@ it('warns staff once when a deadline is less than two hours away', function () {
         ->and($later->events()->where('type', EventType::Reminder->value)->exists())->toBeFalse()
         ->and($overdue->events()->where('type', EventType::Reminder->value)->exists())->toBeFalse();
 });
+
+it('sends the morning digest once a day to staff who started the bot', function () {
+    $this->seed(DatabaseSeeder::class);
+    $max = fakeMax();
+    $organization = Organization::query()->where('is_demo', true)->firstOrFail();
+    $started = User::query()->create(['max_user_id' => 7001, 'name' => 'Диспетчер Один', 'role' => Role::Dispatcher, 'organization_id' => $organization->id, 'bot_started_at' => CarbonImmutable::now()]);
+    User::query()->create(['max_user_id' => 7002, 'name' => 'Диспетчер Два', 'role' => Role::Dispatcher, 'organization_id' => $organization->id]);
+    $card = app(RequestCard::class);
+    $top = ServiceRequest::query()->with(['category', 'house.region'])->forOrganization($organization->id)->open()
+        ->orderByRaw('deadline_fix_at ASC NULLS LAST')->orderBy('id')->limit(3)->get();
+    $overdue = ServiceRequest::query()->overdue()->firstOrFail();
+
+    $this->artisan('requests:morning-digest')->expectsOutputToContain('Сводка для организаций: 1')->assertSuccessful();
+
+    $list = $top->map(fn (ServiceRequest $r) => '№ '.$r->id.': '.$r->category->name.', '.$card->deadline($r))->implode('; ');
+    expect($top)->toHaveCount(3)
+        ->and($top->first()->id)->toBe($overdue->id)
+        ->and($max->sent)->toHaveCount(1)
+        ->and($max->sent[0]['id'])->toBe(7001)
+        ->and(lastText($max))->toBe(botText('digest.morning', [
+            'new' => 3,
+            'active' => 3,
+            'overdue' => 1,
+            'waiting' => 1,
+            'top' => botText('digest.morning_top', ['list' => $list]),
+        ]))
+        ->and(lastButtons($max))->toBe([(string) config('max.bot_username')]);
+
+    $this->artisan('requests:morning-digest')->assertSuccessful();
+
+    expect($max->sent)->toHaveCount(1)
+        ->and(OutboxMessage::query()->where('kind', 'digest.morning')->where('target_id', $started->max_user_id)->count())->toBe(1);
+});
+
+it('skips the morning digest for organizations without staff in the bot', function () {
+    $this->seed(DatabaseSeeder::class);
+    $max = fakeMax();
+    $organization = Organization::query()->where('is_demo', true)->firstOrFail();
+    User::query()->create(['max_user_id' => 7002, 'name' => 'Диспетчер Два', 'role' => Role::Dispatcher, 'organization_id' => $organization->id]);
+
+    $this->artisan('requests:morning-digest')->expectsOutputToContain('Сводка для организаций: 0')->assertSuccessful();
+
+    expect($max->sent)->toHaveCount(0)
+        ->and(OutboxMessage::query()->where('kind', 'digest.morning')->count())->toBe(0);
+});
