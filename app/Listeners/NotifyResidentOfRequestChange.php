@@ -51,17 +51,15 @@ final class NotifyResidentOfRequestChange
     {
         $request = $event->request;
         $resident = $request->resident;
-        if (! $resident->canBeMessaged()) {
-            return;
+        if ($resident->canBeMessaged()) {
+            [$key, $vars] = $this->messageFor($request, $event->to, $event->event->comment);
+            $this->outbox->toUser($resident->max_user_id, 'request.status', [
+                'text' => $this->texts->text($key, $vars),
+                'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
+            ], 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
         }
 
-        [$key, $vars] = $this->messageFor($request, $event->to, $event->event->comment);
-        $this->outbox->toUser($resident->max_user_id, 'request.status', [
-            'text' => $this->texts->text($key, $vars),
-            'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
-        ], 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
-
-        $this->notifyParticipants($request, $event->to, $resident);
+        $this->notifyParticipants($request, $event->to, $resident, $event->event->id);
     }
 
     /** @return array{0:string,1:array<string,string|int|null>} */
@@ -81,7 +79,7 @@ final class NotifyResidentOfRequestChange
         };
     }
 
-    private function notifyParticipants(ServiceRequest $request, RequestStatus $to, User $resident): void
+    private function notifyParticipants(ServiceRequest $request, RequestStatus $to, User $resident, int $eventId): void
     {
         if (! in_array($to, [RequestStatus::Done, RequestStatus::Confirmed, RequestStatus::Redirected], true)) {
             return;
@@ -92,7 +90,7 @@ final class NotifyResidentOfRequestChange
             }
             $this->outbox->toUser($participant->max_user_id, 'request.status', [
                 'text' => $this->texts->text('request.status', ['number' => $request->id, 'status' => $to->label(), 'comment' => '']),
-            ], 'request.status:'.$request->id.':'.$to->value.':p'.$participant->id, $request->id);
+            ], 'request.status:'.$request->id.':'.$to->value.':'.$eventId.':p'.$participant->id, $request->id);
         }
     }
 }

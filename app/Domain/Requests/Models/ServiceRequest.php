@@ -177,6 +177,11 @@ class ServiceRequest extends Model
         return $this->belongsTo(self::class, 'repeat_of_id');
     }
 
+    public function isFullyVisibleTo(?User $user): bool
+    {
+        return $user !== null && ($user->isStaff() || $user->id === $this->resident_user_id);
+    }
+
     public function isOverdue(?CarbonImmutable $now = null): bool
     {
         $now ??= CarbonImmutable::now();

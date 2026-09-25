@@ -167,7 +167,7 @@ components:
         id: { type: integer }
         name: { type: string }
         specialty: { type: [string, 'null'] }
-        phone: { type: [string, 'null'] }
+        phone: { type: [string, 'null'], description: 'только сотрудникам организации, жителю null' }
     OrganizationUpdate:
       type: object
       description: 'Частичное обновление: передаются только меняемые поля'
@@ -279,10 +279,10 @@ components:
         status: { $ref: '#/components/schemas/RequestStatus' }
         status_label: { type: string }
         category: { type: string }
-        description: { type: string }
+        description: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         address: { type: string }
-        entrance: { type: [integer, 'null'] }
-        flat: { type: [string, 'null'] }
+        entrance: { type: [integer, 'null'], description: 'null для соседа, который присоединился к заявке' }
+        flat: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         responsible_name: { type: string }
         is_sure: { type: boolean }
         deadline_fix_at: { type: [string, 'null'], format: date-time }
@@ -335,10 +335,10 @@ components:
             id: { type: integer }
             name: { type: string }
             slug: { type: string }
-        description: { type: string }
+        description: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         house: { $ref: '#/components/schemas/House' }
-        entrance: { type: [integer, 'null'] }
-        flat: { type: [string, 'null'] }
+        entrance: { type: [integer, 'null'], description: 'null для соседа, который присоединился к заявке' }
+        flat: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         responsible:
           type: object
           required: [kind, name, is_sure]
@@ -388,6 +388,7 @@ components:
           items: { $ref: '#/components/schemas/RequestEvent' }
         attachments:
           type: array
+          description: 'соседу, который присоединился к заявке, фото жителя не отдаются, только фото закрытия'
           items: { $ref: '#/components/schemas/Attachment' }
         created_at: { type: string, format: date-time }
     Counters:

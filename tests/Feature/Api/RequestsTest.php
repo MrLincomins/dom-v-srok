@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 use App\Bot\Models\OutboxMessage;
+use App\Domain\Catalog\Models\Category;
 use App\Domain\Organizations\Enums\ContractorType;
 use App\Domain\Organizations\Models\Contractor;
+use App\Domain\Organizations\Models\House;
 use App\Domain\Organizations\Models\Organization;
+use App\Domain\Requests\Dto\CreateRequestData;
+use App\Domain\Requests\Dto\PhotoDraft;
 use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Models\Attachment;
 use App\Domain\Requests\Models\ServiceRequest;
@@ -13,6 +17,7 @@ use App\Domain\Requests\RequestService;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\DemoSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Spectator\Spectator;
@@ -193,4 +198,49 @@ it('closes a request with photos and asks the resident to confirm', function () 
 
     $texts = OutboxMessage::query()->where('request_id', $id)->get()->map(fn (OutboxMessage $m) => $m->body['text'] ?? '')->all();
     expect($texts)->toContain(botText('request.done_confirm', ['number' => $id, 'status' => 'Выполнено', 'comment' => 'Заменили лампу']));
+});
+
+it('shows a joined neighbour the request without the flat, description and resident photos', function () {
+    $neighbour = User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
+    $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');
+    $author = User::query()->where('login', 'demo_resident')->firstOrFail();
+    $request = app(RequestService::class)->create(new CreateRequestData(
+        houseId: (int) House::query()->where('qr_token', DemoSeeder::HOUSE_QR_TOKEN)->value('id'),
+        residentUserId: $author->id,
+        categoryId: (int) Category::query()->where('slug', 'entrance.light')->value('id'),
+        description: 'Не горит свет, квартира 45',
+        entrance: 2,
+        flat: '45',
+        photos: [new PhotoDraft('tok-1', 'https://cdn.example/1.jpg')],
+    ));
+    app(RequestService::class)->join($request, $neighbour);
+
+    asToken($token)->getJson("/api/v1/requests/{$request->id}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.flat', null)
+        ->assertJsonPath('data.entrance', null)
+        ->assertJsonPath('data.description', null)
+        ->assertJsonCount(0, 'data.attachments')
+        ->assertJsonPath('data.events.0.type', 'created');
+    asToken($token)->getJson('/api/v1/my/requests')
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.0.flat', null)
+        ->assertJsonPath('data.0.description', null);
+
+    asToken($this->resident)->getJson("/api/v1/requests/{$request->id}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.flat', '45')
+        ->assertJsonPath('data.entrance', 2)
+        ->assertJsonPath('data.description', 'Не горит свет, квартира 45')
+        ->assertJsonCount(1, 'data.attachments');
+});
+
+it('hides the executor phone from the resident', function () {
+    $assigned = asToken($this->dispatcher)->getJson('/api/v1/requests?status=assigned')->json('data.0');
+    expect($assigned['executor']['phone'])->not->toBeNull();
+
+    asToken($this->resident)->getJson("/api/v1/requests/{$assigned['id']}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.executor.name', $assigned['executor']['name'])
+        ->assertJsonPath('data.executor.phone', null);
 });

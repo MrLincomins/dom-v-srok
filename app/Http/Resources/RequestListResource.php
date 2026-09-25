@@ -9,23 +9,23 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * строка очереди
- *
  * @mixin ServiceRequest
  */
 final class RequestListResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $full = $this->isFullyVisibleTo($request->user());
+
         return [
             'id' => $this->id,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'category' => $this->category->name,
-            'description' => $this->description,
+            'description' => $full ? $this->description : null,
             'address' => $this->house->address,
-            'entrance' => $this->entrance,
-            'flat' => $this->flat,
+            'entrance' => $full ? $this->entrance : null,
+            'flat' => $full ? $this->flat : null,
             'responsible_name' => $this->responsible_name,
             'is_sure' => $this->is_sure,
             'deadline_fix_at' => $this->deadline_fix_at?->toIso8601String(),
