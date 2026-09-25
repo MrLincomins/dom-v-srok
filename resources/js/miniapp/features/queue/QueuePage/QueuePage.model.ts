@@ -1,18 +1,54 @@
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQueries } from '@tanstack/react-query';
 import { getQueue } from '@/api/requests';
 import { LIVE_REFETCH_MS } from '@/app/live';
 import type { QueueQuery } from '@/api/types';
 
-export type QueueTab = 'new' | 'in_progress' | 'overdue' | 'closed';
+export const QUEUE_TABS = ['new', 'in_progress', 'overdue', 'closed'] as const;
+export type QueueTab = (typeof QUEUE_TABS)[number];
 
 export function countersForSearch(
     counters: Partial<Record<QueueTab, number>> | undefined,
-    tab: QueueTab,
     search: string,
-    total: number | undefined,
+    searchTotals?: Partial<Record<QueueTab, number>>,
 ): Partial<Record<QueueTab, number>> | undefined {
-    if (!counters || total == null || search.trim() === '') return counters;
-    return { ...counters, [tab]: total };
+    if (search.trim() === '') return counters;
+    return {
+        new: searchTotals?.new ?? 0,
+        in_progress: searchTotals?.in_progress ?? 0,
+        overdue: searchTotals?.overdue ?? 0,
+        closed: searchTotals?.closed ?? 0,
+    };
+}
+
+export function useQueueSearchTotals(search: string, activeTab: QueueTab, activeTotal?: number) {
+    const q = search.trim();
+    const queries = useQueries({
+        queries: QUEUE_TABS.map((tab) => ({
+            queryKey: ['requests', 'search-total', tabToQuery(tab, q)] as const,
+            queryFn: ({ signal }: { signal: AbortSignal }) =>
+                getQueue({ ...tabToQuery(tab, q), page: 1, per_page: 1 }, signal),
+            enabled: q !== '' && tab !== activeTab,
+            placeholderData: keepPreviousData,
+            refetchInterval: LIVE_REFETCH_MS,
+        })),
+    });
+
+    if (q === '') return undefined;
+
+    const totals: Record<QueueTab, number> = {
+        new: 0,
+        in_progress: 0,
+        overdue: 0,
+        closed: 0,
+    };
+    for (const [index, tab] of QUEUE_TABS.entries()) {
+        if (tab === activeTab) {
+            totals[tab] = activeTotal ?? 0;
+            continue;
+        }
+        totals[tab] = queries[index]?.data?.meta.total ?? 0;
+    }
+    return totals;
 }
 
 export function tabToQuery(tab: QueueTab, search: string): QueueQuery {

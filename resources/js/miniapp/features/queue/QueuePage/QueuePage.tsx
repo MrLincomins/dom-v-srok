@@ -10,7 +10,7 @@ import { RequestRow } from '@/components/RequestRow';
 import { Screen } from '@/components/Screen';
 import { QueueSearch } from '@/features/queue/QueueSearch';
 import { QueueTabs } from '@/features/queue/QueueTabs';
-import { countersForSearch, useQueue, type QueueTab } from '@/features/queue/useQueue';
+import { countersForSearch, useQueue, useQueueSearchTotals, type QueueTab } from '@/features/queue/useQueue';
 
 export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const navigate = useNavigate();
@@ -36,7 +36,8 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
 
     const pages = queue.data?.pages;
     const items = useMemo(() => pages?.flatMap((page) => page.data) ?? [], [pages]);
-    const counters = countersForSearch(pages?.[0]?.meta.counters, tab, search, pages?.[0]?.meta.total);
+    const searchTotals = useQueueSearchTotals(search, tab, pages?.[0]?.meta.total);
+    const counters = countersForSearch(pages?.[0]?.meta.counters, search, searchTotals);
     const ready = Boolean(queue.data) && !queue.isPlaceholderData;
 
     if (queue.isPending && !queue.data) {

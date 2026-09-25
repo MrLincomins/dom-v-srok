@@ -25,11 +25,13 @@ export function AssignExecutor({
     return (
         <div className="flex min-w-0 flex-col gap-8">
             <RequestSection title={texts.request.assign}>
-                <CellSimple
-                    separator
-                    title={texts.request.executor}
-                    subtitle={currentName ?? texts.request.noExecutor}
-                />
+                {currentName ? (
+                    <CellSimple
+                        separator
+                        title={texts.request.executor}
+                        subtitle={currentName}
+                    />
+                ) : null}
                 {(executors.data ?? []).map((executor) => (
                     <CellSimple
                         key={executor.id}
@@ -37,6 +39,7 @@ export function AssignExecutor({
                         title={executor.name}
                         subtitle={[executor.specialty, executor.phone].filter(Boolean).join(' · ') || undefined}
                         disabled={disabled || action.isPending}
+                        after={<span className="assign-pick">{texts.request.assignPick}</span>}
                         onClick={() => action.mutate(executor.id, { onSuccess: onAssigned })}
                     />
                 ))}

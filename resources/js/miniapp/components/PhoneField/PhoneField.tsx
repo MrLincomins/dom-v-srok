@@ -21,23 +21,26 @@ export function PhoneField({
     return (
         <div className="min-w-0">
             <label className={`settings-field settings-phone${marked ? ' is-invalid' : ''}`}>
-                <span className="settings-phone-prefix" aria-hidden>
-                    {texts.organization.phonePrefix}
+                <span className="settings-phone-caption">{label}</span>
+                <span className="settings-phone-row">
+                    <span className="settings-phone-prefix" aria-hidden>
+                        {texts.organization.phonePrefix}
+                    </span>
+                    <input
+                        id={id}
+                        className="settings-field-value"
+                        placeholder=" "
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        maxLength={15}
+                        value={formatLocalPhone(value)}
+                        aria-label={label}
+                        onChange={(event) => onChange(localPhoneDigits(event.target.value))}
+                        aria-invalid={marked ? true : undefined}
+                        aria-describedby={error ? 'phone-field-error' : undefined}
+                    />
+                    {value.length > 0 ? <FieldClear onClear={() => onChange('')} /> : null}
                 </span>
-                <input
-                    id={id}
-                    className="settings-field-value"
-                    placeholder={label}
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    maxLength={15}
-                    value={formatLocalPhone(value)}
-                    aria-label={label}
-                    onChange={(event) => onChange(localPhoneDigits(event.target.value))}
-                    aria-invalid={marked ? true : undefined}
-                    aria-describedby={error ? 'phone-field-error' : undefined}
-                />
-                {value.length > 0 ? <FieldClear onClear={() => onChange('')} /> : null}
             </label>
             {error ? (
                 <p id="phone-field-error" className="settings-field-error" role="alert">
