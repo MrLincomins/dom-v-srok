@@ -110,6 +110,35 @@ it('rejects a broken period and hides the journal from residents', function () {
     asToken($this->resident)->get('/api/v1/journal.csv')->assertStatus(403);
 });
 
+it('escapes cells that look like spreadsheet formulas', function () {
+    $resident = User::query()->where('login', 'demo_resident')->firstOrFail();
+    $request = app(RequestService::class)->create(new CreateRequestData(
+        houseId: (int) $resident->house_id,
+        residentUserId: $resident->id,
+        categoryId: (int) Category::query()->where('slug', 'entrance.light')->value('id'),
+        description: '=HYPERLINK("http://evil.example","нажми")',
+    ));
+
+    $body = asToken($this->dispatcher)->get("/api/v1/journal.csv?from={$this->from}&to={$this->to}")->assertOk()->getContent();
+
+    $line = collect(explode("\n", $body))->first(fn (string $line) => str_starts_with($line, $request->id.';'));
+    expect($line)->toContain(';"\'=HYPERLINK(')
+        ->and($line)->not->toContain(';"=HYPERLINK(');
+});
+
+it('limits the period to a year when only the start date is given', function () {
+    $from = CarbonImmutable::now('Europe/Moscow')->subYears(2)->toDateString();
+
+    asToken($this->dispatcher)->getJson("/api/v1/journal?from={$from}")
+        ->assertStatus(422)
+        ->assertJsonPath('error.details.fields.from.0', 'Период журнала не длиннее года');
+    asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$from}")
+        ->assertStatus(422);
+    asToken($this->dispatcher)->getJson('/api/v1/journal?from='.CarbonImmutable::now('Europe/Moscow')->addDays(3)->toDateString())
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+});
+
 it('gives a ten-minute signed link to the same CSV that opens without a token', function () {
     $response = asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$this->from}&to={$this->to}")
         ->assertValidRequest()->assertValidResponse(200);
