@@ -25,6 +25,7 @@ enum CallbackAction: string
     case Rate = 'rate';
     case Again = 'again';
     case Cabinet = 'cab';
+    case Who = 'who';
 
     public function payload(string|int ...$args): string
     {

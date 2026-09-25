@@ -113,6 +113,7 @@ final class CallbackHandler
             CallbackAction::Emergency, CallbackAction::Category, CallbackAction::Subcategory, CallbackAction::House,
             CallbackAction::Address, CallbackAction::Send, CallbackAction::Unsure, CallbackAction::Cancel => $this->report->callback($callback, $user),
             CallbackAction::Join => null,
+            CallbackAction::Who => $this->ctx->reply($user, 'wip'),
         };
     }
 
