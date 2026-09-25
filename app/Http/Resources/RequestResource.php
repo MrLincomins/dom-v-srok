@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Requests\Enums\ActorRole;
 use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\Attachment;
 use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Users\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,7 +26,7 @@ final class RequestResource extends JsonResource
             'id' => $this->id,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
-            'allowed_transitions' => array_map(fn ($s) => $s->value, $this->status->allowedTransitions()),
+            'allowed_transitions' => $this->transitionsFor($request->user()),
             'category' => ['id' => $this->category->id, 'name' => $this->category->name, 'slug' => $this->category->slug],
             'description' => $full ? $this->description : null,
             'house' => new HouseResource($this->house),
@@ -64,5 +66,16 @@ final class RequestResource extends JsonResource
                 : $this->attachments->reject(fn (Attachment $attachment) => $attachment->kind === AttachmentKind::Resident)->values())),
             'created_at' => $this->created_at->toIso8601String(),
         ];
+    }
+
+    /** @return list<string> */
+    private function transitionsFor(?User $user): array
+    {
+        if ($user === null || (! $user->isStaff() && $user->id !== $this->resident_user_id)) {
+            return [];
+        }
+        $role = $user->isStaff() ? ActorRole::Dispatcher : ActorRole::Resident;
+
+        return array_map(static fn (RequestStatus $to): string => $to->value, $this->status->allowedTransitionsFor($role));
     }
 }

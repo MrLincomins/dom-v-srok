@@ -345,3 +345,27 @@ it('refuses a rating before the resident confirmed the result', function () {
         ->assertJsonPath('error.code', 'invalid_transition');
     expect($done->refresh()->rating)->toBeNull();
 });
+
+it('offers each viewer only the transitions they may make', function () {
+    $done = ServiceRequest::query()->where('status', 'done')->whereHas('resident', fn ($q) => $q->where('login', 'demo_resident'))->firstOrFail();
+
+    asToken($this->dispatcher)->getJson("/api/v1/requests/{$done->id}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.allowed_transitions', ['confirmed']);
+    asToken($this->resident)->getJson("/api/v1/requests/{$done->id}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.allowed_transitions', ['confirmed', 'returned']);
+
+    $neighbour = User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
+    app(RequestService::class)->join($done, $neighbour);
+    $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');
+    asToken($token)->getJson("/api/v1/requests/{$done->id}")
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.allowed_transitions', []);
+
+    $new = ServiceRequest::query()->where('status', 'new')->whereHas('resident', fn ($q) => $q->where('login', 'demo_resident'))->firstOrFail();
+    asToken($this->resident)->getJson("/api/v1/requests/{$new->id}")
+        ->assertJsonPath('data.allowed_transitions', []);
+    asToken($this->dispatcher)->getJson("/api/v1/requests/{$new->id}")
+        ->assertJsonPath('data.allowed_transitions', ['assigned', 'in_progress', 'done', 'redirected']);
+});

@@ -320,19 +320,13 @@ final class RequestService
 
     private function ensureMayMove(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment): void
     {
-        if ($by->role === ActorRole::Resident) {
-            if ($by->userId !== $request->resident_user_id) {
-                throw new NotAllowed('Подтвердить или вернуть заявку может только тот, кто её подал');
-            }
-            if (! in_array($to, [RequestStatus::Confirmed, RequestStatus::Returned], true)) {
-                throw new NotAllowed('Житель может только подтвердить решение или вернуть заявку в работу');
-            }
-
-            return;
+        if ($by->role === ActorRole::Resident && $by->userId !== $request->resident_user_id) {
+            throw new NotAllowed('Подтвердить или вернуть заявку может только тот, кто её подал');
         }
-
-        if ($to === RequestStatus::Returned) {
-            throw new NotAllowed('Вернуть заявку в работу может только житель, который её подал');
+        if (! $to->canBeSetBy($by->role)) {
+            throw new NotAllowed($by->role === ActorRole::Resident
+                ? 'Житель может только подтвердить решение или вернуть заявку в работу'
+                : 'Вернуть заявку в работу может только житель, который её подал');
         }
         if ($to === RequestStatus::Confirmed && $by->role === ActorRole::Dispatcher && trim((string) $comment) === '') {
             throw new NotAllowed('Чтобы подтвердить заявку за жителя, напишите, как решение подтвердили');
