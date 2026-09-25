@@ -15,7 +15,6 @@ use App\Bot\Outbox\Events\OutboxMessageSent;
 use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Updates\Update;
 use App\Domain\Requests\Dto\Actor;
-use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Exceptions\DomainException;
 use App\Domain\Requests\Models\ServiceRequest;

@@ -7,9 +7,6 @@ namespace App\Bot\Texts;
 use App\Bot\Models\BotText;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * тексты бота из bot_texts (пока в docs/texts.csv).
- */
 final class TextRepository
 {
     private const CACHE_KEY = 'bot_texts:ru';

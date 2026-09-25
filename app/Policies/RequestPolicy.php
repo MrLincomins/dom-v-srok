@@ -7,7 +7,6 @@ namespace App\Policies;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
 
-/** диспетчер видит только свою организацию, житель только свои заявки и где участник */
 final class RequestPolicy
 {
     public function view(User $user, ServiceRequest $request): bool

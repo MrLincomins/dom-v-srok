@@ -6,7 +6,6 @@ namespace App\Domain\Requests\Exceptions;
 
 use RuntimeException;
 
-/** базовая ошибка домена, знает свой http статус и код */
 abstract class DomainException extends RuntimeException
 {
     /** @param array<string,mixed> $details */

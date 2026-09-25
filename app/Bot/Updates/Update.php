@@ -4,12 +4,6 @@ declare(strict_types=1);
 
 namespace App\Bot\Updates;
 
-/**
- * обновления маха.
- * message_created: message.sender, message.recipient{chat_id, chat_type, user_id}, message.body{mid, text, attachments}
- * message_callback: callback{callback_id, payload, user}, message
- * bot_started: chat_id, user, payload (из deep link ?start=)
- */
 final readonly class Update
 {
     /** @param array<string,mixed> $raw */
@@ -21,7 +15,6 @@ final readonly class Update
         return new self((string) ($raw['update_type'] ?? 'unknown'), (int) ($raw['timestamp'] ?? 0), $raw);
     }
 
-    /** ключ идемпотентности: тип + идентификатор сообщения/кнопки + время. */
     public function key(): string
     {
         $id = $this->raw['message']['body']['mid']
@@ -30,8 +23,6 @@ final readonly class Update
 
         return mb_substr($this->type.':'.$id.':'.$this->timestamp, 0, 120);
     }
-
-    // сообщение
 
     public function isMessage(): bool
     {
@@ -77,8 +68,6 @@ final readonly class Update
         return $id === null ? null : (int) $id;
     }
 
-    // пользователь
-
     /** @return array<string,mixed>|null объект User из API: user_id, first_name, last_name, username */
     public function user(): ?array
     {
@@ -93,8 +82,6 @@ final readonly class Update
 
         return $id === null ? null : (int) $id;
     }
-
-    // кнопка
 
     public function isCallback(): bool
     {
@@ -112,8 +99,6 @@ final readonly class Update
 
         return is_string($payload) ? $payload : null;
     }
-
-    // запуск бота
 
     public function startPayload(): ?string
     {

@@ -7,7 +7,6 @@ namespace App\Support\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
-/** настройки: курсор поллинга, подписка на вебхук, отметка сида */
 /**
  * @property string $key
  * @property array<string,mixed> $value

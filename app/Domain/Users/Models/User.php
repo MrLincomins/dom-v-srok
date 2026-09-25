@@ -81,7 +81,6 @@ class User extends Authenticatable
         return $this->role->isStaff();
     }
 
-    /** бот пишет первым только тем, кто его запускал */
     public function canBeMessaged(): bool
     {
         return $this->max_user_id !== null && $this->bot_started_at !== null;

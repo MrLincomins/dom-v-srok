@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Requests\Enums;
 
-/** статусы заявки и разрешённые переходы, менять только здесь */
 enum RequestStatus: string
 {
     case New = 'new';
@@ -46,7 +45,6 @@ enum RequestStatus: string
         return in_array($to, $this->allowedTransitions(), true);
     }
 
-    /** открытые статусы, по ним считаем просрочку */
     public function isOpen(): bool
     {
         return in_array($this, [self::New, self::Assigned, self::InProgress, self::Returned], true);

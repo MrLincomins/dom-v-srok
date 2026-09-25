@@ -7,7 +7,6 @@ namespace Database\Seeders\Support;
 use League\Csv\Reader;
 use RuntimeException;
 
-/** читает csv из docs/, разделитель «;», utf-8, первая строка заголовок. поле с «;» внутри берётся в кавычки */
 final class CsvReader
 {
     /** @return iterable<array<string,string|null>> */

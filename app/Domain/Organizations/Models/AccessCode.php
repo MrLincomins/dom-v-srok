@@ -9,7 +9,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** код доступа для /dispatcher, храним только хэш */
 /**
  * @property int $id
  * @property int $organization_id

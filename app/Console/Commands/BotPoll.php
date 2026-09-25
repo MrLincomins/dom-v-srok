@@ -12,7 +12,6 @@ use App\Jobs\ProcessMaxUpdate;
 use App\Support\Models\AppSetting;
 use Illuminate\Console\Command;
 
-/** для локалки */
 final class BotPoll extends Command
 {
     protected $signature = 'bot:poll {--once : Один запрос и выход} {--timeout=30 : Тайм-аут long polling, секунд}';

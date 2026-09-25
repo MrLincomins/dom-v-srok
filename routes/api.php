@@ -16,8 +16,6 @@ use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\RequestController;
 use Illuminate\Support\Facades\Route;
 
-// апи миниаппа, контракт в docs/openapi.yaml
-// ответы { data } или { data, meta }, ошибки { error: { code, message, details } }
 Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function (): void {
     Route::post('auth/max', [AuthController::class, 'max'])->middleware('throttle:auth')->name('auth.max');
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('auth.login');

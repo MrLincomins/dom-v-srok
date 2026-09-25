@@ -8,7 +8,6 @@ use App\Domain\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** исполнитель (сантехник, электрик), user_id на будущее для исполнителя в боте */
 /**
  * @property int $id
  * @property int $organization_id

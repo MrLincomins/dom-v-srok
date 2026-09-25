@@ -96,7 +96,6 @@ class Organization extends Model
         return $this->hasMany(ServiceRequest::class);
     }
 
-    /** есть ли прямой договор по колонке direct_* */
     public function hasDirectContract(?string $column): bool
     {
         return $column !== null && (bool) $this->getAttribute($column);

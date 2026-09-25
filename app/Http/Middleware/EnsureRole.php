@@ -10,7 +10,6 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** использование: role:dispatcher или role:dispatcher,admin */
 final class EnsureRole
 {
     public function handle(Request $request, Closure $next, string ...$roles): Response

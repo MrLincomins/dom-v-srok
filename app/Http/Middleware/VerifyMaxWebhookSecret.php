@@ -8,7 +8,6 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** мах присылает секрет в заголовке X-Max-Bot-Api-Secret, не совпал - 403 */
 final class VerifyMaxWebhookSecret
 {
     public function handle(Request $request, Closure $next): Response

@@ -10,7 +10,6 @@ use App\Jobs\ProcessMaxUpdate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** вебхук маха. отвечаем 200 сразу: ключ в processed_updates, задача в очередь. повтор - 200 без второй задачи */
 final class MaxWebhookController extends Controller
 {
     public function __invoke(Request $request): JsonResponse

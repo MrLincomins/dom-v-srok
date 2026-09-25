@@ -8,7 +8,6 @@ use App\Domain\Organizations\Enums\ContractorType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** подрядчик организации (лифтовая, домофонная), важнее региональных */
 /**
  * @property int $id
  * @property int $organization_id

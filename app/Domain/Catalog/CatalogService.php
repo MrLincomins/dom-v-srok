@@ -10,11 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class CatalogService
 {
-    /**
-     * дерево категорий для бота и апи
-     *
-     * @return Collection<int, Category>
-     */
+    /** @return Collection<int, Category> */
     public function tree(): Collection
     {
         return Category::query()->active()->roots()
@@ -38,11 +34,7 @@ final class CatalogService
         return Category::query()->where('slug', $slug)->first();
     }
 
-    /**
-     * подсказка категории по словам жителя, без нейронок
-     *
-     * @return Collection<int, Category>
-     */
+    /** @return Collection<int, Category> */
     public function suggest(string $text, int $limit = 3): Collection
     {
         $needle = mb_strtolower(trim($text));

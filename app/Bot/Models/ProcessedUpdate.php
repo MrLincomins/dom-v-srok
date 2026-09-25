@@ -7,7 +7,6 @@ namespace App\Bot\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
-/** ключи обработанных обновлений макса для безопасных вебхуков. */
 /**
  * @property string $update_key
  * @property CarbonImmutable $received_at
