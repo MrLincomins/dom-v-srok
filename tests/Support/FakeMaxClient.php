@@ -45,8 +45,13 @@ final class FakeMaxClient extends MaxClient
         return ['commands' => $commands];
     }
 
+    public ?MaxApiException $sendFailure = null;
+
     public function sendToUser(int $userId, array $body): array
     {
+        if ($this->sendFailure !== null) {
+            throw $this->sendFailure;
+        }
         $this->sent[] = ['target' => 'user', 'id' => $userId, 'body' => $body];
 
         return ['message' => ['body' => ['mid' => 'mid.'.count($this->sent)]]];

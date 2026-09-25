@@ -136,7 +136,7 @@ class MaxClient
             ->withHeaders(['Authorization' => (string) config('max.token')])
             ->acceptJson()
             ->timeout($timeout ?? (int) config('max.timeout'))
-            ->connectTimeout(5);
+            ->connectTimeout((int) config('max.connect_timeout'));
 
         $bundle = (string) config('max.ca_bundle');
         if ($bundle !== '') {

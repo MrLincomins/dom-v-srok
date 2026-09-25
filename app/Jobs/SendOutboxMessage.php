@@ -20,12 +20,9 @@ use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-/** отправка одной строки outbox в мах, лимиты через RateLimited, ретраи с задержкой */
 final class SendOutboxMessage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public int $tries = 6;
 
     /** @var list<int> */
     public array $backoff = [2, 10, 30, 120, 600];
@@ -37,18 +34,25 @@ final class SendOutboxMessage implements ShouldQueue
         return OutboxMessage::query()->find($this->outboxId)?->targetKey() ?? 'unknown';
     }
 
-    /**
-     * лимиты только на настоящей очереди: sync не умеет откладывать задачи, сообщение зависло бы в pending
-     *
-     * @return list<object>
-     */
+    public function retryUntil(): \DateTimeInterface
+    {
+        $availableAt = OutboxMessage::query()->find($this->outboxId)?->available_at;
+        $from = $availableAt !== null && $availableAt->isFuture() ? $availableAt : CarbonImmutable::now();
+
+        return $from->addHour();
+    }
+
+    /** @return list<object> */
     public function middleware(): array
     {
         if (config('queue.default') === 'sync') {
             return [];
         }
 
-        return [new RateLimited('max-target'), new RateLimited('max-global')];
+        return [
+            (new RateLimited('max-target'))->releaseAfter(1),
+            (new RateLimited('max-global'))->releaseAfter(1),
+        ];
     }
 
     public function handle(MaxClient $client): void
@@ -58,7 +62,6 @@ final class SendOutboxMessage implements ShouldQueue
             return;
         }
         if ($message->available_at->isFuture()) {
-            // отложенное сообщение (напоминание, сводка) - вернуть в очередь к нужному времени
             $this->release((int) ceil(CarbonImmutable::now()->diffInSeconds($message->available_at, true)));
 
             return;
@@ -93,7 +96,7 @@ final class SendOutboxMessage implements ShouldQueue
 
                 return;
             }
-            throw $e; // временная ошибка, ретрай по backoff
+            throw $e;
         }
 
         event(new OutboxMessageSent($message));
