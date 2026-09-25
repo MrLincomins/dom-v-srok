@@ -35,13 +35,14 @@ final class RequestQuery
         }
         if ($search !== null && trim($search) !== '') {
             $term = trim($search);
-            $q->where(function (Builder $w) use ($term): void {
+            $like = '%'.addcslashes($term, '%_\\').'%';
+            $q->where(function (Builder $w) use ($term, $like): void {
                 if (ctype_digit($term)) {
                     $w->orWhere('id', (int) $term);
                 }
                 $w->orWhere('flat', $term)
-                    ->orWhere('description', 'ilike', '%'.$term.'%')
-                    ->orWhereHas('house', fn (Builder $h) => $h->where('address', 'ilike', '%'.$term.'%'));
+                    ->orWhere('description', 'ilike', $like)
+                    ->orWhereHas('house', fn (Builder $h) => $h->where('address', 'ilike', $like));
             });
         }
 

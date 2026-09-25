@@ -127,8 +127,10 @@ final class RequestService
                 throw InvalidTransition::between($locked->status, RequestStatus::Assigned);
             }
 
+            $now = CarbonImmutable::now();
             $locked->executor_id = $executor->id;
-            $locked->assigned_at = CarbonImmutable::now();
+            $locked->assigned_at = $now;
+            $this->markReaction($locked, $by, $now);
             $locked->save();
             $this->log($locked, EventType::Assigned, $by, $comment, ['executor_id' => $executor->id, 'executor' => $executor->name]);
 
@@ -198,7 +200,14 @@ final class RequestService
 
     public function comment(ServiceRequest $request, Actor $by, string $text): RequestEvent
     {
-        return $this->log($request, EventType::Comment, $by, $text);
+        return DB::transaction(function () use ($request, $by, $text): RequestEvent {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if ($this->markReaction($locked, $by, CarbonImmutable::now())) {
+                $locked->save();
+            }
+
+            return $this->log($locked, EventType::Comment, $by, $text);
+        });
     }
 
     public function join(ServiceRequest $request, User $user): bool
@@ -331,9 +340,7 @@ final class RequestService
 
     private function stamp(ServiceRequest $request, RequestStatus $to, Actor $by, CarbonImmutable $now): void
     {
-        if ($by->isDispatcher() && $request->first_reaction_at === null) {
-            $request->first_reaction_at = $now;
-        }
+        $this->markReaction($request, $by, $now);
 
         match ($to) {
             RequestStatus::Assigned => $request->assigned_at = $now,
@@ -352,6 +359,16 @@ final class RequestService
                 ActorRole::System => ConfirmedBy::Auto,
             };
         }
+    }
+
+    private function markReaction(ServiceRequest $request, Actor $by, CarbonImmutable $now): bool
+    {
+        if (! $by->isDispatcher() || $request->first_reaction_at !== null) {
+            return false;
+        }
+        $request->first_reaction_at = $now;
+
+        return true;
     }
 
     private function publish(ServiceRequest $request, object $event): void

@@ -244,3 +244,22 @@ it('hides the executor phone from the resident', function () {
         ->assertJsonPath('data.executor.name', $assigned['executor']['name'])
         ->assertJsonPath('data.executor.phone', null);
 });
+
+it('counts a dispatcher comment as the first reaction', function () {
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=new')->json('data.0.id');
+    expect(ServiceRequest::query()->findOrFail($id)->first_reaction_at)->toBeNull();
+
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$id}/comments", ['text' => 'Уточняем у жителя'])
+        ->assertValidResponse(200);
+
+    expect(ServiceRequest::query()->findOrFail($id)->first_reaction_at)->not->toBeNull();
+});
+
+it('treats percent and underscore in the search as plain characters', function () {
+    asToken($this->dispatcher)->getJson('/api/v1/requests?q='.urlencode('%'))
+        ->assertValidResponse(200)
+        ->assertJsonCount(0, 'data');
+    asToken($this->dispatcher)->getJson('/api/v1/requests?q=_')
+        ->assertValidResponse(200)
+        ->assertJsonCount(0, 'data');
+});
