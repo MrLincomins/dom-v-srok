@@ -68,9 +68,37 @@ it('moves a request through the workflow and rejects a bad transition with 409',
         ->assertValidResponse(200)
         ->assertJsonPath('data.status', 'in_progress');
 
-    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$id}/status", ['status' => 'new'])
+    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$id}/status", ['status' => 'assigned'])
         ->assertValidResponse(409)
         ->assertJsonPath('error.code', 'invalid_transition');
+});
+
+it('does not let the dispatcher return a request to work or confirm it without a comment', function () {
+    $done = asToken($this->dispatcher)->getJson('/api/v1/requests?status=done')->json('data.0.id');
+
+    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$done}/status", ['status' => 'returned'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$done}/status", ['status' => 'confirmed'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+
+    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$done}/status", ['status' => 'confirmed', 'comment' => 'Житель подтвердил по телефону'])
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.status', 'confirmed')
+        ->assertJsonPath('data.confirmed_by', 'dispatcher');
+});
+
+it('does not let a joined neighbour confirm someone else\'s request', function () {
+    $neighbour = User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
+    $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');
+    $done = ServiceRequest::query()->where('status', 'done')->firstOrFail();
+    app(RequestService::class)->join($done, $neighbour);
+
+    asToken($token)->postJson("/api/v1/requests/{$done->id}/confirm", ['resolved' => true])
+        ->assertStatus(403)
+        ->assertJsonPath('error.code', 'forbidden');
+    expect($done->refresh()->status->value)->toBe('done');
 });
 
 it('lets the resident confirm a done request and return another one to work', function () {

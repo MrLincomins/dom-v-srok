@@ -661,6 +661,7 @@ paths:
       tags: [requests]
       operationId: changeStatus
       summary: Смена статуса по таблице переходов
+      description: 'Сотрудник ставит assigned, in_progress, done и confirmed. Вернуть в работу (returned) может только житель через /confirm. Подтвердить за жителя (confirmed) можно только с комментарием, как решение подтвердили; confirmed_by будет dispatcher.'
       parameters:
         - { in: path, name: id, required: true, schema: { type: integer } }
       requestBody:
@@ -671,8 +672,8 @@ paths:
               type: object
               required: [status]
               properties:
-                status: { $ref: '#/components/schemas/RequestStatus' }
-                comment: { type: [string, 'null'], maxLength: 1000 }
+                status: { type: string, enum: [assigned, in_progress, done, confirmed] }
+                comment: { type: [string, 'null'], maxLength: 1000, description: 'обязателен при status = confirmed' }
       responses:
         '200':
           description: Обновлённая карточка

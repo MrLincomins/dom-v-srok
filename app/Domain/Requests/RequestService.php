@@ -169,9 +169,9 @@ final class RequestService
         }
     }
 
-    public function confirm(ServiceRequest $request, Actor $by, ConfirmedBy $how, ?string $comment = null): ServiceRequest
+    public function confirm(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
     {
-        return $this->transition($request, RequestStatus::Confirmed, $by, $comment, ['confirmed_by' => $how->value]);
+        return $this->transition($request, RequestStatus::Confirmed, $by, $comment);
     }
 
     public function returnToWork(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
@@ -275,8 +275,12 @@ final class RequestService
         $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
         $from = $locked->status;
 
+        $this->ensureMayMove($locked, $to, $by, $comment);
         if (! $from->canTransitionTo($to)) {
             throw InvalidTransition::between($from, $to);
+        }
+        if ($to === RequestStatus::Confirmed) {
+            $payload['confirmed_by'] = ConfirmedBy::forRole($by->role)->value;
         }
 
         $now = CarbonImmutable::now();
@@ -288,6 +292,27 @@ final class RequestService
         $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
 
         return [$locked, $event];
+    }
+
+    private function ensureMayMove(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment): void
+    {
+        if ($by->role === ActorRole::Resident) {
+            if ($by->userId !== $request->resident_user_id) {
+                throw new NotAllowed('Подтвердить или вернуть заявку может только тот, кто её подал');
+            }
+            if (! in_array($to, [RequestStatus::Confirmed, RequestStatus::Returned], true)) {
+                throw new NotAllowed('Житель может только подтвердить решение или вернуть заявку в работу');
+            }
+
+            return;
+        }
+
+        if ($to === RequestStatus::Returned) {
+            throw new NotAllowed('Вернуть заявку в работу может только житель, который её подал');
+        }
+        if ($to === RequestStatus::Confirmed && $by->role === ActorRole::Dispatcher && trim((string) $comment) === '') {
+            throw new NotAllowed('Чтобы подтвердить заявку за жителя, напишите, как решение подтвердили');
+        }
     }
 
     /** @return array{0:ResponsibleParty|null,1:string,2:string|null} */
@@ -353,11 +378,7 @@ final class RequestService
         };
 
         if ($to === RequestStatus::Confirmed) {
-            $request->confirmed_by = match ($by->role) {
-                ActorRole::Resident => ConfirmedBy::Resident,
-                ActorRole::Dispatcher => ConfirmedBy::Dispatcher,
-                ActorRole::System => ConfirmedBy::Auto,
-            };
+            $request->confirmed_by = ConfirmedBy::forRole($by->role);
         }
     }
 

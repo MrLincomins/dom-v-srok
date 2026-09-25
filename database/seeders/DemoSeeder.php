@@ -149,7 +149,7 @@ class DemoSeeder extends Seeder
         $r7 = $make('heat.leak', 'Капает батарея в комнате', 2, '45');
         $service->start($r7, $by);
         $service->close($r7, $by, 'Подтянули соединение');
-        $service->confirm($r7, $residentActor, ConfirmedBy::Resident);
+        $service->confirm($r7, $residentActor);
 
         $r8 = $make('waste.not_removed', 'Контейнеры не вывозили с понедельника', 1, null);
         $service->redirect($r8, $by, new RedirectData(name: 'Региональный оператор ТКО', phone: '+7 843 000-00-04', note: 'Передано регоператору, заявка № ТКО-1234'));

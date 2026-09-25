@@ -8,7 +8,6 @@ use App\Domain\Organizations\Models\Executor;
 use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Dto\ClosingPhoto;
 use App\Domain\Requests\Dto\RedirectData;
-use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestQuery;
@@ -114,7 +113,7 @@ final class RequestController extends Controller
         $this->authorize('confirm', $serviceRequest);
         $actor = Actor::resident($request->user());
         $updated = $request->boolean('resolved')
-            ? $this->service->confirm($serviceRequest, $actor, ConfirmedBy::Resident, $request->validated('comment'))
+            ? $this->service->confirm($serviceRequest, $actor, $request->validated('comment'))
             : $this->service->returnToWork($serviceRequest, $actor, $request->validated('comment'));
 
         return $this->card($updated);
