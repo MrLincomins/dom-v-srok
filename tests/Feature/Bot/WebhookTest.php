@@ -8,6 +8,7 @@ use App\Jobs\ProcessMaxUpdate;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Queue\Queue as QueueBase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 it('rejects a webhook call without the secret', function () {
@@ -103,4 +104,17 @@ it('does not treat a button press on a deleted message as a started dialog', fun
     runUpdate($update);
 
     $this->assertDatabaseHas('users', ['max_user_id' => 444, 'bot_started_at' => null]);
+});
+
+it('logs how long an update travelled and how long it was handled', function () {
+    $this->seed(DatabaseSeeder::class);
+    fakeMax();
+    Log::spy();
+
+    runUpdate(startUpdate(1001));
+
+    Log::shouldHaveReceived('info')->withArgs(fn (string $event, array $context = []) => $event === 'bot.latency'
+        && array_key_exists('delivery_ms', $context)
+        && array_key_exists('queue_ms', $context)
+        && $context['handling_ms'] >= 0)->once();
 });
