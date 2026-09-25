@@ -1,7 +1,7 @@
 key;text;buttons
-start.greeting;Это бот вашего дома. Здесь можно сообщить о проблеме, узнать, кто отвечает и в какой срок, и следить за заявкой.;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
+start.greeting;Это бот вашего дома. Здесь можно сообщить о проблеме, узнать, кто отвечает и в какой срок, и следить за заявкой.;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Кто отвечает?","action":"who"}],[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
 start.house_known;Ваш дом: {address}. Если это не ваш дом — отсканируйте QR в своём подъезде или напишите адрес.;
-menu.main;Что нужно сделать?;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
+menu.main;Что нужно сделать?;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Кто отвечает?","action":"who"}],[{"label":"Мои заявки","action":"my"},{"label":"Контакты организации","action":"contacts"}]]
 menu.cabinet;Вы диспетчер: заявки вашей организации — в кабинете.;[[{"label":"Открыть кабинет","action":"cab"}]]
 fallback.hint;Не понял сообщение. Нажмите кнопку ниже или напишите /menu.;[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Меню","action":"menu"}]]
 wip;Этот раздел ещё в работе. Нажмите «Меню», чтобы вернуться.;[[{"label":"Меню","action":"menu"}]]
@@ -71,3 +71,14 @@ command.start;Начать заново;
 command.menu;Меню;
 command.dispatcher;Войти как диспетчер: /dispatcher КОД;
 command.delete_me;Удалить мои данные;
+request.new_staff;Новая заявка № {number}: {what}, {address}. Срок: {deadline}.;[[{"label":"Открыть кабинет","action":"cab"}]]
+request.returned_staff;Житель вернул заявку № {number}: {what}, {address}. Проблема не решена, заявка снова в работе.;[[{"label":"Открыть кабинет","action":"cab"}]]
+request.due_soon_staff;До срока по заявке № {number} меньше двух часов: {what}, {address}. Срок: {deadline}.;[[{"label":"Открыть кабинет","action":"cab"}]]
+digest.morning;Доброе утро. Заявки организации: новых {new}, в работе {active}, просрочено {overdue}, ждут подтверждения жителя {waiting}.\n{top};[[{"label":"Открыть кабинет","action":"cab"}]]
+digest.morning_top;Первыми: {list};
+digest.morning_empty;Открытых заявок нет.;
+who.category;Кто отвечает и в какой срок? Выберите раздел.;[[{"label":"Меню","action":"menu"}]]
+who.subcategory;Уточните, что именно.;[[{"label":"Другой раздел","action":"who"},{"label":"Меню","action":"menu"}]]
+who.card;{what}\nКто отвечает: {responsible}\nСрок: {deadline}\nОснование: {basis}\n{hint};[[{"label":"Сообщить о проблеме","action":"report"}],[{"label":"Другой раздел","action":"who"},{"label":"Меню","action":"menu"}]]
+who.house;Чтобы сказать, кто отвечает по вашему дому, отсканируйте QR в подъезде или напишите адрес дома.;[[{"label":"Меню","action":"menu"}]]
+who.emergency;Это авария: звоните в аварийную службу, заявка не нужна. Телефон — в «Контактах организации».;[[{"label":"Контакты организации","action":"contacts"},{"label":"Меню","action":"menu"}]]
