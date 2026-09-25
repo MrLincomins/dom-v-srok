@@ -43,7 +43,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
             Route::post('requests/{serviceRequest}/close', [RequestController::class, 'close'])->name('requests.close');
             Route::post('requests/{serviceRequest}/redirect', [RequestController::class, 'redirect'])->name('requests.redirect');
             Route::post('requests/{serviceRequest}/comments', [RequestController::class, 'comment'])->name('requests.comment');
-            Route::post('demo/reset', [DemoController::class, 'reset'])->name('demo.reset');
+            Route::post('demo/reset', [DemoController::class, 'reset'])->middleware('throttle:demo')->name('demo.reset');
 
             Route::get('organization', [OrganizationController::class, 'show'])->name('organization.show');
             Route::patch('organization', [OrganizationController::class, 'update'])->name('organization.update');

@@ -42,6 +42,9 @@ class AppServiceProvider extends ServiceProvider
         // тестовый вход, защита от перебора
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(30)->by((string) $request->ip()));
 
+        RateLimiter::for('demo', fn (Request $request) => Limit::perMinute(2)
+            ->by($request->user()?->getAuthIdentifier() ?: (string) $request->ip()));
+
         // лимиты маха: 2 сообщения в сек на диалог, ~30 запросов в сек всего
         RateLimiter::for('max-target', fn (object $job) => Limit::perSecond((int) config('max.rate_per_target'))
             ->by(method_exists($job, 'targetKey') ? $job->targetKey() : 'global'));

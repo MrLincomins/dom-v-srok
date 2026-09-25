@@ -7,21 +7,24 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Dto\JournalPeriod;
 use App\Domain\Requests\JournalExporter;
+use App\Domain\Users\Models\User;
 use App\Http\Controllers\Api\V1\Concerns\ResolvesOrganization;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\JournalRequest;
 use App\Http\Resources\JournalRowResource;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 
 final class JournalController extends Controller
 {
     use ResolvesOrganization;
 
-    private const LINK_TTL_MINUTES = 10;
+    private const LINK_TTL_MINUTES = 3;
 
     public function __construct(private readonly JournalExporter $journal) {}
 
@@ -41,7 +44,7 @@ final class JournalController extends Controller
     {
         $organization = $this->organizationOf($request);
 
-        return $this->csvResponse($organization, $this->period($request, $organization));
+        return $this->csvResponse($organization, $this->period($request, $organization), (int) $request->user()?->id);
     }
 
     public function csvLink(JournalRequest $request): JsonResponse
@@ -53,6 +56,7 @@ final class JournalController extends Controller
         return response()->json(['data' => [
             'url' => URL::temporarySignedRoute('api.journal.export', $expiresAt, [
                 'organization' => $organization->id,
+                'user' => $request->user()?->id,
                 'from' => $period->fromDate(),
                 'to' => $period->toDate(),
             ]),
@@ -63,13 +67,19 @@ final class JournalController extends Controller
     public function export(Request $request): Response
     {
         $organization = Organization::query()->findOrFail($request->integer('organization'));
+        $user = User::query()->find($request->integer('user'));
+        if ($user === null || ! $user->isStaff() || $user->organization_id !== $organization->id) {
+            throw new AuthorizationException;
+        }
         $period = JournalPeriod::fromDates($request->string('from')->value(), $request->string('to')->value(), $organization->region->timezone);
 
-        return $this->csvResponse($organization, $period);
+        return $this->csvResponse($organization, $period, $user->id);
     }
 
-    private function csvResponse(Organization $organization, JournalPeriod $period): Response
+    private function csvResponse(Organization $organization, JournalPeriod $period, int $userId): Response
     {
+        Log::info('journal.exported', ['organization_id' => $organization->id, 'user_id' => $userId]);
+
         return response($this->journal->csv($organization, $period), 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="zhurnal-zayavok-'.$period->fromDate().'-'.$period->toDate().'.csv"',
