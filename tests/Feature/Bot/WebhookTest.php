@@ -22,6 +22,7 @@ it('accepts an update once and ignores the duplicate', function () {
     $this->postJson('/max/webhook', messageUpdate(1, 'привет'), $headers)->assertOk()->assertJsonPath('duplicate', true);
 
     Queue::assertPushed(ProcessMaxUpdate::class, 1);
+    Queue::assertPushedOn(ProcessMaxUpdate::QUEUE, ProcessMaxUpdate::class);
     $this->assertDatabaseCount('processed_updates', 1);
 });
 

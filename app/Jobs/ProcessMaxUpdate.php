@@ -13,7 +13,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-/** обработка одного обновления маха вне http, вебхук уже ответил 200 */
 final class ProcessMaxUpdate implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -23,8 +22,13 @@ final class ProcessMaxUpdate implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [5, 30];
 
+    public const QUEUE = 'updates';
+
     /** @param array<string,mixed> $raw */
-    public function __construct(public readonly array $raw) {}
+    public function __construct(public readonly array $raw)
+    {
+        $this->onQueue(self::QUEUE);
+    }
 
     public function handle(UpdateDispatcher $dispatcher): void
     {
