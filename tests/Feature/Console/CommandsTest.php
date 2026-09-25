@@ -6,6 +6,7 @@ use App\Bot\Models\OutboxMessage;
 use App\Bot\Models\ProcessedUpdate;
 use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Outbox\OutboxTarget;
+use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
@@ -108,4 +109,22 @@ it('sets the bot commands from the texts table', function () {
     expect(array_column($fake->commands, 'name'))->toBe(['start', 'menu', 'dispatcher', 'delete_me'])
         ->and($fake->commands[1]['description'])->toBe(botText('command.menu'))
         ->and(AppSetting::get('bot')['id'])->toBe(405671160);
+});
+
+it('marks the demo as seeded only when it was created', function () {
+    config(['demo.seed' => false]);
+
+    $this->artisan('demo:seed-once')->assertSuccessful();
+
+    expect(AppSetting::get('seeded_at'))->toBeNull()
+        ->and(Organization::query()->where('is_demo', true)->exists())->toBeFalse();
+
+    config(['demo.seed' => true]);
+
+    $this->artisan('demo:seed-once')->assertSuccessful();
+    $this->artisan('demo:seed-once')->expectsOutputToContain('Демо уже создано')->assertSuccessful();
+
+    expect(AppSetting::get('seeded_at'))->not->toBeNull()
+        ->and(Organization::query()->where('is_demo', true)->count())->toBe(1)
+        ->and(ServiceRequest::query()->count())->toBe(8);
 });

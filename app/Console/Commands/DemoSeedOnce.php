@@ -26,9 +26,13 @@ final class DemoSeedOnce extends Command
             return self::SUCCESS;
         }
 
-        if (config('demo.seed')) {
-            $this->call('db:seed', ['--class' => DemoSeeder::class, '--force' => $force]);
+        if (! config('demo.seed')) {
+            $this->info('Справочники обновлены, демо не создаётся: DEMO_SEED выключен.');
+
+            return self::SUCCESS;
         }
+
+        $this->call('db:seed', ['--class' => DemoSeeder::class, '--force' => $force]);
         AppSetting::put('seeded_at', now()->toIso8601String());
         $this->info('Готово.');
 
