@@ -79,3 +79,30 @@ it('returns the profile for a bearer token', function () {
         ->assertJsonPath('data.role', 'resident')
         ->assertJsonPath('data.house.address', DemoSeeder::HOUSE_ADDRESS);
 });
+
+it('explains validation errors in Russian', function () {
+    $this->postJson('/api/v1/auth/login', ['password' => 'x'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed')
+        ->assertJsonPath('error.details.fields.login.0', 'Поле «логин» обязательно.');
+});
+
+it('answers 429 with Retry-After when the login is hammered', function () {
+    foreach (range(1, 30) as $attempt) {
+        $this->postJson('/api/v1/auth/login', ['login' => 'demo_dispatcher', 'password' => 'nope'])->assertStatus(401);
+    }
+
+    $this->postJson('/api/v1/auth/login', ['login' => 'demo_dispatcher', 'password' => 'nope'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.code', 'too_many_requests')
+        ->assertHeader('Retry-After')
+        ->assertHeader('X-RateLimit-Limit', '30')
+        ->assertHeader('X-RateLimit-Remaining', '0');
+});
+
+it('answers an unsupported method in Russian', function () {
+    $this->getJson('/api/v1/auth/login')
+        ->assertStatus(405)
+        ->assertJsonPath('error.code', 'http_error')
+        ->assertJsonPath('error.message', 'Метод не поддерживается');
+});
