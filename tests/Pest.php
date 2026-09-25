@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Bot\Client\MaxClient;
+use App\Bot\Outbox\OutboxService;
 use App\Bot\Texts\TextRepository;
 use App\Bot\UpdateDispatcher;
 use App\Jobs\ProcessMaxUpdate;
@@ -16,7 +17,6 @@ pest()->extend(TestCase::class)
 
 pest()->extend(TestCase::class)->in('Unit');
 
-/** запрос от другого пользователя в том же тесте. guard санктума кэширует юзера, перед сменой токена сбрасываем */
 function asToken(string $token): TestCase
 {
     app('auth')->forgetGuards();
@@ -44,8 +44,11 @@ function messageUpdate(int $userId, ?string $text, string $mid = 'mid.1', array 
 }
 
 /** @return array<string,mixed> */
-function callbackUpdate(int $userId, string $payload, string $callbackId = 'cb.1'): array
+function callbackUpdate(int $userId, string $payload, ?string $callbackId = null): array
 {
+    static $presses = 0;
+    $callbackId ??= 'cb.auto.'.(++$presses);
+
     return [
         'update_type' => 'message_callback',
         'timestamp' => 1758100001000,
@@ -93,7 +96,7 @@ function startUpdate(int $userId, ?string $payload = null): array
 /** @param array<string,mixed> $raw */
 function runUpdate(array $raw): void
 {
-    (new ProcessMaxUpdate($raw))->handle(app(UpdateDispatcher::class));
+    (new ProcessMaxUpdate($raw))->handle(app(UpdateDispatcher::class), app(OutboxService::class));
 }
 
 function fakeMax(): FakeMaxClient

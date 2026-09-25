@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Bot\Outbox\OutboxService;
 use App\Bot\UpdateDispatcher;
 use App\Bot\Updates\Update;
 use Illuminate\Bus\Queueable;
@@ -30,10 +31,15 @@ final class ProcessMaxUpdate implements ShouldQueue
         $this->onQueue(self::QUEUE);
     }
 
-    public function handle(UpdateDispatcher $dispatcher): void
+    public function handle(UpdateDispatcher $dispatcher, OutboxService $outbox): void
     {
         $update = Update::fromArray($this->raw);
         Log::info('bot.update', ['type' => $update->type, 'key' => $update->key()]);
-        $dispatcher->dispatch($update);
+        $outbox->beginUpdate($update->key());
+        try {
+            $dispatcher->dispatch($update);
+        } finally {
+            $outbox->endUpdate();
+        }
     }
 }

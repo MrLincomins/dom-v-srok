@@ -72,7 +72,7 @@ it('answers a button press to the person who pressed it, not to the bot', functi
     $fake = fakeMax();
 
     runUpdate(messageUpdate(888, '/start'));
-    runUpdate(callbackUpdate(888, 'my'));
+    runUpdate(callbackUpdate(888, 'my', 'cb.1'));
 
     $row = OutboxMessage::query()->latest('id')->firstOrFail();
     expect($fake->answered)->toContain('cb.1')
@@ -80,4 +80,27 @@ it('answers a button press to the person who pressed it, not to the bot', functi
         ->and($row->target_id)->toBe(888)
         ->and($row->status)->toBe(OutboxStatus::Sent)
         ->and($row->max_message_id)->toBe('mid.bot.cb.1');
+});
+
+it('does not repeat replies when the same update is processed twice', function () {
+    $this->seed(DatabaseSeeder::class);
+    $fake = fakeMax();
+
+    runUpdate(startUpdate(999));
+    $count = OutboxMessage::query()->count();
+    runUpdate(startUpdate(999));
+
+    expect(OutboxMessage::query()->count())->toBe($count)
+        ->and(count($fake->sent))->toBe($count);
+});
+
+it('does not treat a button press on a deleted message as a started dialog', function () {
+    $this->seed(DatabaseSeeder::class);
+    fakeMax();
+    $update = callbackUpdate(444, 'menu', 'cb.gone');
+    $update['message'] = null;
+
+    runUpdate($update);
+
+    $this->assertDatabaseHas('users', ['max_user_id' => 444, 'bot_started_at' => null]);
 });

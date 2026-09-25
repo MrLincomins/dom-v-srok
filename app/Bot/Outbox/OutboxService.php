@@ -18,6 +18,22 @@ final class OutboxService
 
     private ?OutboxMessage $captured = null;
 
+    private ?string $updateScope = null;
+
+    private int $updateSequence = 0;
+
+    public function beginUpdate(string $updateKey): void
+    {
+        $this->updateScope = substr(sha1($updateKey), 0, 24);
+        $this->updateSequence = 0;
+    }
+
+    public function endUpdate(): void
+    {
+        $this->updateScope = null;
+        $this->updateSequence = 0;
+    }
+
     public function captureNextForUser(int $maxUserId, ?string $messageId): void
     {
         $this->captureUserId = $maxUserId;
@@ -49,6 +65,10 @@ final class OutboxService
         ?string $editMessageId = null,
         bool $dispatch = true,
     ): ?OutboxMessage {
+        if ($dedupeKey === null && $this->updateScope !== null) {
+            $dedupeKey = 'upd:'.$this->updateScope.':'.(++$this->updateSequence);
+        }
+
         try {
             $message = DB::transaction(fn () => OutboxMessage::query()->create([
                 'target_type' => $target,
