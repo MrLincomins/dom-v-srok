@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Organizations\Dto\HouseData;
 use App\Domain\Organizations\Dto\HouseSettingsData;
 use App\Domain\Organizations\Dto\OrganizationProfileData;
 use App\Domain\Organizations\OrganizationService;
 use App\Http\Controllers\Api\V1\Concerns\ResolvesOrganization;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreHouseRequest;
 use App\Http\Requests\Api\UpdateHouseRequest;
 use App\Http\Requests\Api\UpdateOrganizationRequest;
 use App\Http\Resources\HouseResource;
 use App\Http\Resources\OrganizationResource;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -38,6 +41,13 @@ final class OrganizationController extends Controller
     public function houses(Request $request): AnonymousResourceCollection
     {
         return HouseResource::collection($this->organizationOf($request)->houses()->orderBy('address')->get());
+    }
+
+    public function storeHouse(StoreHouseRequest $request): JsonResponse
+    {
+        $house = $this->service->addHouse($this->organizationOf($request), HouseData::fromArray($request->validated()));
+
+        return (new HouseResource($house))->response()->setStatusCode(201);
     }
 
     public function updateHouse(UpdateHouseRequest $request, string $house): HouseResource

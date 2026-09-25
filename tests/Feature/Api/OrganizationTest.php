@@ -121,3 +121,50 @@ it('manages executors: list, add, edit, archive; archived ones cannot be assigne
         ->assertJsonPath('error.code', 'validation_failed');
     asToken($this->resident)->getJson('/api/v1/organization/executors')->assertStatus(403);
 });
+
+it('adds a house with its own QR code and shows it in the list', function () {
+    $response = asToken($this->dispatcher)->postJson('/api/v1/organization/houses', ['address' => '  Казань, ул. Новая,   д. 7 ', 'entrances' => 4, 'chat_keywords_enabled' => true])
+        ->assertValidRequest()->assertValidResponse(201)
+        ->assertJsonPath('data.address', 'Казань, ул. Новая, д. 7')
+        ->assertJsonPath('data.entrances', 4)
+        ->assertJsonPath('data.chat_bound', false)
+        ->assertJsonPath('data.chat_keywords_enabled', true);
+    $token = $response->json('data.qr_token');
+    expect($token)->toBeString()->not->toBe(DemoSeeder::HOUSE_QR_TOKEN)
+        ->and($response->json('data.start_url'))->toContain('start=h_'.$token)
+        ->and($response->json('data.qr_url'))->toContain('/qr.png?signature=');
+
+    $house = House::query()->findOrFail($response->json('data.id'));
+    $organizationId = User::query()->where('login', 'demo_dispatcher')->value('organization_id');
+    expect($house->organization_id)->toBe($organizationId)
+        ->and($house->region_code)->toBe(House::query()->where('qr_token', DemoSeeder::HOUSE_QR_TOKEN)->value('region_code'))
+        ->and($house->is_demo)->toBeFalse();
+
+    asToken($this->dispatcher)->getJson('/api/v1/organization/houses')
+        ->assertValidResponse(200)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonFragment(['qr_token' => $token]);
+});
+
+it('does not let a resident add a house', function () {
+    asToken($this->resident)->postJson('/api/v1/organization/houses', ['address' => 'Казань, ул. Новая, д. 7', 'entrances' => 1])
+        ->assertStatus(403)
+        ->assertJsonPath('error.code', 'forbidden');
+    expect(House::query()->where('address', 'Казань, ул. Новая, д. 7')->exists())->toBeFalse();
+});
+
+it('rejects a duplicate address and bad entrances', function () {
+    $address = House::query()->where('qr_token', DemoSeeder::HOUSE_QR_TOKEN)->value('address');
+
+    asToken($this->dispatcher)->postJson('/api/v1/organization/houses', ['address' => mb_strtoupper($address), 'entrances' => 2])
+        ->assertValidResponse(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+    asToken($this->dispatcher)->postJson('/api/v1/organization/houses', ['address' => 'Казань, ул. Новая, д. 7', 'entrances' => 0])
+        ->assertStatus(422);
+    asToken($this->dispatcher)->postJson('/api/v1/organization/houses', ['address' => str_repeat('д', 201), 'entrances' => 1])
+        ->assertStatus(422);
+
+    House::query()->create(['region_code' => 'RU-TA', 'address' => 'Казань, ул. Чужая, д. 2']);
+    asToken($this->dispatcher)->postJson('/api/v1/organization/houses', ['address' => 'Казань, ул. Чужая, д. 2', 'entrances' => 1])
+        ->assertStatus(201);
+});

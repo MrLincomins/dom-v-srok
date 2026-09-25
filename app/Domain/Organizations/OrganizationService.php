@@ -6,6 +6,7 @@ namespace App\Domain\Organizations;
 
 use App\Domain\Organizations\Dto\ContractorData;
 use App\Domain\Organizations\Dto\ExecutorData;
+use App\Domain\Organizations\Dto\HouseData;
 use App\Domain\Organizations\Dto\HouseSettingsData;
 use App\Domain\Organizations\Dto\OrganizationProfileData;
 use App\Domain\Organizations\Models\Contractor;
@@ -24,6 +25,20 @@ final class OrganizationService
         Log::info('organization.updated', ['organization_id' => $organization->id, 'fields' => $fields]);
 
         return $organization;
+    }
+
+    public function addHouse(Organization $organization, HouseData $data): House
+    {
+        $house = $organization->houses()->create([
+            'region_code' => $organization->region_code,
+            'address' => $data->address,
+            'entrances' => $data->entrances,
+            'chat_keywords_enabled' => $data->chatKeywordsEnabled,
+            'is_demo' => false,
+        ]);
+        Log::info('house.created', ['organization_id' => $organization->id, 'house_id' => $house->id]);
+
+        return $house;
     }
 
     public function updateHouse(House $house, HouseSettingsData $data): House

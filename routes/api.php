@@ -48,6 +48,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
             Route::get('organization', [OrganizationController::class, 'show'])->name('organization.show');
             Route::patch('organization', [OrganizationController::class, 'update'])->name('organization.update');
             Route::get('organization/houses', [OrganizationController::class, 'houses'])->name('organization.houses');
+            Route::post('organization/houses', [OrganizationController::class, 'storeHouse'])->name('organization.houses.store');
             Route::patch('organization/houses/{house}', [OrganizationController::class, 'updateHouse'])->whereNumber('house')->name('organization.houses.update');
             Route::get('organization/executors', [ExecutorController::class, 'index'])->name('organization.executors');
             Route::post('organization/executors', [ExecutorController::class, 'store'])->name('organization.executors.store');
