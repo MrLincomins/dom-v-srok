@@ -95,6 +95,7 @@ final class RequestController extends Controller
             name: $request->validated('name'),
             phone: $request->validated('phone'),
             note: $request->validated('note'),
+            contractorId: $request->validated('contractor_id') !== null ? (int) $request->validated('contractor_id') : null,
         ));
 
         return $this->card($updated);

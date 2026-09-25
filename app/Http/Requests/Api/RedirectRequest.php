@@ -11,8 +11,9 @@ final class RedirectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'responsible_party_id' => ['nullable', 'integer', 'required_without:name'],
-            'name' => ['nullable', 'string', 'max:200', 'required_without:responsible_party_id'],
+            'responsible_party_id' => ['nullable', 'integer', 'required_without_all:contractor_id,name', 'prohibits:contractor_id,name'],
+            'contractor_id' => ['nullable', 'integer', 'required_without_all:responsible_party_id,name', 'prohibits:responsible_party_id,name'],
+            'name' => ['nullable', 'string', 'max:200', 'required_without_all:responsible_party_id,contractor_id', 'prohibits:responsible_party_id,contractor_id'],
             'phone' => ['nullable', 'string', 'max:32'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];

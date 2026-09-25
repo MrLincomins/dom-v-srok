@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Bot\Models\OutboxMessage;
+use App\Domain\Organizations\Enums\ContractorType;
+use App\Domain\Organizations\Models\Contractor;
+use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Models\Attachment;
 use App\Domain\Requests\Models\ServiceRequest;
@@ -80,13 +83,41 @@ it('lets the resident confirm a done request and return another one to work', fu
         ->assertJsonPath('data.confirmed_by', 'resident');
 });
 
-it('redirects a request with a contact', function () {
+it('redirects a request with a contact and tells the resident the number', function () {
+    User::query()->where('login', 'demo_resident')->update(['max_user_id' => 700100, 'bot_started_at' => now()]);
     $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=new')->json('data.0.id');
 
     asToken($this->dispatcher)->postJson("/api/v1/requests/{$id}/redirect", ['name' => 'Водоканал', 'phone' => '+7 843 000-00-00', 'note' => 'Магистраль'])
         ->assertValidResponse(200)
         ->assertJsonPath('data.status', 'redirected')
+        ->assertJsonPath('data.redirected_to.name', 'Водоканал')
+        ->assertJsonPath('data.redirected_to.phone', '+7 843 000-00-00')
         ->assertJsonPath('data.redirected_to.note', 'Магистраль');
+
+    $texts = OutboxMessage::query()->where('request_id', $id)->get()->map(fn (OutboxMessage $m) => (string) ($m->body['text'] ?? ''))->all();
+    expect($texts)->toContain(botText('request.redirected', ['number' => $id, 'status' => 'Переадресовано', 'comment' => 'Магистраль', 'to' => 'Водоканал', 'phone' => '+7 843 000-00-00']));
+});
+
+it('redirects a request to a contractor of the organization', function () {
+    $organizationId = User::query()->where('login', 'demo_dispatcher')->value('organization_id');
+    $contractor = Contractor::query()->create(['organization_id' => $organizationId, 'type' => ContractorType::Lift, 'name' => 'Лифтсервис', 'phone' => '+7 843 111-22-33']);
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=new')->json('data.0.id');
+
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$id}/redirect", ['contractor_id' => $contractor->id])
+        ->assertValidResponse(200)
+        ->assertJsonPath('data.redirected_to.name', 'Лифтсервис')
+        ->assertJsonPath('data.redirected_to.phone', '+7 843 111-22-33');
+});
+
+it('does not redirect to a contractor of another organization', function () {
+    $other = Organization::query()->create(['name' => 'Другая УК', 'region_code' => Organization::query()->value('region_code'), 'type' => 'uk', 'phone_ads' => '+7 843 000-00-99']);
+    $contractor = Contractor::query()->create(['organization_id' => $other->id, 'type' => ContractorType::Lift, 'name' => 'Чужой лифт', 'phone' => null]);
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=new')->json('data.0.id');
+
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$id}/redirect", ['contractor_id' => $contractor->id])
+        ->assertStatus(404);
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$id}/redirect", ['contractor_id' => $contractor->id, 'name' => 'Водоканал'])
+        ->assertStatus(422);
 });
 
 it('lists the active group as one page', function () {

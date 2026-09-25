@@ -55,6 +55,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $assigned_at
  * @property CarbonImmutable|null $in_progress_at
  * @property int|null $redirected_party_id
+ * @property string|null $redirect_name
+ * @property string|null $redirect_phone
  * @property string|null $redirect_note
  * @property string|null $rating_comment
  * @property int|null $repeat_of_id
@@ -197,15 +199,41 @@ class ServiceRequest extends Model
         if ($this->status !== RequestStatus::Redirected) {
             return null;
         }
+        if ($this->redirect_name !== null && $this->redirect_name !== '') {
+            return $this->redirect_name;
+        }
         if ($this->redirectedParty !== null) {
             return $this->redirectedParty->name;
         }
-        $event = $this->relationLoaded('events')
-            ? $this->events->firstWhere('to_status', RequestStatus::Redirected->value)
-            : $this->events()->where('to_status', RequestStatus::Redirected->value)->latest('id')->first();
-        $to = $event?->payload['to'] ?? null;
+        $to = $this->redirectEvent()?->payload['to'] ?? null;
 
         return is_string($to) && $to !== '' ? $to : null;
+    }
+
+    public function redirectedToPhone(): ?string
+    {
+        if ($this->status !== RequestStatus::Redirected) {
+            return null;
+        }
+        if ($this->redirect_phone !== null && $this->redirect_phone !== '') {
+            return $this->redirect_phone;
+        }
+        if ($this->redirect_name !== null) {
+            return null;
+        }
+        if ($this->redirectedParty?->phone !== null) {
+            return $this->redirectedParty->phone;
+        }
+        $phone = $this->redirectEvent()?->payload['phone'] ?? null;
+
+        return is_string($phone) && $phone !== '' ? $phone : null;
+    }
+
+    private function redirectEvent(): ?RequestEvent
+    {
+        return $this->relationLoaded('events')
+            ? $this->events->last(fn (RequestEvent $event) => $event->to_status === RequestStatus::Redirected->value)
+            : $this->events()->where('to_status', RequestStatus::Redirected->value)->reorder('id', 'desc')->first();
     }
 
     /**

@@ -365,7 +365,11 @@ components:
         returned_count: { type: integer }
         redirected_to:
           type: object
+          description: 'только у переадресованной заявки; name и phone — снимок того, что сообщили жителю'
+          required: [name, phone, party, note]
           properties:
+            name: { type: [string, 'null'] }
+            phone: { type: [string, 'null'] }
             party:
               oneOf:
                 - type: object
@@ -749,8 +753,10 @@ paths:
           application/json:
             schema:
               type: object
+              description: 'ровно одно из responsible_party_id, contractor_id, name'
               properties:
-                responsible_party_id: { type: [integer, 'null'] }
+                responsible_party_id: { type: [integer, 'null'], description: 'сторона из регионального справочника' }
+                contractor_id: { type: [integer, 'null'], description: 'подрядчик своей организации; чужой — 404' }
                 name: { type: [string, 'null'], maxLength: 200 }
                 phone: { type: [string, 'null'], maxLength: 32 }
                 note: { type: [string, 'null'], maxLength: 1000 }

@@ -15,7 +15,6 @@ use App\Domain\Requests\Events\RequestStatusChanged;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
 
-/** каждая смена статуса - сообщение жителю с тем же номером, только тем кто запускал бота. dedupe_key защищает от дублей. дому без организации ещё напоминание в срок */
 final class NotifyResidentOfRequestChange
 {
     public function __construct(
@@ -75,8 +74,8 @@ final class NotifyResidentOfRequestChange
             RequestStatus::Confirmed => [$request->confirmed_by === ConfirmedBy::Auto ? 'request.auto_confirmed' : 'request.confirmed', $vars],
             RequestStatus::Returned => ['request.returned', $vars],
             RequestStatus::Redirected => ['request.redirected', $vars + [
-                'to' => $request->redirectedParty->name ?? (string) ($request->events()->latest('id')->first()?->payload['to'] ?? ''),
-                'phone' => $request->redirectedParty->phone ?? '—',
+                'to' => $request->redirectedToName() ?? '',
+                'phone' => $request->redirectedToPhone() ?? '—',
             ]],
             default => ['request.status', $vars],
         };

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\ServiceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * карточка заявки
- *
  * @mixin ServiceRequest
  */
 final class RequestResource extends JsonResource
@@ -46,7 +45,9 @@ final class RequestResource extends JsonResource
             'confirmed_by' => $this->confirmed_by?->value,
             'closed_at' => $this->closed_at?->toIso8601String(),
             'returned_count' => $this->returned_count,
-            'redirected_to' => $this->when($this->redirected_party_id !== null || $this->redirect_note !== null, fn () => [
+            'redirected_to' => $this->when($this->status === RequestStatus::Redirected, fn () => [
+                'name' => $this->redirectedToName(),
+                'phone' => $this->redirectedToPhone(),
                 'party' => $this->redirectedParty ? ['id' => $this->redirectedParty->id, 'name' => $this->redirectedParty->name, 'phone' => $this->redirectedParty->phone] : null,
                 'note' => $this->redirect_note,
             ]),

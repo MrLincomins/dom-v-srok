@@ -8,6 +8,7 @@ use App\Domain\Catalog\CatalogService;
 use App\Domain\Catalog\DeadlineCalculator;
 use App\Domain\Catalog\Models\ResponsibleParty;
 use App\Domain\Catalog\ResponsibleResolver;
+use App\Domain\Organizations\Models\Contractor;
 use App\Domain\Organizations\Models\Executor;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\Actor;
@@ -178,26 +179,20 @@ final class RequestService
 
     public function redirect(ServiceRequest $request, Actor $by, RedirectData $data): ServiceRequest
     {
-        $party = $data->partyId !== null ? ResponsibleParty::query()->findOrFail($data->partyId) : null;
-        $name = $party->name ?? $data->name;
-        if ($name === null || $name === '') {
-            throw new NotAllowed('Укажите, кому переадресована заявка');
-        }
-
-        return DB::transaction(function () use ($request, $by, $data, $party, $name): ServiceRequest {
+        return DB::transaction(function () use ($request, $by, $data): ServiceRequest {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             if (! $locked->status->canTransitionTo(RequestStatus::Redirected)) {
                 throw InvalidTransition::between($locked->status, RequestStatus::Redirected);
             }
 
+            [$party, $name, $phone] = $this->redirectTarget($locked, $data);
             $locked->redirected_party_id = $party?->id;
+            $locked->redirect_name = $name;
+            $locked->redirect_phone = $phone;
             $locked->redirect_note = $data->note;
             $locked->save();
 
-            return $this->transition($locked, RequestStatus::Redirected, $by, $data->note, [
-                'to' => $name,
-                'phone' => $party->phone ?? $data->phone,
-            ]);
+            return $this->move($locked, RequestStatus::Redirected, $by, $data->note, ['to' => $name, 'phone' => $phone])[0];
         });
     }
 
@@ -284,6 +279,27 @@ final class RequestService
         $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
 
         return [$locked, $event];
+    }
+
+    /** @return array{0:ResponsibleParty|null,1:string,2:string|null} */
+    private function redirectTarget(ServiceRequest $request, RedirectData $data): array
+    {
+        $party = null;
+        if ($data->partyId !== null) {
+            $party = ResponsibleParty::query()->findOrFail($data->partyId);
+            [$name, $phone] = [$party->name, $party->phone ?? $data->phone];
+        } elseif ($data->contractorId !== null) {
+            $contractor = Contractor::query()->where('organization_id', $request->organization_id)->findOrFail($data->contractorId);
+            [$name, $phone] = [$contractor->name, $contractor->phone ?? $data->phone];
+        } else {
+            [$name, $phone] = [trim((string) $data->name), $data->phone];
+        }
+
+        if ($name === '') {
+            throw new NotAllowed('Укажите, кому передана заявка');
+        }
+
+        return [$party, $name, $phone !== null && trim($phone) !== '' ? trim($phone) : null];
     }
 
     private function storeClosingPhoto(ServiceRequest $request, RequestEvent $event, ClosingPhoto $photo, string $disk, Actor $by): string
