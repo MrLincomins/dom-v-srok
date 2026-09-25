@@ -13,8 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * справочник: категория, кто отвечает, сроки, основание
- *
  * @property int $id
  * @property int|null $parent_id
  * @property string $slug
@@ -36,7 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Category extends Model
 {
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {

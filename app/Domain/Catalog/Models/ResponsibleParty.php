@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * рсо, регоператор, лифтовая и тд по региону
- *
  * @property int $id
  * @property string $region_code
  * @property ResponsibleType $type
@@ -24,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ResponsibleParty extends Model
 {
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
