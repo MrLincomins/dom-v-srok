@@ -7,7 +7,6 @@ namespace App\Domain\Catalog\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
-/** праздники и перенесённые рабочие дни */
 /**
  * @property CarbonImmutable $day
  * @property bool $is_working
@@ -23,7 +22,7 @@ class CalendarDay extends Model
 
     public $timestamps = false;
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
