@@ -12,7 +12,6 @@ use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
 use Carbon\CarbonImmutable;
 
-/** один формат карточки для бота: жителю с подъездом, в чат дома только категория */
 final class RequestCard
 {
     public function __construct(private readonly TextRepository $texts) {}
@@ -65,7 +64,7 @@ final class RequestCard
             $what .= ': '.mb_strimwidth($draft->description, 0, 120, '…');
         }
         if ($draft->entrance !== null) {
-            $what .= ', подъезд '.$draft->entrance;
+            $what .= ', '.$this->texts->text('card.entrance', ['entrance' => $draft->entrance]);
         }
         $hint = (string) $responsible->hint;
 
@@ -88,7 +87,7 @@ final class RequestCard
             $what .= ': '.mb_strimwidth($request->description, 0, 120, '…');
         }
         if ($request->entrance !== null) {
-            $what .= ', подъезд '.$request->entrance;
+            $what .= ', '.$this->texts->text('card.entrance', ['entrance' => $request->entrance]);
         }
 
         return $what;
@@ -102,13 +101,13 @@ final class RequestCard
     public function deadlineText(?CarbonImmutable $fix, ?CarbonImmutable $reply, string $timezone): string
     {
         if ($fix !== null) {
-            return 'до '.$this->humanDate($fix, $timezone);
+            return $this->texts->text('card.deadline_fix', ['date' => $this->humanDate($fix, $timezone)]);
         }
         if ($reply !== null) {
-            return 'ответ до '.$this->humanDate($reply, $timezone).' (срок ответа по закону)';
+            return $this->texts->text('card.deadline_reply', ['date' => $this->humanDate($reply, $timezone)]);
         }
 
-        return 'по договору';
+        return $this->texts->text('card.deadline_none');
     }
 
     private function humanDate(CarbonImmutable $at, string $timezone): string

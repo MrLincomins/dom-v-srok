@@ -28,7 +28,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/** «сообщить о проблеме»: авария? - категория - фото или текст - подъезд и квартира - карточка. черновик в bot_sessions, кнопки работают из любого состояния */
 final class ReportFlowHandler
 {
     private const DESCRIPTION_LIMIT = 1000;
@@ -193,11 +192,13 @@ final class ReportFlowHandler
         $this->sessions->reset((int) $user->max_user_id);
 
         $timezone = $house?->region->timezone ?? 'Europe/Moscow';
-        $rows = $phone === null ? [] : [[['label' => 'Скопировать номер', 'action' => 'copy:'.$phone]]];
-        $this->ctx->replyWith($user, 'emergency.call', [
-            'phone' => $phone ?? 'телефон на стенде в подъезде, при угрозе жизни 112',
-            'time' => CarbonImmutable::now()->setTimezone($timezone)->format('H:i'),
-        ], $rows);
+        $time = CarbonImmutable::now()->setTimezone($timezone)->format('H:i');
+        if ($phone === null) {
+            $this->ctx->reply($user, 'emergency.call_unknown', ['time' => $time]);
+
+            return;
+        }
+        $this->ctx->reply($user, 'emergency.call', ['phone' => $phone, 'time' => $time]);
     }
 
     private function askCategory(User $user, ReportDraft $draft): void

@@ -11,7 +11,6 @@ use App\Domain\Organizations\AccessCodeService;
 use App\Domain\Users\Models\User;
 use App\Domain\Users\UserService;
 
-/** текст в личке: команды в любом состоянии, остальное по состоянию диалога в ReportFlowHandler, непонятное в FallbackHandler */
 final class CommandHandler
 {
     public function __construct(
@@ -90,6 +89,6 @@ final class CommandHandler
             return;
         }
         $this->demoReset->reset();
-        $this->ctx->replyRaw($user, 'Демо-данные сброшены: очередь и статусы как в начале.', [[['label' => 'Открыть кабинет', 'action' => 'cab']]]);
+        $this->ctx->reply($user, 'demo.reset_done');
     }
 }

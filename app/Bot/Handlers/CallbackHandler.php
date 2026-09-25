@@ -60,7 +60,7 @@ final class CallbackHandler
             }
             $this->route($parsed, $user);
         } catch (DomainException $e) {
-            $this->ctx->replyRaw($user, $e->getMessage(), [[['label' => 'Меню', 'action' => 'menu']]]);
+            $this->ctx->reply($user, 'error.action', ['message' => $e->getMessage()]);
         } finally {
             if ($inDialog) {
                 $this->answerWith($update, $this->ctx->outbox()->takeCaptured());
@@ -175,10 +175,12 @@ final class CallbackHandler
             return;
         }
         $rows = $request->status === RequestStatus::Done && $request->resident_user_id === $user->id
-            ? [[['label' => 'Да, решено', 'action' => CallbackAction::Resolved->payload($request->id)], ['label' => 'Нет, не решено', 'action' => CallbackAction::NotResolved->payload($request->id)]]]
+            ? $this->ctx->texts()->buttons('request.status_confirm', ['number' => $request->id])
             : [];
-        $rows[] = [['label' => 'Мои заявки', 'action' => 'my'], ['label' => 'Меню', 'action' => 'menu']];
-        $this->ctx->replyRaw($user, $this->card->created($request)."\nСтатус: ".$request->status->label(), $rows);
+        $this->ctx->replyWith($user, 'request.status_card', [
+            'card' => trim($this->card->created($request)),
+            'status' => $request->status->label(),
+        ], $rows);
     }
 
     private function confirm(User $user, ?int $id, bool $resolved): void
@@ -198,7 +200,7 @@ final class CallbackHandler
             return;
         }
         if ($resolved) {
-            $this->requests->confirm($request, Actor::resident($user), ConfirmedBy::Resident);
+            $this->requests->confirm($request, Actor::resident($user));
         } else {
             $this->requests->returnToWork($request, Actor::resident($user), 'Житель: проблема не решена');
         }
@@ -212,19 +214,19 @@ final class CallbackHandler
         }
         if ($rating === null) {
             $rows = [array_map(fn (int $n) => ['label' => str_repeat('★', $n), 'action' => CallbackAction::Rate->payload($request->id, $n)], range(1, 5))];
-            $this->ctx->replyRaw($user, 'Оцените, как решили заявку № '.$request->id, $rows);
+            $this->ctx->replyWith($user, 'rate.ask', ['number' => $request->id], $rows);
 
             return;
         }
         $this->requests->rate($request, $user, $rating);
-        $this->ctx->replyRaw($user, 'Спасибо за оценку.', [[['label' => 'Меню', 'action' => 'menu']]]);
+        $this->ctx->reply($user, 'rate.thanks');
     }
 
     private function ownRequest(User $user, ?int $id): ?ServiceRequest
     {
         $request = $id === null ? null : ServiceRequest::query()->with(['category', 'house.region'])->find($id);
         if ($request === null || ($request->resident_user_id !== $user->id && ! $request->participants()->where('user_id', $user->id)->exists())) {
-            $this->ctx->replyRaw($user, 'Такой заявки у вас нет.', [[['label' => 'Мои заявки', 'action' => 'my']]]);
+            $this->ctx->reply($user, 'request.missing');
 
             return null;
         }

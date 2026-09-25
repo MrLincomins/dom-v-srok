@@ -70,7 +70,7 @@ final class ChatHandler
     {
         $house = House::query()->where('qr_token', $token)->first();
         if ($house === null || $user === null || ! $user->isStaff() || $user->organization_id !== $house->organization_id) {
-            $this->ctx->outbox()->toChat($chatId, 'chat.bind_denied', ['text' => 'Привязать чат может сотрудник организации дома командой «/дом <код дома>».']);
+            $this->ctx->outbox()->toChat($chatId, 'chat.bind_denied', ['text' => $this->ctx->texts()->text('chat.bind_denied')]);
 
             return;
         }
@@ -79,10 +79,10 @@ final class ChatHandler
         $house->chat_pinned_message_id = null;
         $house->save();
 
-        $rows = [[['label' => 'Сообщить о проблеме', 'action' => 'url:'.$this->links->houseStartUrl($house)]]];
+        $vars = ['address' => $house->address, 'start_url' => $this->links->houseStartUrl($house)];
         $this->ctx->outbox()->toChat($chatId, 'chat.card', [
-            'text' => $this->ctx->texts()->text('chat.card', ['address' => $house->address]),
-            'keyboard' => Keyboards::fromRows($rows),
+            'text' => $this->ctx->texts()->text('chat.card', $vars),
+            'keyboard' => Keyboards::fromRows($this->ctx->texts()->buttons('chat.card', $vars)),
         ], 'chat.card:'.$house->id.':'.$chatId);
         Log::info('chat.bound', ['house_id' => $house->id, 'chat_id' => $chatId]);
     }
