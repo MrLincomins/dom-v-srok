@@ -10,6 +10,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ValidateSignature;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AssignRequestId::class);
         $middleware->redirectGuestsTo(fn () => null);
         $middleware->validateSignatures(except: ['entrance']);
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: ValidateSignature::class);
 
         // вебхук защищён секретом, csrf ему не нужен
         $middleware->validateCsrfTokens(except: ['max/webhook']);
