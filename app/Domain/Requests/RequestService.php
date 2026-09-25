@@ -22,6 +22,7 @@ use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\ParticipantJoined;
 use App\Domain\Requests\Events\RequestCreated;
+use App\Domain\Requests\Events\RequestDueSoon;
 use App\Domain\Requests\Events\RequestOverdue;
 use App\Domain\Requests\Events\RequestStatusChanged;
 use App\Domain\Requests\Exceptions\EmergencyCategory;
@@ -240,6 +241,29 @@ final class RequestService
                 'deadline_fix_at' => $locked->deadline_fix_at?->toIso8601String(),
             ]);
             $this->publish($locked, new RequestOverdue($locked, $event));
+
+            return $event;
+        });
+    }
+
+    public function markDueSoon(ServiceRequest $request, int $withinHours = 2): ?RequestEvent
+    {
+        return DB::transaction(function () use ($request, $withinHours): ?RequestEvent {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            $now = CarbonImmutable::now();
+            $deadline = $locked->deadline_fix_at;
+            if (! $locked->status->isOpen() || $deadline === null || $deadline->lessThan($now) || $deadline->greaterThan($now->addHours($withinHours))) {
+                return null;
+            }
+            if ($locked->events()->where('type', EventType::Reminder->value)->where('payload->kind', RequestEvent::DUE_SOON_KIND)->exists()) {
+                return null;
+            }
+
+            $event = $this->log($locked, EventType::Reminder, Actor::system(), null, [
+                'kind' => RequestEvent::DUE_SOON_KIND,
+                'deadline_fix_at' => $deadline->toIso8601String(),
+            ]);
+            $this->publish($locked, new RequestDueSoon($locked, $event));
 
             return $event;
         });

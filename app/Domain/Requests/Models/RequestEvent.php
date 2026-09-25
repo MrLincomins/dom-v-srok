@@ -30,6 +30,8 @@ class RequestEvent extends Model
 
     public const OVERDUE_KIND = 'overdue';
 
+    public const DUE_SOON_KIND = 'due_soon';
+
     protected $guarded = ['id'];
 
     protected function casts(): array

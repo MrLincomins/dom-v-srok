@@ -8,6 +8,7 @@ use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 final class RequestQuery
@@ -57,6 +58,21 @@ final class RequestQuery
             ->whereDoesntHave('events', fn (Builder $events) => $events
                 ->where('type', EventType::Reminder->value)
                 ->where('payload->kind', RequestEvent::OVERDUE_KIND))
+            ->orderBy('id');
+    }
+
+    /** @return Builder<ServiceRequest> */
+    public function dueSoon(int $withinHours = 2): Builder
+    {
+        $now = CarbonImmutable::now();
+
+        return ServiceRequest::query()
+            ->open()
+            ->where('deadline_fix_at', '>=', $now)
+            ->where('deadline_fix_at', '<=', $now->addHours($withinHours))
+            ->whereDoesntHave('events', fn (Builder $events) => $events
+                ->where('type', EventType::Reminder->value)
+                ->where('payload->kind', RequestEvent::DUE_SOON_KIND))
             ->orderBy('id');
     }
 

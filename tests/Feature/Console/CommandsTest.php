@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Bot\Cards\RequestCard;
 use App\Bot\Models\OutboxMessage;
 use App\Bot\Models\ProcessedUpdate;
 use App\Bot\Outbox\OutboxStatus;
@@ -127,4 +128,41 @@ it('marks the demo as seeded only when it was created', function () {
     expect(AppSetting::get('seeded_at'))->not->toBeNull()
         ->and(Organization::query()->where('is_demo', true)->count())->toBe(1)
         ->and(ServiceRequest::query()->count())->toBe(8);
+});
+
+it('warns staff once when a deadline is less than two hours away', function () {
+    $this->seed(DatabaseSeeder::class);
+    $max = fakeMax();
+    $overdue = ServiceRequest::query()->overdue()->firstOrFail();
+    $open = ServiceRequest::query()->open()->whereKeyNot($overdue->id)->orderBy('id')->get();
+    $soon = $open->first();
+    $later = $open->last();
+    ServiceRequest::query()->whereIn('id', $open->pluck('id'))->update(['deadline_fix_at' => CarbonImmutable::now()->addHours(5)]);
+    $soon->forceFill(['deadline_fix_at' => CarbonImmutable::now()->addHour()])->save();
+    $organizationId = (int) $soon->organization_id;
+    User::query()->create(['max_user_id' => 7001, 'name' => 'Диспетчер Один', 'role' => Role::Dispatcher, 'organization_id' => $organizationId, 'bot_started_at' => CarbonImmutable::now()]);
+    User::query()->create(['max_user_id' => 7002, 'name' => 'Диспетчер Два', 'role' => Role::Dispatcher, 'organization_id' => $organizationId]);
+
+    $this->artisan('requests:due-soon')->expectsOutputToContain('Срок скоро выйдет у заявок: 1')->assertSuccessful();
+
+    $soon->refresh()->load(['category', 'house.region']);
+    $reminders = $soon->events()->where('type', EventType::Reminder->value)->get();
+    expect($reminders)->toHaveCount(1)
+        ->and($reminders->first()->payload['kind'])->toBe('due_soon')
+        ->and($max->sent)->toHaveCount(1)
+        ->and($max->sent[0]['id'])->toBe(7001)
+        ->and(lastText($max))->toBe(botText('request.due_soon_staff', [
+            'number' => $soon->id,
+            'what' => $soon->category->name,
+            'address' => $soon->house->address.($soon->entrance !== null ? ', подъезд '.$soon->entrance : ''),
+            'deadline' => app(RequestCard::class)->deadline($soon),
+        ]))
+        ->and(OutboxMessage::query()->where('kind', 'request.due_soon_staff')->where('request_id', $soon->id)->count())->toBe(1);
+
+    $this->artisan('requests:due-soon')->expectsOutputToContain('Срок скоро выйдет у заявок: 0')->assertSuccessful();
+
+    expect($max->sent)->toHaveCount(1)
+        ->and(OutboxMessage::query()->where('kind', 'request.due_soon_staff')->count())->toBe(1)
+        ->and($later->events()->where('type', EventType::Reminder->value)->exists())->toBeFalse()
+        ->and($overdue->events()->where('type', EventType::Reminder->value)->exists())->toBeFalse();
 });
