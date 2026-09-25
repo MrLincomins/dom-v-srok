@@ -28,6 +28,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('me', MeController::class)->name('me');
+        Route::get('catalog/responsible', [CatalogController::class, 'responsible'])->name('catalog.responsible');
 
         Route::get('requests/{serviceRequest}', [RequestController::class, 'show'])->name('requests.show');
         Route::post('requests/{serviceRequest}/confirm', [RequestController::class, 'confirm'])->name('requests.confirm');

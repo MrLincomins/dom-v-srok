@@ -174,6 +174,30 @@ components:
         children:
           type: array
           items: { $ref: '#/components/schemas/Category' }
+    ResponsibleLookup:
+      type: object
+      required: [category, house_id, responsible, deadline_fix_at, deadline_reply_at, basis]
+      properties:
+        category:
+          type: object
+          required: [id, name, is_emergency]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            is_emergency: { type: boolean }
+        house_id: { type: integer }
+        responsible:
+          type: object
+          required: [kind, name, phone, is_sure, hint]
+          properties:
+            kind: { type: string, enum: [organization, party, unknown] }
+            name: { type: string }
+            phone: { type: [string, 'null'] }
+            is_sure: { type: boolean }
+            hint: { type: [string, 'null'] }
+        deadline_fix_at: { type: [string, 'null'], format: date-time }
+        deadline_reply_at: { type: [string, 'null'], format: date-time }
+        basis: { type: [string, 'null'] }
     Executor:
       type: object
       required: [id, name]
@@ -626,6 +650,29 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/Category' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /catalog/responsible:
+    get:
+      tags: [catalog]
+      operationId: lookupResponsible
+      summary: Кто отвечает и в какой срок по закону, без создания заявки; сроки от текущего момента в зоне региона
+      parameters:
+        - { in: query, name: category_id, required: true, schema: { type: integer, minimum: 1 }, description: 'листовая категория' }
+        - { in: query, name: house_id, schema: { type: integer, minimum: 1 }, description: 'по умолчанию дом пользователя; житель — только свой дом, диспетчер — дом своей организации' }
+      responses:
+        '200':
+          description: Ответственный и сроки
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/ResponsibleLookup' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/ServerError' }
   /requests:
