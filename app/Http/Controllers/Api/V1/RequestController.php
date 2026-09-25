@@ -19,6 +19,7 @@ use App\Http\Requests\Api\CloseRequest;
 use App\Http\Requests\Api\CommentRequest;
 use App\Http\Requests\Api\ConfirmRequest;
 use App\Http\Requests\Api\QueueRequest;
+use App\Http\Requests\Api\RateRequest;
 use App\Http\Requests\Api\RedirectRequest;
 use App\Http\Resources\RequestListResource;
 use App\Http\Resources\RequestResource;
@@ -115,6 +116,14 @@ final class RequestController extends Controller
         $updated = $request->boolean('resolved')
             ? $this->service->confirm($serviceRequest, $actor, $request->validated('comment'))
             : $this->service->returnToWork($serviceRequest, $actor, $request->validated('comment'));
+
+        return $this->card($updated);
+    }
+
+    public function rate(RateRequest $request, ServiceRequest $serviceRequest): RequestResource
+    {
+        $this->authorize('confirm', $serviceRequest);
+        $updated = $this->service->rate($serviceRequest, $request->user(), (int) $request->validated('rating'), $request->validated('comment'));
 
         return $this->card($updated);
     }

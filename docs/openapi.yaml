@@ -867,6 +867,37 @@ paths:
         '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/ServerError' }
+  /requests/{id}/rate:
+    post:
+      tags: [requests]
+      operationId: rateRequest
+      summary: Житель оценивает решённую заявку
+      description: Только автор заявки и только после подтверждения; иначе 403 или 409. Повторная оценка заменяет прежнюю.
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /my/requests:
     get:
       tags: [requests]

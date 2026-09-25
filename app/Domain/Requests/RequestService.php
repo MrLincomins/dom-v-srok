@@ -277,7 +277,7 @@ final class RequestService
                 throw new NotAllowed('Оценить может только автор заявки');
             }
             if ($locked->status !== RequestStatus::Confirmed) {
-                throw new NotAllowed('Оценить можно после подтверждения');
+                throw new InvalidTransition('Оценить заявку можно после того, как решение подтверждено', ['status' => $locked->status->value]);
             }
 
             $value = max(1, min(5, $rating));

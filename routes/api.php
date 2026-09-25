@@ -31,6 +31,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
 
         Route::get('requests/{serviceRequest}', [RequestController::class, 'show'])->name('requests.show');
         Route::post('requests/{serviceRequest}/confirm', [RequestController::class, 'confirm'])->name('requests.confirm');
+        Route::post('requests/{serviceRequest}/rate', [RequestController::class, 'rate'])->name('requests.rate');
         Route::get('my/requests', [RequestController::class, 'my'])->name('my.requests');
         Route::get('organizations/{organization}', [OrganizationCardController::class, 'show'])->whereNumber('organization')->name('organizations.show');
 

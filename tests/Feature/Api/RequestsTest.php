@@ -310,3 +310,38 @@ it('treats percent and underscore in the search as plain characters', function (
         ->assertValidResponse(200)
         ->assertJsonCount(0, 'data');
 });
+
+it('lets the author rate a confirmed request', function () {
+    $confirmed = ServiceRequest::query()->where('status', 'confirmed')->whereHas('resident', fn ($q) => $q->where('login', 'demo_resident'))->firstOrFail();
+
+    asToken($this->resident)->postJson("/api/v1/requests/{$confirmed->id}/rate", ['rating' => 5, 'comment' => 'Быстро'])
+        ->assertValidRequest()->assertValidResponse(200)
+        ->assertJsonPath('data.rating', 5);
+
+    expect($confirmed->refresh()->rating_comment)->toBe('Быстро');
+    asToken($this->resident)->postJson("/api/v1/requests/{$confirmed->id}/rate", ['rating' => 6])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+});
+
+it('does not let someone else rate the request', function () {
+    $confirmed = ServiceRequest::query()->where('status', 'confirmed')->firstOrFail();
+    User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
+    $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');
+
+    asToken($token)->postJson("/api/v1/requests/{$confirmed->id}/rate", ['rating' => 1])
+        ->assertValidResponse(403)
+        ->assertJsonPath('error.code', 'forbidden');
+    asToken($this->dispatcher)->postJson("/api/v1/requests/{$confirmed->id}/rate", ['rating' => 1])
+        ->assertStatus(403);
+    expect($confirmed->refresh()->rating)->not->toBe(1);
+});
+
+it('refuses a rating before the resident confirmed the result', function () {
+    $done = ServiceRequest::query()->where('status', 'done')->whereHas('resident', fn ($q) => $q->where('login', 'demo_resident'))->firstOrFail();
+
+    asToken($this->resident)->postJson("/api/v1/requests/{$done->id}/rate", ['rating' => 4])
+        ->assertValidResponse(409)
+        ->assertJsonPath('error.code', 'invalid_transition');
+    expect($done->refresh()->rating)->toBeNull();
+});
