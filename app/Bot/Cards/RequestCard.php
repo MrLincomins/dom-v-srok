@@ -66,15 +66,27 @@ final class RequestCard
         if ($draft->entrance !== null) {
             $what .= ', '.$this->texts->text('card.entrance', ['entrance' => $draft->entrance]);
         }
+
+        return trim($this->texts->text('report.preview_card', $this->responsibleVars($category, $house, $responsible, $fix, $reply, $what)));
+    }
+
+    public function who(Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply): string
+    {
+        return trim($this->texts->text('who.card', $this->responsibleVars($category, $house, $responsible, $fix, $reply, $category->name)));
+    }
+
+    /** @return array<string,string> */
+    private function responsibleVars(Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply, string $what): array
+    {
         $hint = (string) $responsible->hint;
 
-        return trim($this->texts->text('report.preview_card', [
+        return [
             'what' => $what,
             'responsible' => $responsible->name.($responsible->phone !== null ? ', '.$responsible->phone : ''),
             'deadline' => $this->deadlineText($fix, $reply, $house->region->timezone),
             'basis' => $category->basis ?? '—',
             'hint' => $responsible->isSure ? $hint : trim('Скорее всего. '.$hint),
-        ]));
+        ];
     }
 
     public function what(ServiceRequest $request, bool $forChat): string
