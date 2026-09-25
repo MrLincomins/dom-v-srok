@@ -136,7 +136,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Смена статуса по таблице переходов */
+        /**
+         * Смена статуса по таблице переходов
+         * @description Сотрудник ставит assigned, in_progress, done и confirmed. Вернуть в работу (returned) может только житель через /confirm. Подтвердить за жителя (confirmed) можно только с комментарием, как решение подтвердили; confirmed_by будет dispatcher.
+         */
         patch: operations["changeStatus"];
         trace?: never;
     };
@@ -440,7 +443,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Подписанная ссылка на CSV журнала за период на 10 минут; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может */
+        /** Подписанная ссылка на CSV журнала за период на 3 минуты; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может */
         get: operations["journalCsvLink"];
         put?: never;
         post?: never;
@@ -594,6 +597,7 @@ export interface components {
             id: number;
             name: string;
             specialty?: string | null;
+            /** @description только сотрудникам организации, жителю null */
             phone?: string | null;
         };
         /** @description Частичное обновление: передаются только меняемые поля */
@@ -677,9 +681,12 @@ export interface components {
             status: components["schemas"]["RequestStatus"];
             status_label: string;
             category: string;
-            description: string;
+            /** @description null для соседа, который присоединился к заявке */
+            description: string | null;
             address: string;
+            /** @description null для соседа, который присоединился к заявке */
             entrance?: number | null;
+            /** @description null для соседа, который присоединился к заявке */
             flat?: string | null;
             responsible_name: string;
             is_sure: boolean;
@@ -729,9 +736,12 @@ export interface components {
                 name: string;
                 slug: string;
             };
-            description: string;
+            /** @description null для соседа, который присоединился к заявке */
+            description: string | null;
             house: components["schemas"]["House"];
+            /** @description null для соседа, который присоединился к заявке */
             entrance?: number | null;
+            /** @description null для соседа, который присоединился к заявке */
             flat?: string | null;
             responsible: {
                 /** @enum {string} */
@@ -760,19 +770,23 @@ export interface components {
             /** Format: date-time */
             closed_at?: string | null;
             returned_count: number;
+            /** @description только у переадресованной заявки; name и phone — снимок того, что сообщили жителю */
             redirected_to?: {
-                party?: {
+                name: string | null;
+                phone: string | null;
+                party: {
                     id: number;
                     name: string;
                     phone?: string | null;
                 } | null;
-                note?: string | null;
+                note: string | null;
             };
             participants_count: number;
             /** @enum {string} */
             origin: "qr" | "chat" | "direct" | "api";
             rating?: number | null;
             events?: components["schemas"]["RequestEvent"][];
+            /** @description соседу, который присоединился к заявке, фото жителя не отдаются, только фото закрытия */
             attachments?: components["schemas"]["Attachment"][];
             /** Format: date-time */
             created_at: string;
@@ -929,6 +943,27 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
+        /** @description Превышен лимит запросов; код too_many_requests, заголовки Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining */
+        TooManyRequests: {
+            headers: {
+                "Retry-After"?: number;
+                "X-RateLimit-Limit"?: number;
+                "X-RateLimit-Remaining"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Ошибка сервера; код server_error, в details.request_id идентификатор запроса для логов */
+        ServerError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
     };
     parameters: never;
     requestBodies: never;
@@ -966,6 +1001,8 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     authLogin: {
@@ -998,6 +1035,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     authLogout: {
@@ -1023,6 +1062,8 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     me: {
@@ -1046,6 +1087,8 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     listCategories: {
@@ -1068,6 +1111,8 @@ export interface operations {
                     };
                 };
             };
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     listRequests: {
@@ -1099,6 +1144,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     getRequest: {
@@ -1124,6 +1171,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     changeStatus: {
@@ -1138,7 +1187,9 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    status: components["schemas"]["RequestStatus"];
+                    /** @enum {string} */
+                    status: "assigned" | "in_progress" | "done" | "confirmed";
+                    /** @description обязателен при status = confirmed */
                     comment?: string | null;
                 };
             };
@@ -1158,6 +1209,8 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     assignExecutor: {
@@ -1192,6 +1245,8 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     closeRequest: {
@@ -1226,6 +1281,8 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     redirectRequest: {
@@ -1240,7 +1297,10 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description сторона из регионального справочника */
                     responsible_party_id?: number | null;
+                    /** @description подрядчик своей организации; чужой — 404 */
+                    contractor_id?: number | null;
                     name?: string | null;
                     phone?: string | null;
                     note?: string | null;
@@ -1262,6 +1322,8 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     addComment: {
@@ -1294,6 +1356,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     confirmRequest: {
@@ -1328,6 +1392,8 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     myRequests: {
@@ -1349,6 +1415,8 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     getOrganization: {
@@ -1372,6 +1440,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     updateOrganization: {
@@ -1400,6 +1470,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     listHouses: {
@@ -1423,6 +1495,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     updateHouse: {
@@ -1453,6 +1527,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     houseQr: {
@@ -1481,6 +1557,8 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     listExecutors: {
@@ -1504,6 +1582,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     createExecutor: {
@@ -1532,6 +1612,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     archiveExecutor: {
@@ -1557,6 +1639,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     updateExecutor: {
@@ -1587,6 +1671,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     listContractors: {
@@ -1610,6 +1696,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     createContractor: {
@@ -1638,6 +1726,8 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     deleteContractor: {
@@ -1663,6 +1753,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     getOrganizationCard: {
@@ -1687,6 +1779,8 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     journal: {
@@ -1717,6 +1811,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     journalCsv: {
@@ -1743,6 +1839,8 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     journalCsvLink: {
@@ -1771,12 +1869,15 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     journalCsvSigned: {
         parameters: {
             query: {
                 organization: number;
+                user: number;
                 from: string;
                 to: string;
                 expires: number;
@@ -1799,6 +1900,8 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     getAttachment: {
@@ -1828,6 +1931,8 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
     demoReset: {
@@ -1854,6 +1959,8 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["ServerError"];
         };
     };
 }
