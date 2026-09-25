@@ -14,7 +14,6 @@ use App\Domain\Organizations\Models\Organization;
 use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Dto\CreateRequestData;
 use App\Domain\Requests\Dto\RedirectData;
-use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestOrigin;
 use App\Domain\Requests\Models\ServiceRequest;
