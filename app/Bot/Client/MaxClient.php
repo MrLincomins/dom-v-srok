@@ -9,7 +9,6 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
-/** http клиент на api макса, актуально на 17.09.2026).*/
 class MaxClient
 {
     public function isConfigured(): bool
@@ -17,12 +16,19 @@ class MaxClient
         return (string) config('max.token') !== '';
     }
 
-    // бот и подписки
-
     /** @return array<string,mixed> */
     public function getMe(): array
     {
         return $this->call('GET', '/me');
+    }
+
+    /**
+     * @param  list<array{name:string,description?:string}>  $commands
+     * @return array<string,mixed>
+     */
+    public function setCommands(array $commands): array
+    {
+        return $this->call('PATCH', '/me/commands', json: ['commands' => $commands]);
     }
 
     /** @return array<string,mixed> */
@@ -52,9 +58,7 @@ class MaxClient
         return ['updates' => $data['updates'] ?? [], 'marker' => isset($data['marker']) ? (int) $data['marker'] : null];
     }
 
-    // сообщения
-
-    /** @param array<string,mixed> $body см. OutboxService: text, keyboard, attachments, format, notify */
+    /** @param array<string,mixed> $body */
     public function sendToUser(int $userId, array $body): array
     {
         return $this->call('POST', '/messages', query: ['user_id' => $userId], json: $this->messageBody($body));
@@ -72,7 +76,7 @@ class MaxClient
         return $this->call('PUT', '/messages', query: ['message_id' => $messageId], json: $this->messageBody($body) + ['attachments' => []]);
     }
 
-    /** ответ на нажатие кнопки, лимит в 2 сек */
+    /** @param array<string,mixed>|null $message */
     public function answerCallback(string $callbackId, ?string $notification = null, ?array $message = null): array
     {
         $json = array_filter([
@@ -83,13 +87,11 @@ class MaxClient
         return $this->call('POST', '/answers', query: ['callback_id' => $callbackId], json: $json === [] ? new \stdClass : $json);
     }
 
-    /** закреп сообщения в чате бот админ */
     public function pinMessage(int $chatId, string $messageId, bool $notify = true): array
     {
         return $this->call('PUT', "/chats/{$chatId}/pin", json: ['message_id' => $messageId, 'notify' => $notify]);
     }
 
-    /** загрузка фотки в два шага, отправка токена */
     public function uploadImage(string $path): string
     {
         $upload = $this->call('POST', '/uploads', query: ['type' => 'image']);
@@ -108,8 +110,6 @@ class MaxClient
 
         return $token;
     }
-
-    // внутрянка
 
     /** @param array<string,mixed> $body */
     private function messageBody(array $body): array
@@ -159,6 +159,7 @@ class MaxClient
                 'GET' => $request->get($path),
                 'POST' => $request->post($path, $json ?? []),
                 'PUT' => $request->put($path, $json ?? []),
+                'PATCH' => $request->patch($path, $json ?? []),
                 'DELETE' => $request->delete($path),
                 default => throw new \InvalidArgumentException($method),
             };

@@ -16,6 +16,7 @@ compose up -d --remove-orphans --wait --wait-timeout 240
 
 if grep -q '^MAX_MODE=webhook' .env; then
     compose exec -T app php artisan bot:subscribe || echo "подписка не удалась, проверь домен и сертификат"
+    compose exec -T app php artisan bot:commands || echo "команды бота не заданы"
 fi
 
 docker image prune -f >/dev/null

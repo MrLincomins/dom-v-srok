@@ -22,6 +22,8 @@ return [
 
     'miniapp_url' => env('MAX_MINIAPP_URL'),
 
+    'commands' => ['start', 'menu', 'dispatcher', 'delete_me'],
+
     // сколько секунд initData считается свежим
     'init_data_ttl' => (int) env('MAX_INIT_DATA_TTL', 86400),
 

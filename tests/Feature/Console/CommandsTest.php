@@ -97,3 +97,13 @@ it('calls pg_dump for the backup', function () {
 
     Process::assertRan(fn ($process) => str_contains((string) $process->command, 'pg_dump'));
 });
+
+it('sets the bot commands from the texts table', function () {
+    $this->seed(DatabaseSeeder::class);
+    $fake = fakeMax();
+
+    $this->artisan('bot:commands')->assertSuccessful();
+
+    expect(array_column($fake->commands, 'name'))->toBe(['start', 'menu', 'dispatcher', 'delete_me'])
+        ->and($fake->commands[1]['description'])->toBe(botText('command.menu'));
+});

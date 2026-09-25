@@ -34,3 +34,13 @@ it('sends the keyboard as attachments in a new message', function () {
         && str_contains($request->url(), 'user_id=555')
         && $request['attachments'] === $keyboard);
 });
+
+it('sends bot commands with a patch', function () {
+    Http::fake(['*/me/commands' => Http::response(['commands' => []])]);
+
+    (new MaxClient)->setCommands([['name' => 'start', 'description' => 'Начать заново']]);
+
+    Http::assertSent(fn (Request $request) => $request->method() === 'PATCH'
+        && str_ends_with($request->url(), '/me/commands')
+        && $request['commands'] === [['name' => 'start', 'description' => 'Начать заново']]);
+});

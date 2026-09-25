@@ -7,7 +7,6 @@ namespace Tests\Support;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 
-/** клиент без сети, запоминает что бот отправил. подменяется в контейнере в тестах */
 final class FakeMaxClient extends MaxClient
 {
     /** @var list<array{target:string,id:int,body:array<string,mixed>,mid?:string}> */
@@ -26,9 +25,24 @@ final class FakeMaxClient extends MaxClient
 
     public bool $failPins = false;
 
+    /** @var list<array{name:string,description?:string}> */
+    public array $commands = [];
+
     public function isConfigured(): bool
     {
         return true;
+    }
+
+    public function getMe(): array
+    {
+        return ['user_id' => 405671160, 'first_name' => 'Бот', 'username' => 'test_bot', 'is_bot' => true];
+    }
+
+    public function setCommands(array $commands): array
+    {
+        $this->commands = $commands;
+
+        return ['commands' => $commands];
     }
 
     public function sendToUser(int $userId, array $body): array
