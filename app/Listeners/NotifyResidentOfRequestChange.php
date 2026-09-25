@@ -8,15 +8,20 @@ use App\Bot\Cards\RequestCard;
 use App\Bot\Keyboards\Keyboards;
 use App\Bot\Outbox\OutboxService;
 use App\Bot\Texts\TextRepository;
+use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\RequestCreated;
 use App\Domain\Requests\Events\RequestStatusChanged;
+use App\Domain\Requests\Models\Attachment;
+use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
 
 final class NotifyResidentOfRequestChange
 {
+    private const MAX_PHOTOS = 5;
+
     public function __construct(
         private readonly OutboxService $outbox,
         private readonly TextRepository $texts,
@@ -53,13 +58,34 @@ final class NotifyResidentOfRequestChange
         $resident = $request->resident;
         if ($resident->canBeMessaged()) {
             [$key, $vars] = $this->messageFor($request, $event->to, $event->event->comment);
-            $this->outbox->toUser($resident->max_user_id, 'request.status', [
+            $body = [
                 'text' => $this->texts->text($key, $vars),
                 'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
-            ], 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
+            ];
+            if ($event->to === RequestStatus::Done) {
+                $photos = $this->closingPhotos($request, $event->event);
+                if ($photos !== []) {
+                    $body['photos'] = $photos;
+                }
+            }
+            $this->outbox->toUser($resident->max_user_id, 'request.status', $body, 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
         }
 
         $this->notifyParticipants($request, $event->to, $resident, $event->event->id);
+    }
+
+    /** @return list<array{disk:string,path:string}> */
+    private function closingPhotos(ServiceRequest $request, RequestEvent $event): array
+    {
+        return $request->attachments()
+            ->where('kind', AttachmentKind::Closing->value)
+            ->where('event_id', $event->id)
+            ->orderBy('id')
+            ->limit(self::MAX_PHOTOS)
+            ->get()
+            ->map(fn (Attachment $photo): array => ['disk' => $photo->disk, 'path' => $photo->path])
+            ->values()
+            ->all();
     }
 
     /** @return array{0:string,1:array<string,string|int|null>} */

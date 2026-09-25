@@ -228,6 +228,25 @@ it('closes a request with photos and asks the resident to confirm', function () 
     expect($texts)->toContain(botText('request.done_confirm', ['number' => $id, 'status' => 'Выполнено', 'comment' => 'Заменили лампу']));
 });
 
+it('puts the closing photos into the message that asks the resident to confirm', function () {
+    $disk = (string) config('attachments.disk');
+    Storage::fake($disk);
+    User::query()->where('login', 'demo_resident')->update(['max_user_id' => 700100, 'bot_started_at' => now()]);
+    $id = asToken($this->dispatcher)->getJson('/api/v1/requests?status=in_progress')->json('data.0.id');
+
+    asToken($this->dispatcher)->post("/api/v1/requests/{$id}/close", [
+        'photos' => [UploadedFile::fake()->image('before.jpg', 40, 30), UploadedFile::fake()->image('after.png', 20, 20)],
+    ], ['Accept' => 'application/json'])->assertOk();
+
+    $paths = Attachment::query()->where('request_id', $id)->where('kind', AttachmentKind::Closing->value)->orderBy('id')->pluck('path')->all();
+    $confirm = OutboxMessage::query()->where('request_id', $id)->where('target_id', 700100)->get()
+        ->first(fn (OutboxMessage $m) => ($m->body['text'] ?? '') === botText('request.done_confirm', ['number' => $id, 'status' => 'Выполнено', 'comment' => '']));
+
+    expect($paths)->toHaveCount(2)
+        ->and($confirm)->not->toBeNull()
+        ->and($confirm->body['photos'])->toBe(array_map(fn (string $path) => ['disk' => $disk, 'path' => $path], $paths));
+});
+
 it('shows a joined neighbour the request without the flat, description and resident photos', function () {
     $neighbour = User::query()->create(['name' => 'Сосед', 'role' => Role::Resident, 'login' => 'demo_neighbour', 'password' => 'neighbour-pass', 'is_demo' => true]);
     $token = $this->postJson('/api/v1/auth/login', ['login' => 'demo_neighbour', 'password' => 'neighbour-pass'])->json('data.token');

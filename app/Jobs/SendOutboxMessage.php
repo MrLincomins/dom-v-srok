@@ -19,6 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 final class SendOutboxMessage implements ShouldQueue
 {
@@ -105,9 +106,11 @@ final class SendOutboxMessage implements ShouldQueue
     /** @return array<string,mixed> */
     private function deliver(MaxClient $client, OutboxMessage $message): array
     {
+        $body = $this->withPhotos($client, $message);
+
         if ($message->edit_message_id !== null) {
             try {
-                $client->editMessage($message->edit_message_id, $message->body);
+                $client->editMessage($message->edit_message_id, $body);
 
                 return ['message' => ['body' => ['mid' => $message->edit_message_id]]];
             } catch (MaxApiException $e) {
@@ -119,8 +122,44 @@ final class SendOutboxMessage implements ShouldQueue
         }
 
         return $message->target_type === OutboxTarget::Chat
-            ? $client->sendToChat($message->target_id, $message->body)
-            : $client->sendToUser($message->target_id, $message->body);
+            ? $client->sendToChat($message->target_id, $body)
+            : $client->sendToUser($message->target_id, $body);
+    }
+
+    /** @return array<string,mixed> */
+    private function withPhotos(MaxClient $client, OutboxMessage $message): array
+    {
+        $body = $message->body;
+        $photos = $body['photos'] ?? [];
+        unset($body['photos']);
+        if (! is_array($photos) || $photos === []) {
+            return $body;
+        }
+
+        $attachments = is_array($body['attachments'] ?? null) ? array_values($body['attachments']) : [];
+        foreach ($photos as $photo) {
+            $disk = is_array($photo) ? (string) ($photo['disk'] ?? '') : '';
+            $path = is_array($photo) ? (string) ($photo['path'] ?? '') : '';
+            try {
+                if ($disk === '' || $path === '' || ! Storage::disk($disk)->exists($path)) {
+                    Log::info('outbox.photo_missing', ['outbox_id' => $message->id]);
+
+                    continue;
+                }
+                $token = $client->uploadImage(Storage::disk($disk)->path($path));
+                $attachments[] = ['type' => 'image', 'payload' => ['token' => $token]];
+            } catch (MaxRateLimited $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                Log::warning('outbox.photo_failed', ['outbox_id' => $message->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        if ($attachments !== []) {
+            $body['attachments'] = $attachments;
+        }
+
+        return $body;
     }
 
     public function failed(\Throwable $e): void

@@ -28,6 +28,12 @@ final class FakeMaxClient extends MaxClient
     /** @var list<array{name:string,description?:string}> */
     public array $commands = [];
 
+    /** @var list<string> */
+    public array $uploaded = [];
+
+    /** @var array<string,MaxApiException> */
+    public array $uploadFailures = [];
+
     public function isConfigured(): bool
     {
         return true;
@@ -82,6 +88,16 @@ final class FakeMaxClient extends MaxClient
         $this->pinned[] = ['chat' => $chatId, 'mid' => $messageId];
 
         return ['success' => true];
+    }
+
+    public function uploadImage(string $path): string
+    {
+        if (isset($this->uploadFailures[basename($path)])) {
+            throw $this->uploadFailures[basename($path)];
+        }
+        $this->uploaded[] = $path;
+
+        return 'tok.'.count($this->uploaded);
     }
 
     public ?MaxApiException $answerFailure = null;

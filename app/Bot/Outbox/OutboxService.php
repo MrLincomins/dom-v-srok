@@ -52,7 +52,7 @@ final class OutboxService
     }
 
     /**
-     * @param  array<string,mixed>  $body  {text, keyboard?: list<list<array>>, attachments?: list<array>, format?: string, notify?: bool}
+     * @param  array<string,mixed>  $body  {text, keyboard?: list<list<array>>, attachments?: list<array>, photos?: list<array{disk:string,path:string}>, format?: string, notify?: bool}
      */
     public function enqueue(
         OutboxTarget $target,
