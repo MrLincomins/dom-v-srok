@@ -14,6 +14,7 @@ use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Dto\CreateRequestData;
 use App\Domain\Requests\Dto\RedirectData;
 use App\Domain\Requests\Enums\ActorRole;
+use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
@@ -29,8 +30,9 @@ use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
-/** менять заявку только здесь. каждое изменение: транзакция, лок строки, проверка перехода, событие в ленте, доменное событие после коммита */
 final class RequestService
 {
     public function __construct(
@@ -81,10 +83,9 @@ final class RequestService
             ]);
 
             foreach ($data->photos as $photo) {
-                // файл скачает DownloadMaxAttachment, тут только токен для маха
                 $request->attachments()->create([
-                    'kind' => 'resident',
-                    'disk' => 'private',
+                    'kind' => AttachmentKind::Resident,
+                    'disk' => (string) config('attachments.disk'),
                     'path' => '',
                     'mime' => 'image/jpeg',
                     'size_bytes' => 1,
@@ -93,17 +94,17 @@ final class RequestService
                 ]);
             }
 
+            $this->publish($request, new RequestCreated($request));
+
             return $request;
         });
-
-        event(new RequestCreated($request));
 
         return $request->refresh();
     }
 
     public function transition(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment = null, array $payload = []): ServiceRequest
     {
-        $result = DB::transaction(function () use ($request, $to, $by, $comment, $payload): array {
+        return DB::transaction(function () use ($request, $to, $by, $comment, $payload): ServiceRequest {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             $from = $locked->status;
 
@@ -117,15 +118,10 @@ final class RequestService
             $locked->save();
 
             $event = $this->log($locked, EventType::StatusChanged, $by, $comment, $payload, $from, $to);
+            $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
 
-            return [$locked, $from, $event];
+            return $locked;
         });
-
-        /** @var ServiceRequest $updated */
-        [$updated, $from, $event] = $result;
-        event(new RequestStatusChanged($updated, $from, $to, $by, $event));
-
-        return $updated;
     }
 
     public function assign(ServiceRequest $request, Executor $executor, Actor $by, ?string $comment = null): ServiceRequest
@@ -151,7 +147,6 @@ final class RequestService
         return $this->transition($request, RequestStatus::InProgress, $by, $comment);
     }
 
-    /** закрытие диспетчером - «выполнено», ждём подтверждения жителя, фотки уже в attachments */
     public function close(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
     {
         return $this->transition($request, RequestStatus::Done, $by, $comment);
@@ -192,10 +187,9 @@ final class RequestService
         return $this->log($request, EventType::Comment, $by, $text);
     }
 
-    /** присоединиться к заявке соседа, повторно ничего не делает */
     public function join(ServiceRequest $request, User $user): bool
     {
-        $joined = DB::transaction(function () use ($request, $user): bool {
+        return DB::transaction(function () use ($request, $user): bool {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             if ($locked->resident_user_id === $user->id || $locked->participants()->where('user_id', $user->id)->exists()) {
                 return false;
@@ -204,36 +198,28 @@ final class RequestService
             $locked->participants_count += 1;
             $locked->save();
             $this->log($locked, EventType::ParticipantJoined, Actor::resident($user), null, ['user_id' => $user->id]);
+            $this->publish($locked, new ParticipantJoined($locked, $user));
 
             return true;
         });
-
-        if ($joined) {
-            event(new ParticipantJoined($request->refresh(), $user));
-        }
-
-        return $joined;
     }
 
     public function markOverdue(ServiceRequest $request): ?RequestEvent
     {
-        $event = DB::transaction(function () use ($request): ?RequestEvent {
+        return DB::transaction(function () use ($request): ?RequestEvent {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             if (! $locked->isOverdue() || $locked->hasOverdueMark()) {
                 return null;
             }
 
-            return $this->log($locked, EventType::Reminder, Actor::system(), null, [
-                'kind' => 'overdue',
+            $event = $this->log($locked, EventType::Reminder, Actor::system(), null, [
+                'kind' => RequestEvent::OVERDUE_KIND,
                 'deadline_fix_at' => $locked->deadline_fix_at?->toIso8601String(),
             ]);
+            $this->publish($locked, new RequestOverdue($locked, $event));
+
+            return $event;
         });
-
-        if ($event !== null) {
-            event(new RequestOverdue($request->refresh(), $event));
-        }
-
-        return $event;
     }
 
     public function rate(ServiceRequest $request, User $user, int $rating, ?string $comment = null): ServiceRequest
@@ -274,6 +260,18 @@ final class RequestService
                 ActorRole::System => ConfirmedBy::Auto,
             };
         }
+    }
+
+    private function publish(ServiceRequest $request, object $event): void
+    {
+        DB::afterCommit(function () use ($request, $event): void {
+            try {
+                event($event);
+            } catch (Throwable $e) {
+                report($e);
+                Log::error('request.event_failed', ['request_id' => $request->id, 'event' => $event::class]);
+            }
+        });
     }
 
     /** @param array<string,mixed> $payload */

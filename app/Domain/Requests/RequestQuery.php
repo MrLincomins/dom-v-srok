@@ -6,10 +6,10 @@ namespace App\Domain\Requests;
 
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
+use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
 use Illuminate\Database\Eloquent\Builder;
 
-/** очередь диспетчера: фильтры, просрочка, поиск, сортировка по сроку */
 final class RequestQuery
 {
     /** @return Builder<ServiceRequest> */
@@ -55,11 +55,11 @@ final class RequestQuery
             ->overdue()
             ->whereDoesntHave('events', fn (Builder $events) => $events
                 ->where('type', EventType::Reminder->value)
-                ->where('payload->kind', 'overdue'))
+                ->where('payload->kind', RequestEvent::OVERDUE_KIND))
             ->orderBy('id');
     }
 
-    /** счётчики для вкладок */
+    /** @return array{new:int,in_progress:int,overdue:int,closed:int} */
     public function counters(int $organizationId): array
     {
         $base = fn () => ServiceRequest::query()->forOrganization($organizationId);

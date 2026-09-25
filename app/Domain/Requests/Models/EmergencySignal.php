@@ -7,7 +7,6 @@ namespace App\Domain\Requests\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
-/** аварийный сигнал - фиксируем время без заявки */
 /**
  * @property int $id
  * @property int $user_id
@@ -20,10 +19,15 @@ class EmergencySignal extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
-        return ['created_at' => 'immutable_datetime'];
+        return [
+            'user_id' => 'integer',
+            'house_id' => 'integer',
+            'organization_id' => 'integer',
+            'created_at' => 'immutable_datetime',
+        ];
     }
 }

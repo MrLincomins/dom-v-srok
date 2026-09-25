@@ -9,7 +9,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** фотки жителя и закрытия, лежат в storage/app/private, отдаём подписанной ссылкой */
 /**
  * @property int $id
  * @property int $request_id
@@ -20,13 +19,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $mime
  * @property int $size_bytes
  * @property string|null $max_token
+ * @property int|null $uploaded_by
  * @property CarbonImmutable $created_at
  */
 class Attachment extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {

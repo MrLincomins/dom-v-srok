@@ -24,8 +24,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * заявка, id это номер. кто отвечает, срок и основание копируются при создании
- *
  * @property int $id
  * @property int|null $organization_id
  * @property int $house_id
@@ -77,7 +75,7 @@ class ServiceRequest extends Model
 {
     protected $table = 'requests';
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
@@ -86,6 +84,7 @@ class ServiceRequest extends Model
             'house_id' => 'integer',
             'resident_user_id' => 'integer',
             'category_id' => 'integer',
+            'entrance' => 'integer',
             'responsible_party_id' => 'integer',
             'executor_id' => 'integer',
             'redirected_party_id' => 'integer',
@@ -176,7 +175,6 @@ class ServiceRequest extends Model
         return $this->belongsTo(self::class, 'repeat_of_id');
     }
 
-    /** просрочка не статус, а флаг по открытым заявкам */
     public function isOverdue(?CarbonImmutable $now = null): bool
     {
         $now ??= CarbonImmutable::now();
@@ -184,7 +182,6 @@ class ServiceRequest extends Model
         return $this->status->isOpen() && $this->deadline_fix_at !== null && $this->deadline_fix_at->lessThan($now);
     }
 
-    /** закрыта с опозданием, для журнала */
     public function closedLate(): bool
     {
         return $this->done_at !== null && $this->deadline_fix_at !== null && $this->done_at->greaterThan($this->deadline_fix_at);
@@ -192,7 +189,7 @@ class ServiceRequest extends Model
 
     public function hasOverdueMark(): bool
     {
-        return $this->events()->where('type', EventType::Reminder->value)->where('payload->kind', 'overdue')->exists();
+        return $this->events()->where('type', EventType::Reminder->value)->where('payload->kind', RequestEvent::OVERDUE_KIND)->exists();
     }
 
     public function redirectedToName(): ?string
