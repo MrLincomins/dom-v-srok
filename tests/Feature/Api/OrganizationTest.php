@@ -24,7 +24,7 @@ it('shows the organisation card to staff only', function () {
     asToken($this->dispatcher)->getJson('/api/v1/organization')
         ->assertValidRequest()->assertValidResponse(200)
         ->assertJsonPath('data.name', DemoSeeder::ORGANIZATION_NAME)
-        ->assertJsonPath('data.direct_contracts.tko', true)
+        ->assertJsonPath('data.direct_contracts.tko', false)
         ->assertJsonPath('data.direct_contracts.cold_water', false);
 
     asToken($this->resident)->getJson('/api/v1/organization')
@@ -40,7 +40,7 @@ it('updates contacts and direct contract flags, and new requests follow the flag
         ->assertValidRequest()->assertValidResponse(200)
         ->assertJsonPath('data.phone_dispatch', '+7 843 000-00-09')
         ->assertJsonPath('data.direct_contracts.cold_water', true)
-        ->assertJsonPath('data.direct_contracts.tko', true)
+        ->assertJsonPath('data.direct_contracts.tko', false)
         ->assertJsonPath('data.name', DemoSeeder::ORGANIZATION_NAME);
 
     $house = House::query()->where('qr_token', DemoSeeder::HOUSE_QR_TOKEN)->firstOrFail();

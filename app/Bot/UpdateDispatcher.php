@@ -61,7 +61,7 @@ final class UpdateDispatcher
     {
         $id = $maxUser['user_id'] ?? null;
         if ($id !== null) {
-            User::query()->where('max_user_id', (int) $id)->update(['bot_started_at' => null]);
+            $this->users->stopBot((int) $id);
         }
     }
 }
