@@ -9,7 +9,8 @@ return [
 
     // запросы на platform-api2.max.ru, токен в заголовке Authorization без Bearer
     'api_base' => rtrim((string) env('MAX_API_BASE', 'https://platform-api2.max.ru'), '/'),
-    'timeout' => 10,
+    'timeout' => 6,
+    'connect_timeout' => 3,
 
     // polling для локалки (bot:poll), webhook для прода (bot:subscribe)
     'mode' => env('MAX_MODE', 'polling'),
@@ -21,6 +22,8 @@ return [
     ],
 
     'miniapp_url' => env('MAX_MINIAPP_URL'),
+
+    'commands' => ['start', 'menu', 'dispatcher', 'delete_me'],
 
     // сколько секунд initData считается свежим
     'init_data_ttl' => (int) env('MAX_INIT_DATA_TTL', 86400),

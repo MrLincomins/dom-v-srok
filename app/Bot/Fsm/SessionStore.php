@@ -7,7 +7,6 @@ namespace App\Bot\Fsm;
 use App\Bot\Models\BotSession;
 use Carbon\CarbonImmutable;
 
-/** состояние диалога в bot_sessions, черновик старше суток забываем */
 final class SessionStore
 {
     private const TTL_HOURS = 24;

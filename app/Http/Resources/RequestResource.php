@@ -4,29 +4,34 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Requests\Enums\ActorRole;
+use App\Domain\Requests\Enums\AttachmentKind;
+use App\Domain\Requests\Enums\RequestStatus;
+use App\Domain\Requests\Models\Attachment;
 use App\Domain\Requests\Models\ServiceRequest;
+use App\Domain\Users\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * карточка заявки
- *
  * @mixin ServiceRequest
  */
 final class RequestResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $full = $this->isFullyVisibleTo($request->user());
+
         return [
             'id' => $this->id,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
-            'allowed_transitions' => array_map(fn ($s) => $s->value, $this->status->allowedTransitions()),
+            'allowed_transitions' => $this->transitionsFor($request->user()),
             'category' => ['id' => $this->category->id, 'name' => $this->category->name, 'slug' => $this->category->slug],
-            'description' => $this->description,
+            'description' => $full ? $this->description : null,
             'house' => new HouseResource($this->house),
-            'entrance' => $this->entrance,
-            'flat' => $this->flat,
+            'entrance' => $full ? $this->entrance : null,
+            'flat' => $full ? $this->flat : null,
             'responsible' => [
                 'kind' => $this->responsible_kind->value,
                 'name' => $this->responsible_name,
@@ -46,7 +51,9 @@ final class RequestResource extends JsonResource
             'confirmed_by' => $this->confirmed_by?->value,
             'closed_at' => $this->closed_at?->toIso8601String(),
             'returned_count' => $this->returned_count,
-            'redirected_to' => $this->when($this->redirected_party_id !== null || $this->redirect_note !== null, fn () => [
+            'redirected_to' => $this->when($this->status === RequestStatus::Redirected, fn () => [
+                'name' => $this->redirectedToName(),
+                'phone' => $this->redirectedToPhone(),
                 'party' => $this->redirectedParty ? ['id' => $this->redirectedParty->id, 'name' => $this->redirectedParty->name, 'phone' => $this->redirectedParty->phone] : null,
                 'note' => $this->redirect_note,
             ]),
@@ -54,8 +61,21 @@ final class RequestResource extends JsonResource
             'origin' => $this->origin->value,
             'rating' => $this->rating,
             'events' => EventResource::collection($this->whenLoaded('events')),
-            'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
+            'attachments' => AttachmentResource::collection($this->whenLoaded('attachments', fn () => $full
+                ? $this->attachments
+                : $this->attachments->reject(fn (Attachment $attachment) => $attachment->kind === AttachmentKind::Resident)->values())),
             'created_at' => $this->created_at->toIso8601String(),
         ];
+    }
+
+    /** @return list<string> */
+    private function transitionsFor(?User $user): array
+    {
+        if ($user === null || (! $user->isStaff() && $user->id !== $this->resident_user_id)) {
+            return [];
+        }
+        $role = $user->isStaff() ? ActorRole::Dispatcher : ActorRole::Resident;
+
+        return array_map(static fn (RequestStatus $to): string => $to->value, $this->status->allowedTransitionsFor($role));
     }
 }

@@ -10,8 +10,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * возврат в мах - лимиты, ретраи и тд.
- *
  * @property int $id
  * @property OutboxTarget $target_type
  * @property int $target_id

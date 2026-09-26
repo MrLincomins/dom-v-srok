@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Requests\Dto;
 
-/** переадресация: либо сторона по id, либо контакт текстом */
 final readonly class RedirectData
 {
     public function __construct(
@@ -12,5 +11,6 @@ final readonly class RedirectData
         public ?string $name = null,
         public ?string $phone = null,
         public ?string $note = null,
+        public ?int $contractorId = null,
     ) {}
 }

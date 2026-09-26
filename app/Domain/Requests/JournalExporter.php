@@ -12,6 +12,7 @@ use App\Domain\Requests\Models\ServiceRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use League\Csv\Bom;
+use League\Csv\EscapeFormula;
 use League\Csv\Writer;
 
 final class JournalExporter
@@ -63,6 +64,7 @@ final class JournalExporter
         $writer = Writer::createFromString();
         $writer->setDelimiter(';');
         $writer->setOutputBOM(Bom::Utf8);
+        $writer->addFormatter(new EscapeFormula);
         $writer->insertOne(self::COLUMNS);
         foreach ($this->rows($organization, $period)->lazyById(200) as $request) {
             $writer->insertOne($this->line($request, $timezone));

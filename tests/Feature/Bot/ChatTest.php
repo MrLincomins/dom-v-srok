@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Bot\Cards\RequestCard;
 use App\Bot\Models\OutboxMessage;
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
+use App\Support\Max\DeepLinks;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 
@@ -122,7 +122,7 @@ it('lets a neighbour join from the chat and asks them to start the bot', functio
         ->and($answer['id'])->toBe('cb.join.1')
         ->and($answer['notification'])->toBe(botText('chat.join_start', ['number' => $request->id]))
         ->and($answer['message']['text'] ?? '')->toContain(botText('chat.neighbours', ['count' => 1]))
-        ->and($this->max->sent)->toBe([])
+        ->and($this->max->messages())->toBe([])
         ->and(OutboxMessage::query()->where('target_id', 888)->exists())->toBeFalse();
 });
 
@@ -180,4 +180,16 @@ it('offers to join an open request when a chat message matches a category and th
     runUpdate(chatMessageUpdate(556, $this->chatId, 'темно в подъезде', 'mid.k3'));
     runUpdate(chatMessageUpdate(556, $this->chatId, 'Кто знает телефон управляющей?', 'mid.k4'));
     expect($this->max->sent)->toHaveCount(1);
+});
+
+it('explains how to bind the chat when it is added to a group and stays silent in channels', function () {
+    runUpdate(botAddedUpdate($this->chatId, 777));
+    $last = end($this->max->sent);
+    expect($last['target'])->toBe('chat')
+        ->and($last['id'])->toBe($this->chatId)
+        ->and(lastText($this->max))->toBe(botText('chat.added'));
+
+    $count = count($this->max->sent);
+    runUpdate(botAddedUpdate(9003, 777, true));
+    expect($this->max->sent)->toHaveCount($count);
 });

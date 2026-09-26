@@ -16,8 +16,6 @@ use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\RequestController;
 use Illuminate\Support\Facades\Route;
 
-// апи миниаппа, контракт в docs/openapi.yaml
-// ответы { data } или { data, meta }, ошибки { error: { code, message, details } }
 Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function (): void {
     Route::post('auth/max', [AuthController::class, 'max'])->middleware('throttle:auth')->name('auth.max');
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('auth.login');
@@ -30,9 +28,11 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('me', MeController::class)->name('me');
+        Route::get('catalog/responsible', [CatalogController::class, 'responsible'])->name('catalog.responsible');
 
         Route::get('requests/{serviceRequest}', [RequestController::class, 'show'])->name('requests.show');
         Route::post('requests/{serviceRequest}/confirm', [RequestController::class, 'confirm'])->name('requests.confirm');
+        Route::post('requests/{serviceRequest}/rate', [RequestController::class, 'rate'])->name('requests.rate');
         Route::get('my/requests', [RequestController::class, 'my'])->name('my.requests');
         Route::get('organizations/{organization}', [OrganizationCardController::class, 'show'])->whereNumber('organization')->name('organizations.show');
 
@@ -43,11 +43,12 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
             Route::post('requests/{serviceRequest}/close', [RequestController::class, 'close'])->name('requests.close');
             Route::post('requests/{serviceRequest}/redirect', [RequestController::class, 'redirect'])->name('requests.redirect');
             Route::post('requests/{serviceRequest}/comments', [RequestController::class, 'comment'])->name('requests.comment');
-            Route::post('demo/reset', [DemoController::class, 'reset'])->name('demo.reset');
+            Route::post('demo/reset', [DemoController::class, 'reset'])->middleware('throttle:demo')->name('demo.reset');
 
             Route::get('organization', [OrganizationController::class, 'show'])->name('organization.show');
             Route::patch('organization', [OrganizationController::class, 'update'])->name('organization.update');
             Route::get('organization/houses', [OrganizationController::class, 'houses'])->name('organization.houses');
+            Route::post('organization/houses', [OrganizationController::class, 'storeHouse'])->name('organization.houses.store');
             Route::patch('organization/houses/{house}', [OrganizationController::class, 'updateHouse'])->whereNumber('house')->name('organization.houses.update');
             Route::get('organization/executors', [ExecutorController::class, 'index'])->name('organization.executors');
             Route::post('organization/executors', [ExecutorController::class, 'store'])->name('organization.executors.store');

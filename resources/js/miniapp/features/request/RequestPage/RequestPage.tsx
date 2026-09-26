@@ -53,7 +53,7 @@ export function RequestPage() {
                     <PhotoGallery
                         attachments={request.data.attachments}
                         events={request.data.events}
-                        description={request.data.description}
+                        description={request.data.description ?? undefined}
                     />
                     <RequestActions card={request.data} isStaff={user?.role !== 'resident'} />
                     <EventTimeline events={request.data.events} attachments={request.data.attachments} />

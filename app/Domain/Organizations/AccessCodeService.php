@@ -9,7 +9,6 @@ use App\Domain\Organizations\Models\Organization;
 use App\Domain\Users\Models\User;
 use Illuminate\Support\Facades\DB;
 
-/** /dispatcher КОД даёт роль в организации, для проверяющих и новых сотрудников */
 final class AccessCodeService
 {
     public function redeem(User $user, string $code): ?Organization

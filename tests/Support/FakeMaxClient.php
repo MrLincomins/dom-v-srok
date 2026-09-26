@@ -7,7 +7,6 @@ namespace Tests\Support;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 
-/** клиент без сети, запоминает что бот отправил. подменяется в контейнере в тестах */
 final class FakeMaxClient extends MaxClient
 {
     /** @var list<array{target:string,id:int,body:array<string,mixed>,mid?:string}> */
@@ -26,13 +25,39 @@ final class FakeMaxClient extends MaxClient
 
     public bool $failPins = false;
 
+    /** @var list<array{name:string,description?:string}> */
+    public array $commands = [];
+
+    /** @var list<string> */
+    public array $uploaded = [];
+
+    /** @var array<string,MaxApiException> */
+    public array $uploadFailures = [];
+
     public function isConfigured(): bool
     {
         return true;
     }
 
+    public function getMe(): array
+    {
+        return ['user_id' => 405671160, 'first_name' => 'Бот', 'username' => 'test_bot', 'is_bot' => true];
+    }
+
+    public function setCommands(array $commands): array
+    {
+        $this->commands = $commands;
+
+        return ['commands' => $commands];
+    }
+
+    public ?MaxApiException $sendFailure = null;
+
     public function sendToUser(int $userId, array $body): array
     {
+        if ($this->sendFailure !== null) {
+            throw $this->sendFailure;
+        }
         $this->sent[] = ['target' => 'user', 'id' => $userId, 'body' => $body];
 
         return ['message' => ['body' => ['mid' => 'mid.'.count($this->sent)]]];
@@ -65,12 +90,36 @@ final class FakeMaxClient extends MaxClient
         return ['success' => true];
     }
 
+    public function uploadImage(string $path): string
+    {
+        if (isset($this->uploadFailures[basename($path)])) {
+            throw $this->uploadFailures[basename($path)];
+        }
+        $this->uploaded[] = $path;
+
+        return 'tok.'.count($this->uploaded);
+    }
+
+    public ?MaxApiException $answerFailure = null;
+
     public function answerCallback(string $callbackId, ?string $notification = null, ?array $message = null): array
     {
+        if ($message !== null && $this->answerFailure !== null) {
+            throw $this->answerFailure;
+        }
         $this->answered[] = $callbackId;
         $this->answers[] = ['id' => $callbackId, 'notification' => $notification, 'message' => $message];
+        if ($message !== null) {
+            $this->sent[] = ['target' => 'answer', 'id' => 0, 'callback' => $callbackId, 'body' => $message];
+        }
 
         return ['success' => true];
+    }
+
+    /** @return list<array{target:string,id:int,body:array<string,mixed>,mid?:string}> */
+    public function messages(): array
+    {
+        return array_values(array_filter($this->sent, fn (array $m) => $m['target'] !== 'answer'));
     }
 
     public function texts(): array

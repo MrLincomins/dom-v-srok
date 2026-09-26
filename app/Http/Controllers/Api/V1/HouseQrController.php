@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Http\Controllers\Controller;
+use App\Support\Max\DeepLinks;
 use App\Support\Qr\QrPng;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;

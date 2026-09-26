@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Requests\Dto\Actor;
-use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Exceptions\InvalidTransition;
 use App\Domain\Requests\Models\ServiceRequest;
@@ -31,7 +30,7 @@ final class RequestsAutoConfirm extends Command
         $closed = 0;
         foreach ($requests as $request) {
             try {
-                $service->confirm($request, Actor::system(), ConfirmedBy::Auto, 'Подтверждено автоматически: три дня без ответа жителя');
+                $service->confirm($request, Actor::system(), 'Подтверждено автоматически: три дня без ответа жителя');
                 $closed++;
             } catch (InvalidTransition) {
                 continue;

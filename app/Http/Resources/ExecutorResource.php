@@ -13,6 +13,6 @@ final class ExecutorResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        return ['id' => $this->id, 'name' => $this->name, 'specialty' => $this->specialty, 'phone' => $this->phone];
+        return ['id' => $this->id, 'name' => $this->name, 'specialty' => $this->specialty, 'phone' => $request->user()?->isStaff() ? $this->phone : null];
     }
 }

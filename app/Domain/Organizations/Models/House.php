@@ -48,7 +48,6 @@ class House extends Model
         });
     }
 
-    /** случайный токен для диплинка, чтобы дом нельзя было перебрать по id */
     public static function newQrToken(): string
     {
         return Str::lower(Str::random(12));

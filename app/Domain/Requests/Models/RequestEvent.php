@@ -12,8 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * лента событий заявки, из неё карточка, уведомления и журнал
- *
  * @property int $id
  * @property int $request_id
  * @property EventType $type
@@ -30,7 +28,11 @@ class RequestEvent extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $guarded = [];
+    public const OVERDUE_KIND = 'overdue';
+
+    public const DUE_SOON_KIND = 'due_soon';
+
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {

@@ -11,6 +11,7 @@ use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Facades\URL;
 use Spectator\Spectator;
 
 beforeEach(function () {
@@ -110,7 +111,36 @@ it('rejects a broken period and hides the journal from residents', function () {
     asToken($this->resident)->get('/api/v1/journal.csv')->assertStatus(403);
 });
 
-it('gives a ten-minute signed link to the same CSV that opens without a token', function () {
+it('escapes cells that look like spreadsheet formulas', function () {
+    $resident = User::query()->where('login', 'demo_resident')->firstOrFail();
+    $request = app(RequestService::class)->create(new CreateRequestData(
+        houseId: (int) $resident->house_id,
+        residentUserId: $resident->id,
+        categoryId: (int) Category::query()->where('slug', 'entrance.light')->value('id'),
+        description: '=HYPERLINK("http://evil.example","нажми")',
+    ));
+
+    $body = asToken($this->dispatcher)->get("/api/v1/journal.csv?from={$this->from}&to={$this->to}")->assertOk()->getContent();
+
+    $line = collect(explode("\n", $body))->first(fn (string $line) => str_starts_with($line, $request->id.';'));
+    expect($line)->toContain(';"\'=HYPERLINK(')
+        ->and($line)->not->toContain(';"=HYPERLINK(');
+});
+
+it('limits the period to a year when only the start date is given', function () {
+    $from = CarbonImmutable::now('Europe/Moscow')->subYears(2)->toDateString();
+
+    asToken($this->dispatcher)->getJson("/api/v1/journal?from={$from}")
+        ->assertStatus(422)
+        ->assertJsonPath('error.details.fields.from.0', 'Период журнала не длиннее года');
+    asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$from}")
+        ->assertStatus(422);
+    asToken($this->dispatcher)->getJson('/api/v1/journal?from='.CarbonImmutable::now('Europe/Moscow')->addDays(3)->toDateString())
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+});
+
+it('gives a three-minute signed link to the same CSV that opens without a token', function () {
     $response = asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$this->from}&to={$this->to}")
         ->assertValidRequest()->assertValidResponse(200);
     $link = $response->json('data.url');
@@ -122,12 +152,12 @@ it('gives a ten-minute signed link to the same CSV that opens without a token', 
         ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
         ->assertHeader('Content-Disposition', 'attachment; filename="zhurnal-zayavok-'.$this->from.'-'.$this->to.'.csv"');
     expect($file->getContent())->toBe($expected)
-        ->and(now()->diffInMinutes(CarbonImmutable::parse($response->json('data.expires_at'))))->toBeGreaterThan(9.0)->toBeLessThanOrEqual(10.0);
+        ->and(now()->diffInMinutes(CarbonImmutable::parse($response->json('data.expires_at'))))->toBeGreaterThan(2.0)->toBeLessThanOrEqual(3.0);
 
     $this->get(str_replace('organization=', 'organization=9', $link))->assertStatus(403)->assertJsonPath('error.code', 'forbidden');
     $this->get("/api/v1/journal/export.csv?from={$this->from}&to={$this->to}")->assertStatus(403);
 
-    $this->travel(11)->minutes();
+    $this->travel(4)->minutes();
     $this->get($link)->assertStatus(403);
 });
 
@@ -136,4 +166,22 @@ it('does not give the CSV link to residents or for a broken period', function ()
     asToken($this->dispatcher)->getJson('/api/v1/journal/csv-link?from=2026-09-10&to=2026-09-01')
         ->assertStatus(422)
         ->assertJsonPath('error.code', 'validation_failed');
+});
+
+it('binds the CSV link to the dispatcher who asked for it', function () {
+    $link = asToken($this->dispatcher)->getJson("/api/v1/journal/csv-link?from={$this->from}&to={$this->to}")->json('data.url');
+    $dispatcherId = User::query()->where('login', 'demo_dispatcher')->value('id');
+    $residentId = User::query()->where('login', 'demo_resident')->value('id');
+    parse_str((string) parse_url($link, PHP_URL_QUERY), $query);
+    expect((int) $query['user'])->toBe($dispatcherId);
+
+    app('auth')->forgetGuards();
+    $this->withoutToken()->get(str_replace('user='.$dispatcherId, 'user='.$residentId, $link))
+        ->assertStatus(403)
+        ->assertJsonPath('error.code', 'forbidden');
+
+    $residentLink = URL::temporarySignedRoute('api.journal.export', now()->addMinutes(3), [
+        'organization' => $query['organization'], 'user' => $residentId, 'from' => $this->from, 'to' => $this->to,
+    ]);
+    $this->get($residentLink)->assertStatus(403);
 });

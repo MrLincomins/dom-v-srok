@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Enums;
 
-/** кто отвечает за категорию, значения те же, что в check у categories и responsible_parties */
 enum ResponsibleType: string
 {
     case Uk = 'uk';
@@ -41,7 +40,6 @@ enum ResponsibleType: string
         return in_array($this, [self::RsoCold, self::RsoHot, self::RsoHeat, self::RsoPower], true);
     }
 
-    /** колонка direct_* у организации - прямой договор с этой рсо */
     public function directContractColumn(): ?string
     {
         return match ($this) {
@@ -54,7 +52,6 @@ enum ResponsibleType: string
         };
     }
 
-    /** типы, где у организации может быть свой подрядчик */
     public function contractorType(): ?string
     {
         return match ($this) {

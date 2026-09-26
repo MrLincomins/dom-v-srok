@@ -24,8 +24,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * заявка, id это номер. кто отвечает, срок и основание копируются при создании
- *
  * @property int $id
  * @property int|null $organization_id
  * @property int $house_id
@@ -57,6 +55,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $assigned_at
  * @property CarbonImmutable|null $in_progress_at
  * @property int|null $redirected_party_id
+ * @property string|null $redirect_name
+ * @property string|null $redirect_phone
  * @property string|null $redirect_note
  * @property string|null $rating_comment
  * @property int|null $repeat_of_id
@@ -77,7 +77,7 @@ class ServiceRequest extends Model
 {
     protected $table = 'requests';
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
 
     protected function casts(): array
     {
@@ -86,6 +86,7 @@ class ServiceRequest extends Model
             'house_id' => 'integer',
             'resident_user_id' => 'integer',
             'category_id' => 'integer',
+            'entrance' => 'integer',
             'responsible_party_id' => 'integer',
             'executor_id' => 'integer',
             'redirected_party_id' => 'integer',
@@ -176,7 +177,11 @@ class ServiceRequest extends Model
         return $this->belongsTo(self::class, 'repeat_of_id');
     }
 
-    /** просрочка не статус, а флаг по открытым заявкам */
+    public function isFullyVisibleTo(?User $user): bool
+    {
+        return $user !== null && ($user->isStaff() || $user->id === $this->resident_user_id);
+    }
+
     public function isOverdue(?CarbonImmutable $now = null): bool
     {
         $now ??= CarbonImmutable::now();
@@ -184,7 +189,6 @@ class ServiceRequest extends Model
         return $this->status->isOpen() && $this->deadline_fix_at !== null && $this->deadline_fix_at->lessThan($now);
     }
 
-    /** закрыта с опозданием, для журнала */
     public function closedLate(): bool
     {
         return $this->done_at !== null && $this->deadline_fix_at !== null && $this->done_at->greaterThan($this->deadline_fix_at);
@@ -192,7 +196,7 @@ class ServiceRequest extends Model
 
     public function hasOverdueMark(): bool
     {
-        return $this->events()->where('type', EventType::Reminder->value)->where('payload->kind', 'overdue')->exists();
+        return $this->events()->where('type', EventType::Reminder->value)->where('payload->kind', RequestEvent::OVERDUE_KIND)->exists();
     }
 
     public function redirectedToName(): ?string
@@ -200,15 +204,41 @@ class ServiceRequest extends Model
         if ($this->status !== RequestStatus::Redirected) {
             return null;
         }
+        if ($this->redirect_name !== null && $this->redirect_name !== '') {
+            return $this->redirect_name;
+        }
         if ($this->redirectedParty !== null) {
             return $this->redirectedParty->name;
         }
-        $event = $this->relationLoaded('events')
-            ? $this->events->firstWhere('to_status', RequestStatus::Redirected->value)
-            : $this->events()->where('to_status', RequestStatus::Redirected->value)->latest('id')->first();
-        $to = $event?->payload['to'] ?? null;
+        $to = $this->redirectEvent()?->payload['to'] ?? null;
 
         return is_string($to) && $to !== '' ? $to : null;
+    }
+
+    public function redirectedToPhone(): ?string
+    {
+        if ($this->status !== RequestStatus::Redirected) {
+            return null;
+        }
+        if ($this->redirect_phone !== null && $this->redirect_phone !== '') {
+            return $this->redirect_phone;
+        }
+        if ($this->redirect_name !== null) {
+            return null;
+        }
+        if ($this->redirectedParty?->phone !== null) {
+            return $this->redirectedParty->phone;
+        }
+        $phone = $this->redirectEvent()?->payload['phone'] ?? null;
+
+        return is_string($phone) && $phone !== '' ? $phone : null;
+    }
+
+    private function redirectEvent(): ?RequestEvent
+    {
+        return $this->relationLoaded('events')
+            ? $this->events->last(fn (RequestEvent $event) => $event->to_status === RequestStatus::Redirected->value)
+            : $this->events()->where('to_status', RequestStatus::Redirected->value)->reorder('id', 'desc')->first();
     }
 
     /**

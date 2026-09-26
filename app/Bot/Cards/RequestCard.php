@@ -12,7 +12,6 @@ use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
 use Carbon\CarbonImmutable;
 
-/** один формат карточки для бота: жителю с подъездом, в чат дома только категория */
 final class RequestCard
 {
     public function __construct(private readonly TextRepository $texts) {}
@@ -65,17 +64,29 @@ final class RequestCard
             $what .= ': '.mb_strimwidth($draft->description, 0, 120, '…');
         }
         if ($draft->entrance !== null) {
-            $what .= ', подъезд '.$draft->entrance;
+            $what .= ', '.$this->texts->text('card.entrance', ['entrance' => $draft->entrance]);
         }
+
+        return trim($this->texts->text('report.preview_card', $this->responsibleVars($category, $house, $responsible, $fix, $reply, $what)));
+    }
+
+    public function who(Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply): string
+    {
+        return trim($this->texts->text('who.card', $this->responsibleVars($category, $house, $responsible, $fix, $reply, $category->name)));
+    }
+
+    /** @return array<string,string> */
+    private function responsibleVars(Category $category, House $house, Responsible $responsible, ?CarbonImmutable $fix, ?CarbonImmutable $reply, string $what): array
+    {
         $hint = (string) $responsible->hint;
 
-        return trim($this->texts->text('report.preview_card', [
+        return [
             'what' => $what,
             'responsible' => $responsible->name.($responsible->phone !== null ? ', '.$responsible->phone : ''),
             'deadline' => $this->deadlineText($fix, $reply, $house->region->timezone),
             'basis' => $category->basis ?? '—',
             'hint' => $responsible->isSure ? $hint : trim('Скорее всего. '.$hint),
-        ]));
+        ];
     }
 
     public function what(ServiceRequest $request, bool $forChat): string
@@ -88,7 +99,7 @@ final class RequestCard
             $what .= ': '.mb_strimwidth($request->description, 0, 120, '…');
         }
         if ($request->entrance !== null) {
-            $what .= ', подъезд '.$request->entrance;
+            $what .= ', '.$this->texts->text('card.entrance', ['entrance' => $request->entrance]);
         }
 
         return $what;
@@ -102,13 +113,13 @@ final class RequestCard
     public function deadlineText(?CarbonImmutable $fix, ?CarbonImmutable $reply, string $timezone): string
     {
         if ($fix !== null) {
-            return 'до '.$this->humanDate($fix, $timezone);
+            return $this->texts->text('card.deadline_fix', ['date' => $this->humanDate($fix, $timezone)]);
         }
         if ($reply !== null) {
-            return 'ответ до '.$this->humanDate($reply, $timezone).' (срок ответа по закону)';
+            return $this->texts->text('card.deadline_reply', ['date' => $this->humanDate($reply, $timezone)]);
         }
 
-        return 'по договору';
+        return $this->texts->text('card.deadline_none');
     }
 
     private function humanDate(CarbonImmutable $at, string $timezone): string

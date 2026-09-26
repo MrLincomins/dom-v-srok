@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Domain\Demo\DemoResetService;
 use Illuminate\Console\Command;
 
-/** сброс демо данных, реальные организации не трогает. */
 final class DemoReset extends Command
 {
     protected $signature = 'demo:reset';

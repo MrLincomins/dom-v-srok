@@ -25,24 +25,21 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // политики руками, модели не в App\Models и автопоиск их не найдёт
         Gate::policy(ServiceRequest::class, RequestPolicy::class);
 
-        // время immutable, чтобы addHours не портил исходный объект
         Date::use(CarbonImmutable::class);
 
-        // ловим опечатки в атрибутах и молча выкинутые поля, только не в проде
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
         Model::preventAccessingMissingAttributes(! $this->app->isProduction());
 
-        // апи: 120 запросов в минуту на токен или ip
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)
             ->by($request->user()?->getAuthIdentifier() ?: (string) $request->ip()));
 
-        // тестовый вход, защита от перебора
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(30)->by((string) $request->ip()));
 
-        // лимиты маха: 2 сообщения в сек на диалог, ~30 запросов в сек всего
+        RateLimiter::for('demo', fn (Request $request) => Limit::perMinute(2)
+            ->by($request->user()?->getAuthIdentifier() ?: (string) $request->ip()));
+
         RateLimiter::for('max-target', fn (object $job) => Limit::perSecond((int) config('max.rate_per_target'))
             ->by(method_exists($job, 'targetKey') ? $job->targetKey() : 'global'));
         RateLimiter::for('max-global', fn () => Limit::perSecond((int) config('max.rate_global')));

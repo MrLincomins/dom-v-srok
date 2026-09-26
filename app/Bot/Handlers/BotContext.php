@@ -9,7 +9,6 @@ use App\Bot\Outbox\OutboxService;
 use App\Bot\Texts\TextRepository;
 use App\Domain\Users\Models\User;
 
-/** общие действия, например ответить пользователю текстом из таблицы с кнопками */
 final class BotContext
 {
     public function __construct(
@@ -30,8 +29,6 @@ final class BotContext
     }
 
     /**
-     * текст из таблицы плюс свои кнопки перед кнопками из таблицы
-     *
      * @param  array<string,string|int|null>  $vars
      * @param  list<list<array{label:string,action:string}>>  $rows
      */

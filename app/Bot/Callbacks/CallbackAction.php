@@ -6,25 +6,26 @@ namespace App\Bot\Callbacks;
 
 enum CallbackAction: string
 {
-    case Emergency = 'em';        // em:yes | em:no
-    case Category = 'cat';        // cat:<id>
-    case Subcategory = 'sub';     // sub:<id>
-    case Address = 'addr';        // addr:same | addr:new
-    case House = 'house';         // house:<id>
+    case Emergency = 'em';
+    case Category = 'cat';
+    case Subcategory = 'sub';
+    case Address = 'addr';
+    case House = 'house';
     case Send = 'send';
-    case Unsure = 'unsure';       // «не уверен - отправить в организацию»
+    case Unsure = 'unsure';
     case Cancel = 'cancel';
     case Menu = 'menu';
-    case Report = 'report';       // «Сообщить о проблеме»
-    case My = 'my';               // «Мои заявки»
-    case Contacts = 'contacts';   // «Контакты организации»
-    case Status = 'st';           // st:<id>
-    case Resolved = 'ok';         // ok:<id>
-    case NotResolved = 'no';      // no:<id>
-    case Join = 'join';           // join:<id>
-    case Rate = 'rate';           // rate:<id>:<1..5>
-    case Again = 'again';         // again:<id>
+    case Report = 'report';
+    case My = 'my';
+    case Contacts = 'contacts';
+    case Status = 'st';
+    case Resolved = 'ok';
+    case NotResolved = 'no';
+    case Join = 'join';
+    case Rate = 'rate';
+    case Again = 'again';
     case Cabinet = 'cab';
+    case Who = 'who';
 
     public function payload(string|int ...$args): string
     {

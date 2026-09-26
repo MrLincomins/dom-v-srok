@@ -7,7 +7,6 @@ namespace App\Domain\Catalog;
 use App\Domain\Catalog\Models\CalendarDay;
 use Carbon\CarbonImmutable;
 
-/** рабочие дни пн-пт плюс исключения из calendar_days */
 final class WorkCalendar
 {
     /** @var array<string,bool>|null */

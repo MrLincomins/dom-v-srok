@@ -52,6 +52,20 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    TooManyRequests:
+      description: Превышен лимит запросов; код too_many_requests, заголовки Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining
+      headers:
+        Retry-After: { schema: { type: integer } }
+        X-RateLimit-Limit: { schema: { type: integer } }
+        X-RateLimit-Remaining: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServerError:
+      description: Ошибка сервера; код server_error, в details.request_id идентификатор запроса для логов
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
   schemas:
     ErrorResponse:
       type: object
@@ -160,6 +174,30 @@ components:
         children:
           type: array
           items: { $ref: '#/components/schemas/Category' }
+    ResponsibleLookup:
+      type: object
+      required: [category, house_id, responsible, deadline_fix_at, deadline_reply_at, basis]
+      properties:
+        category:
+          type: object
+          required: [id, name, is_emergency]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            is_emergency: { type: boolean }
+        house_id: { type: integer }
+        responsible:
+          type: object
+          required: [kind, name, phone, is_sure, hint]
+          properties:
+            kind: { type: string, enum: [organization, party, unknown] }
+            name: { type: string }
+            phone: { type: [string, 'null'] }
+            is_sure: { type: boolean }
+            hint: { type: [string, 'null'] }
+        deadline_fix_at: { type: [string, 'null'], format: date-time }
+        deadline_reply_at: { type: [string, 'null'], format: date-time }
+        basis: { type: [string, 'null'] }
     Executor:
       type: object
       required: [id, name]
@@ -167,7 +205,7 @@ components:
         id: { type: integer }
         name: { type: string }
         specialty: { type: [string, 'null'] }
-        phone: { type: [string, 'null'] }
+        phone: { type: [string, 'null'], description: 'только сотрудникам организации, жителю null' }
     OrganizationUpdate:
       type: object
       description: 'Частичное обновление: передаются только меняемые поля'
@@ -192,6 +230,13 @@ components:
       properties:
         entrances: { type: integer, minimum: 1, maximum: 50 }
         chat_keywords_enabled: { type: boolean }
+    HouseCreate:
+      type: object
+      required: [address, entrances]
+      properties:
+        address: { type: string, minLength: 1, maxLength: 200, description: 'адрес уникален в пределах организации без учёта регистра' }
+        entrances: { type: integer, minimum: 1, maximum: 50 }
+        chat_keywords_enabled: { type: boolean, default: false }
     ExecutorInput:
       type: object
       required: [name]
@@ -279,10 +324,10 @@ components:
         status: { $ref: '#/components/schemas/RequestStatus' }
         status_label: { type: string }
         category: { type: string }
-        description: { type: string }
+        description: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         address: { type: string }
-        entrance: { type: [integer, 'null'] }
-        flat: { type: [string, 'null'] }
+        entrance: { type: [integer, 'null'], description: 'null для соседа, который присоединился к заявке' }
+        flat: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         responsible_name: { type: string }
         is_sure: { type: boolean }
         deadline_fix_at: { type: [string, 'null'], format: date-time }
@@ -335,10 +380,10 @@ components:
             id: { type: integer }
             name: { type: string }
             slug: { type: string }
-        description: { type: string }
+        description: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         house: { $ref: '#/components/schemas/House' }
-        entrance: { type: [integer, 'null'] }
-        flat: { type: [string, 'null'] }
+        entrance: { type: [integer, 'null'], description: 'null для соседа, который присоединился к заявке' }
+        flat: { type: [string, 'null'], description: 'null для соседа, который присоединился к заявке' }
         responsible:
           type: object
           required: [kind, name, is_sure]
@@ -365,7 +410,11 @@ components:
         returned_count: { type: integer }
         redirected_to:
           type: object
+          description: 'только у переадресованной заявки; name и phone — снимок того, что сообщили жителю'
+          required: [name, phone, party, note]
           properties:
+            name: { type: [string, 'null'] }
+            phone: { type: [string, 'null'] }
             party:
               oneOf:
                 - type: object
@@ -384,6 +433,7 @@ components:
           items: { $ref: '#/components/schemas/RequestEvent' }
         attachments:
           type: array
+          description: 'соседу, который присоединился к заявке, фото жителя не отдаются, только фото закрытия'
           items: { $ref: '#/components/schemas/Attachment' }
         created_at: { type: string, format: date-time }
     Counters:
@@ -516,6 +566,8 @@ paths:
                   data: { $ref: '#/components/schemas/AuthToken' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /auth/login:
     post:
       tags: [auth]
@@ -545,6 +597,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /auth/logout:
     post:
       tags: [auth]
@@ -565,6 +619,8 @@ paths:
                     properties:
                       ok: { type: boolean }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /me:
     get:
       tags: [me]
@@ -581,6 +637,8 @@ paths:
                 properties:
                   data: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /catalog/categories:
     get:
       tags: [catalog]
@@ -599,6 +657,31 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/Category' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /catalog/responsible:
+    get:
+      tags: [catalog]
+      operationId: lookupResponsible
+      summary: Кто отвечает и в какой срок по закону, без создания заявки; сроки от текущего момента в зоне региона
+      parameters:
+        - { in: query, name: category_id, required: true, schema: { type: integer, minimum: 1 }, description: 'листовая категория' }
+        - { in: query, name: house_id, schema: { type: integer, minimum: 1 }, description: 'по умолчанию дом пользователя; житель — только свой дом, диспетчер — дом своей организации' }
+      responses:
+        '200':
+          description: Ответственный и сроки
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/ResponsibleLookup' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests:
     get:
       tags: [requests]
@@ -635,6 +718,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}:
     get:
       tags: [requests]
@@ -651,11 +736,14 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/status:
     patch:
       tags: [requests]
       operationId: changeStatus
       summary: Смена статуса по таблице переходов
+      description: 'Сотрудник ставит assigned, in_progress, done и confirmed. Вернуть в работу (returned) может только житель через /confirm. Подтвердить за жителя (confirmed) можно только с комментарием, как решение подтвердили; confirmed_by будет dispatcher.'
       parameters:
         - { in: path, name: id, required: true, schema: { type: integer } }
       requestBody:
@@ -666,8 +754,8 @@ paths:
               type: object
               required: [status]
               properties:
-                status: { $ref: '#/components/schemas/RequestStatus' }
-                comment: { type: [string, 'null'], maxLength: 1000 }
+                status: { type: string, enum: [assigned, in_progress, done, confirmed] }
+                comment: { type: [string, 'null'], maxLength: 1000, description: 'обязателен при status = confirmed' }
       responses:
         '200':
           description: Обновлённая карточка
@@ -679,6 +767,8 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/assign:
     post:
       tags: [requests]
@@ -707,6 +797,8 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/close:
     post:
       tags: [requests]
@@ -736,6 +828,8 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/redirect:
     post:
       tags: [requests]
@@ -749,8 +843,10 @@ paths:
           application/json:
             schema:
               type: object
+              description: 'ровно одно из responsible_party_id, contractor_id, name'
               properties:
-                responsible_party_id: { type: [integer, 'null'] }
+                responsible_party_id: { type: [integer, 'null'], description: 'сторона из регионального справочника' }
+                contractor_id: { type: [integer, 'null'], description: 'подрядчик своей организации; чужой — 404' }
                 name: { type: [string, 'null'], maxLength: 200 }
                 phone: { type: [string, 'null'], maxLength: 32 }
                 note: { type: [string, 'null'], maxLength: 1000 }
@@ -765,6 +861,8 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/comments:
     post:
       tags: [requests]
@@ -791,6 +889,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /requests/{id}/confirm:
     post:
       tags: [requests]
@@ -819,6 +919,39 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /requests/{id}/rate:
+    post:
+      tags: [requests]
+      operationId: rateRequest
+      summary: Житель оценивает решённую заявку
+      description: Только автор заявки и только после подтверждения; иначе 403 или 409. Повторная оценка заменяет прежнюю.
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: Обновлённая карточка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestCardResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /my/requests:
     get:
       tags: [requests]
@@ -831,6 +964,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RequestListResponse' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization:
     get:
       tags: [organization]
@@ -845,6 +980,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
     patch:
       tags: [organization]
       operationId: updateOrganization
@@ -864,6 +1001,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/houses:
     get:
       tags: [organization]
@@ -878,6 +1017,29 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [organization]
+      operationId: createHouse
+      summary: Добавить дом в организацию; код для QR создаётся автоматически, регион — как у организации
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HouseCreate' }
+      responses:
+        '201':
+          description: Новый дом
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HouseResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/houses/{id}:
     patch:
       tags: [organization]
@@ -900,6 +1062,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/houses/{id}/qr.png:
     get:
       tags: [organization]
@@ -917,6 +1081,8 @@ paths:
             image/png: { schema: { type: string, format: binary } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/executors:
     get:
       tags: [organization]
@@ -931,6 +1097,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [organization]
       operationId: createExecutor
@@ -950,6 +1118,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/executors/{id}:
     patch:
       tags: [organization]
@@ -972,6 +1142,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
     delete:
       tags: [organization]
       operationId: archiveExecutor
@@ -987,6 +1159,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/contractors:
     get:
       tags: [organization]
@@ -1001,6 +1175,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [organization]
       operationId: createContractor
@@ -1020,6 +1196,8 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organization/contractors/{id}:
     delete:
       tags: [organization]
@@ -1036,6 +1214,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /organizations/{id}:
     get:
       tags: [organization]
@@ -1051,6 +1231,8 @@ paths:
               schema: { $ref: '#/components/schemas/OrganizationResponse' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /journal:
     get:
       tags: [journal]
@@ -1070,6 +1252,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /journal.csv:
     get:
       tags: [journal]
@@ -1086,11 +1270,13 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /journal/csv-link:
     get:
       tags: [journal]
       operationId: journalCsvLink
-      summary: Подписанная ссылка на CSV журнала за период на 10 минут; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может
+      summary: Подписанная ссылка на CSV журнала за период на 3 минуты; мини-приложение открывает её в браузере телефона, потому что само сохранить файл не может
       parameters:
         - { in: query, name: from, schema: { type: string, format: date } }
         - { in: query, name: to, schema: { type: string, format: date } }
@@ -1107,6 +1293,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /journal/export.csv:
     get:
       tags: [journal]
@@ -1115,6 +1303,7 @@ paths:
       summary: CSV журнала по подписанной ссылке из /journal/csv-link, тот же файл, что /journal.csv
       parameters:
         - { in: query, name: organization, required: true, schema: { type: integer } }
+        - { in: query, name: user, required: true, schema: { type: integer } }
         - { in: query, name: from, required: true, schema: { type: string, format: date } }
         - { in: query, name: to, required: true, schema: { type: string, format: date } }
         - { in: query, name: expires, required: true, schema: { type: integer } }
@@ -1126,6 +1315,8 @@ paths:
             text/csv: { schema: { type: string } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /attachments/{id}:
     get:
       tags: [attachments]
@@ -1145,6 +1336,8 @@ paths:
             image/webp: { schema: { type: string, format: binary } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /demo/reset:
     post:
       tags: [demo]
@@ -1166,3 +1359,5 @@ paths:
                       ok: { type: boolean }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }

@@ -19,7 +19,6 @@ enum Role: string
         };
     }
 
-    /** диспетчер и админ работают с очередью */
     public function isStaff(): bool
     {
         return $this !== self::Resident;

@@ -6,7 +6,6 @@ namespace App\Support\Migration;
 
 use Illuminate\Support\Facades\DB;
 
-/** перечисления как varchar + check, а не enum постгреса, так проще менять */
 final class Constraints
 {
     /** @param list<string> $values */

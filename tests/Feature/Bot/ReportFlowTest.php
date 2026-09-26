@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Bot\Client\MaxApiException;
 use App\Bot\Fsm\DialogState;
 use App\Bot\Models\BotSession;
 use App\Bot\Models\OutboxMessage;
+use App\Bot\Outbox\OutboxStatus;
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\CreateRequestData;
@@ -233,15 +235,18 @@ it('schedules a reminder for a house without an organization', function () {
         ->and($reminder->body['text'])->toContain('Срок по заявке № '.$request->id);
 });
 
-it('replaces the pressed message on button steps and writes a new one after the resident types', function () {
+it('answers a button press with the next screen and writes a new message after the resident types', function () {
     runUpdate(callbackUpdate(555, 'report', 'cb.7'));
-    $edited = end($this->max->sent);
-    expect($edited['target'])->toBe('edit')
-        ->and($edited['mid'])->toBe('mid.bot.cb.7')
-        ->and(lastText($this->max))->toBe(botText('emergency.question'));
+    $answer = lastAnswer($this->max);
+    $row = OutboxMessage::query()->latest('id')->firstOrFail();
+    expect($answer['id'])->toBe('cb.7')
+        ->and($answer['message']['text'] ?? '')->toBe(botText('emergency.question'))
+        ->and($row->status)->toBe(OutboxStatus::Sent)
+        ->and($row->max_message_id)->toBe('mid.bot.cb.7')
+        ->and($this->max->messages())->toBe([]);
 
     runUpdate(callbackUpdate(555, 'em:no', 'cb.8'));
-    expect(end($this->max->sent)['mid'])->toBe('mid.bot.cb.8')
+    expect(lastAnswer($this->max)['id'])->toBe('cb.8')
         ->and(lastText($this->max))->toBe(botText('report.category'));
 
     runUpdate(callbackUpdate(555, 'sub:'.flowCategory('entrance.light'), 'cb.9'));
@@ -253,26 +258,31 @@ it('replaces the pressed message on button steps and writes a new one after the 
 
     runUpdate(messageUpdate(555, '1, 7', 'mid.21'));
     runUpdate(callbackUpdate(555, 'send', 'cb.10'));
-    $card = end($this->max->sent);
-    expect($card['target'])->toBe('edit')
-        ->and($card['mid'])->toBe('mid.bot.cb.10')
+    expect(lastAnswer($this->max)['id'])->toBe('cb.10')
+        ->and(end($this->max->sent)['target'])->toBe('answer')
         ->and(lastText($this->max))->toContain('Заявка № '.flowLastRequest()->id.' принята');
 });
 
-it('sends a new message when the pressed message cannot be edited', function () {
-    $this->max->failEdits = true;
+it('edits the pressed message when the answer is rejected, and writes a new one when the edit fails too', function () {
+    $this->max->answerFailure = new MaxApiException('POST /answers → 400: callback expired', 400, 'POST /answers');
 
     runUpdate(callbackUpdate(555, 'report', 'cb.11'));
+    $edited = end($this->max->sent);
+    expect($edited['target'])->toBe('edit')
+        ->and($edited['mid'])->toBe('mid.bot.cb.11')
+        ->and(lastText($this->max))->toBe(botText('emergency.question'));
 
+    $this->max->failEdits = true;
+    runUpdate(callbackUpdate(555, 'em:no', 'cb.12'));
     $sent = end($this->max->sent);
     expect($sent['target'])->toBe('user')
         ->and($sent['id'])->toBe(555)
-        ->and(lastText($this->max))->toBe(botText('emergency.question'))
-        ->and(OutboxMessage::query()->latest('id')->value('edit_message_id'))->toBe('mid.bot.cb.11');
+        ->and(lastText($this->max))->toBe(botText('report.category'))
+        ->and(OutboxMessage::query()->latest('id')->value('edit_message_id'))->toBe('mid.bot.cb.12');
 });
 
 it('does not edit a message from the house chat when answering in the dialog', function () {
-    $update = callbackUpdate(555, 'my', 'cb.12');
+    $update = callbackUpdate(555, 'my', 'cb.13');
     $update['message']['recipient'] = ['chat_type' => 'chat', 'chat_id' => 9001];
 
     runUpdate($update);

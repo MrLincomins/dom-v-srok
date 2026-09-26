@@ -8,17 +8,21 @@ use App\Domain\Catalog\CatalogService;
 use App\Domain\Catalog\DeadlineCalculator;
 use App\Domain\Catalog\Models\ResponsibleParty;
 use App\Domain\Catalog\ResponsibleResolver;
+use App\Domain\Organizations\Models\Contractor;
 use App\Domain\Organizations\Models\Executor;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\Actor;
+use App\Domain\Requests\Dto\ClosingPhoto;
 use App\Domain\Requests\Dto\CreateRequestData;
 use App\Domain\Requests\Dto\RedirectData;
 use App\Domain\Requests\Enums\ActorRole;
+use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\EventType;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\ParticipantJoined;
 use App\Domain\Requests\Events\RequestCreated;
+use App\Domain\Requests\Events\RequestDueSoon;
 use App\Domain\Requests\Events\RequestOverdue;
 use App\Domain\Requests\Events\RequestStatusChanged;
 use App\Domain\Requests\Exceptions\EmergencyCategory;
@@ -27,16 +31,22 @@ use App\Domain\Requests\Exceptions\NotAllowed;
 use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
+use App\Support\Images\ImageSanitizer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
-/** менять заявку только здесь. каждое изменение: транзакция, лок строки, проверка перехода, событие в ленте, доменное событие после коммита */
 final class RequestService
 {
     public function __construct(
         private readonly CatalogService $catalog,
         private readonly ResponsibleResolver $resolver,
         private readonly DeadlineCalculator $deadlines,
+        private readonly ImageSanitizer $images,
     ) {}
 
     public function create(CreateRequestData $data): ServiceRequest
@@ -81,10 +91,9 @@ final class RequestService
             ]);
 
             foreach ($data->photos as $photo) {
-                // файл скачает DownloadMaxAttachment, тут только токен для маха
                 $request->attachments()->create([
-                    'kind' => 'resident',
-                    'disk' => 'private',
+                    'kind' => AttachmentKind::Resident,
+                    'disk' => (string) config('attachments.disk'),
                     'path' => '',
                     'mime' => 'image/jpeg',
                     'size_bytes' => 1,
@@ -93,39 +102,18 @@ final class RequestService
                 ]);
             }
 
+            $this->publish($request, new RequestCreated($request));
+
             return $request;
         });
-
-        event(new RequestCreated($request));
 
         return $request->refresh();
     }
 
+    /** @param array<string,mixed> $payload */
     public function transition(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment = null, array $payload = []): ServiceRequest
     {
-        $result = DB::transaction(function () use ($request, $to, $by, $comment, $payload): array {
-            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
-            $from = $locked->status;
-
-            if (! $from->canTransitionTo($to)) {
-                throw InvalidTransition::between($from, $to);
-            }
-
-            $now = CarbonImmutable::now();
-            $locked->status = $to;
-            $this->stamp($locked, $to, $by, $now);
-            $locked->save();
-
-            $event = $this->log($locked, EventType::StatusChanged, $by, $comment, $payload, $from, $to);
-
-            return [$locked, $from, $event];
-        });
-
-        /** @var ServiceRequest $updated */
-        [$updated, $from, $event] = $result;
-        event(new RequestStatusChanged($updated, $from, $to, $by, $event));
-
-        return $updated;
+        return DB::transaction(fn (): ServiceRequest => $this->move($request, $to, $by, $comment, $payload)[0]);
     }
 
     public function assign(ServiceRequest $request, Executor $executor, Actor $by, ?string $comment = null): ServiceRequest
@@ -135,14 +123,21 @@ final class RequestService
         }
 
         return DB::transaction(function () use ($request, $executor, $by, $comment): ServiceRequest {
-            $request->executor_id = $executor->id;
-            $request->assigned_at = CarbonImmutable::now();
-            $request->save();
-            $this->log($request, EventType::Assigned, $by, $comment, ['executor_id' => $executor->id, 'executor' => $executor->name]);
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if (! $locked->status->isOpen()) {
+                throw InvalidTransition::between($locked->status, RequestStatus::Assigned);
+            }
 
-            return $request->status->canTransitionTo(RequestStatus::Assigned)
-                ? $this->transition($request, RequestStatus::Assigned, $by, null, ['executor' => $executor->name])
-                : $request;
+            $now = CarbonImmutable::now();
+            $locked->executor_id = $executor->id;
+            $locked->assigned_at = $now;
+            $this->markReaction($locked, $by, $now);
+            $locked->save();
+            $this->log($locked, EventType::Assigned, $by, $comment, ['executor_id' => $executor->id, 'executor' => $executor->name]);
+
+            return $locked->status->canTransitionTo(RequestStatus::Assigned)
+                ? $this->transition($locked, RequestStatus::Assigned, $by, null, ['executor' => $executor->name])
+                : $locked;
         });
     }
 
@@ -151,15 +146,33 @@ final class RequestService
         return $this->transition($request, RequestStatus::InProgress, $by, $comment);
     }
 
-    /** закрытие диспетчером - «выполнено», ждём подтверждения жителя, фотки уже в attachments */
-    public function close(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
+    /** @param list<ClosingPhoto> $photos */
+    public function close(ServiceRequest $request, Actor $by, ?string $comment = null, array $photos = []): ServiceRequest
     {
-        return $this->transition($request, RequestStatus::Done, $by, $comment);
+        $disk = (string) config('attachments.disk');
+        $written = [];
+
+        try {
+            return DB::transaction(function () use ($request, $by, $comment, $photos, $disk, &$written): ServiceRequest {
+                [$locked, $event] = $this->move($request, RequestStatus::Done, $by, $comment);
+                foreach ($photos as $photo) {
+                    $written[] = $this->storeClosingPhoto($locked, $event, $photo, $disk, $by);
+                }
+
+                return $locked;
+            });
+        } catch (Throwable $e) {
+            if ($written !== []) {
+                Storage::disk($disk)->delete($written);
+            }
+
+            throw $e;
+        }
     }
 
-    public function confirm(ServiceRequest $request, Actor $by, ConfirmedBy $how, ?string $comment = null): ServiceRequest
+    public function confirm(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
     {
-        return $this->transition($request, RequestStatus::Confirmed, $by, $comment, ['confirmed_by' => $how->value]);
+        return $this->transition($request, RequestStatus::Confirmed, $by, $comment);
     }
 
     public function returnToWork(ServiceRequest $request, Actor $by, ?string $comment = null): ServiceRequest
@@ -169,33 +182,38 @@ final class RequestService
 
     public function redirect(ServiceRequest $request, Actor $by, RedirectData $data): ServiceRequest
     {
-        $party = $data->partyId !== null ? ResponsibleParty::query()->findOrFail($data->partyId) : null;
-        $name = $party->name ?? $data->name;
-        if ($name === null || $name === '') {
-            throw new NotAllowed('Укажите, кому переадресована заявка');
-        }
+        return DB::transaction(function () use ($request, $by, $data): ServiceRequest {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if (! $locked->status->canTransitionTo(RequestStatus::Redirected)) {
+                throw InvalidTransition::between($locked->status, RequestStatus::Redirected);
+            }
 
-        return DB::transaction(function () use ($request, $by, $data, $party, $name): ServiceRequest {
-            $request->redirected_party_id = $party?->id;
-            $request->redirect_note = $data->note;
-            $request->save();
+            [$party, $name, $phone] = $this->redirectTarget($locked, $data);
+            $locked->redirected_party_id = $party?->id;
+            $locked->redirect_name = $name;
+            $locked->redirect_phone = $phone;
+            $locked->redirect_note = $data->note;
+            $locked->save();
 
-            return $this->transition($request, RequestStatus::Redirected, $by, $data->note, [
-                'to' => $name,
-                'phone' => $party->phone ?? $data->phone,
-            ]);
+            return $this->move($locked, RequestStatus::Redirected, $by, $data->note, ['to' => $name, 'phone' => $phone])[0];
         });
     }
 
     public function comment(ServiceRequest $request, Actor $by, string $text): RequestEvent
     {
-        return $this->log($request, EventType::Comment, $by, $text);
+        return DB::transaction(function () use ($request, $by, $text): RequestEvent {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if ($this->markReaction($locked, $by, CarbonImmutable::now())) {
+                $locked->save();
+            }
+
+            return $this->log($locked, EventType::Comment, $by, $text);
+        });
     }
 
-    /** присоединиться к заявке соседа, повторно ничего не делает */
     public function join(ServiceRequest $request, User $user): bool
     {
-        $joined = DB::transaction(function () use ($request, $user): bool {
+        return DB::transaction(function () use ($request, $user): bool {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             if ($locked->resident_user_id === $user->id || $locked->participants()->where('user_id', $user->id)->exists()) {
                 return false;
@@ -204,58 +222,168 @@ final class RequestService
             $locked->participants_count += 1;
             $locked->save();
             $this->log($locked, EventType::ParticipantJoined, Actor::resident($user), null, ['user_id' => $user->id]);
+            $this->publish($locked, new ParticipantJoined($locked, $user));
 
             return true;
         });
-
-        if ($joined) {
-            event(new ParticipantJoined($request->refresh(), $user));
-        }
-
-        return $joined;
     }
 
     public function markOverdue(ServiceRequest $request): ?RequestEvent
     {
-        $event = DB::transaction(function () use ($request): ?RequestEvent {
+        return DB::transaction(function () use ($request): ?RequestEvent {
             $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
             if (! $locked->isOverdue() || $locked->hasOverdueMark()) {
                 return null;
             }
 
-            return $this->log($locked, EventType::Reminder, Actor::system(), null, [
-                'kind' => 'overdue',
+            $event = $this->log($locked, EventType::Reminder, Actor::system(), null, [
+                'kind' => RequestEvent::OVERDUE_KIND,
                 'deadline_fix_at' => $locked->deadline_fix_at?->toIso8601String(),
             ]);
+            $this->publish($locked, new RequestOverdue($locked, $event));
+
+            return $event;
         });
+    }
 
-        if ($event !== null) {
-            event(new RequestOverdue($request->refresh(), $event));
-        }
+    public function markDueSoon(ServiceRequest $request, int $withinHours = 2): ?RequestEvent
+    {
+        return DB::transaction(function () use ($request, $withinHours): ?RequestEvent {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            $now = CarbonImmutable::now();
+            $deadline = $locked->deadline_fix_at;
+            if (! $locked->status->isOpen() || $deadline === null || $deadline->lessThan($now) || $deadline->greaterThan($now->addHours($withinHours))) {
+                return null;
+            }
+            if ($locked->events()->where('type', EventType::Reminder->value)->where('payload->kind', RequestEvent::DUE_SOON_KIND)->exists()) {
+                return null;
+            }
 
-        return $event;
+            $event = $this->log($locked, EventType::Reminder, Actor::system(), null, [
+                'kind' => RequestEvent::DUE_SOON_KIND,
+                'deadline_fix_at' => $deadline->toIso8601String(),
+            ]);
+            $this->publish($locked, new RequestDueSoon($locked, $event));
+
+            return $event;
+        });
     }
 
     public function rate(ServiceRequest $request, User $user, int $rating, ?string $comment = null): ServiceRequest
     {
-        if ($request->resident_user_id !== $user->id) {
-            throw new NotAllowed('Оценить может только автор заявки');
-        }
-        if ($request->status !== RequestStatus::Confirmed) {
-            throw new NotAllowed('Оценить можно после подтверждения');
-        }
-        $request->rating = max(1, min(5, $rating));
-        $request->rating_comment = $comment;
-        $request->save();
+        return DB::transaction(function () use ($request, $user, $rating, $comment): ServiceRequest {
+            $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+            if ($locked->resident_user_id !== $user->id) {
+                throw new NotAllowed('Оценить может только автор заявки');
+            }
+            if ($locked->status !== RequestStatus::Confirmed) {
+                throw new InvalidTransition('Оценить заявку можно после того, как решение подтверждено', ['status' => $locked->status->value]);
+            }
 
-        return $request;
+            $value = max(1, min(5, $rating));
+            $locked->rating = $value;
+            $locked->rating_comment = $comment;
+            $locked->save();
+            $this->log($locked, EventType::Comment, Actor::resident($user), 'Оценка жителя: '.$value, ['rating' => $value]);
+
+            return $locked;
+        });
+    }
+
+    /**
+     * @param  array<string,mixed>  $payload
+     * @return array{0:ServiceRequest,1:RequestEvent}
+     */
+    private function move(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment = null, array $payload = []): array
+    {
+        $locked = ServiceRequest::query()->lockForUpdate()->findOrFail($request->id);
+        $from = $locked->status;
+
+        $this->ensureMayMove($locked, $to, $by, $comment);
+        if (! $from->canTransitionTo($to)) {
+            throw InvalidTransition::between($from, $to);
+        }
+        if ($to === RequestStatus::Confirmed) {
+            $payload['confirmed_by'] = ConfirmedBy::forRole($by->role)->value;
+        }
+
+        $now = CarbonImmutable::now();
+        $locked->status = $to;
+        $this->stamp($locked, $to, $by, $now);
+        $locked->save();
+
+        $event = $this->log($locked, EventType::StatusChanged, $by, $comment, $payload, $from, $to);
+        $this->publish($locked, new RequestStatusChanged($locked, $from, $to, $by, $event));
+
+        return [$locked, $event];
+    }
+
+    private function ensureMayMove(ServiceRequest $request, RequestStatus $to, Actor $by, ?string $comment): void
+    {
+        if ($by->role === ActorRole::Resident && $by->userId !== $request->resident_user_id) {
+            throw new NotAllowed('Подтвердить или вернуть заявку может только тот, кто её подал');
+        }
+        if (! $to->canBeSetBy($by->role)) {
+            throw new NotAllowed($by->role === ActorRole::Resident
+                ? 'Житель может только подтвердить решение или вернуть заявку в работу'
+                : 'Вернуть заявку в работу может только житель, который её подал');
+        }
+        if ($to === RequestStatus::Confirmed && $by->role === ActorRole::Dispatcher && trim((string) $comment) === '') {
+            throw new NotAllowed('Чтобы подтвердить заявку за жителя, напишите, как решение подтвердили');
+        }
+    }
+
+    /** @return array{0:ResponsibleParty|null,1:string,2:string|null} */
+    private function redirectTarget(ServiceRequest $request, RedirectData $data): array
+    {
+        $party = null;
+        if ($data->partyId !== null) {
+            $party = ResponsibleParty::query()->findOrFail($data->partyId);
+            [$name, $phone] = [$party->name, $party->phone ?? $data->phone];
+        } elseif ($data->contractorId !== null) {
+            $contractor = Contractor::query()->where('organization_id', $request->organization_id)->findOrFail($data->contractorId);
+            [$name, $phone] = [$contractor->name, $contractor->phone ?? $data->phone];
+        } else {
+            [$name, $phone] = [trim((string) $data->name), $data->phone];
+        }
+
+        if ($name === '') {
+            throw new NotAllowed('Укажите, кому передана заявка');
+        }
+
+        return [$party, $name, $phone !== null && trim($phone) !== '' ? trim($phone) : null];
+    }
+
+    private function storeClosingPhoto(ServiceRequest $request, RequestEvent $event, ClosingPhoto $photo, string $disk, Actor $by): string
+    {
+        $original = file_get_contents($photo->file->getPathname());
+        if ($original === false) {
+            throw new RuntimeException('Не удалось прочитать фото закрытия');
+        }
+        $bytes = $this->images->sanitize($original, $photo->mime);
+        unset($original);
+
+        $path = sprintf('attachments/%d/%s.%s', $request->id, Str::uuid(), ImageSanitizer::extension($photo->mime));
+        if (! Storage::disk($disk)->put($path, $bytes)) {
+            throw new RuntimeException('Не удалось сохранить фото закрытия');
+        }
+
+        $request->attachments()->create([
+            'event_id' => $event->id,
+            'kind' => AttachmentKind::Closing,
+            'disk' => $disk,
+            'path' => $path,
+            'mime' => $photo->mime,
+            'size_bytes' => strlen($bytes),
+            'uploaded_by' => $by->userId,
+        ]);
+
+        return $path;
     }
 
     private function stamp(ServiceRequest $request, RequestStatus $to, Actor $by, CarbonImmutable $now): void
     {
-        if ($by->isDispatcher() && $request->first_reaction_at === null) {
-            $request->first_reaction_at = $now;
-        }
+        $this->markReaction($request, $by, $now);
 
         match ($to) {
             RequestStatus::Assigned => $request->assigned_at = $now,
@@ -268,12 +396,30 @@ final class RequestService
         };
 
         if ($to === RequestStatus::Confirmed) {
-            $request->confirmed_by = match ($by->role) {
-                ActorRole::Resident => ConfirmedBy::Resident,
-                ActorRole::Dispatcher => ConfirmedBy::Dispatcher,
-                ActorRole::System => ConfirmedBy::Auto,
-            };
+            $request->confirmed_by = ConfirmedBy::forRole($by->role);
         }
+    }
+
+    private function markReaction(ServiceRequest $request, Actor $by, CarbonImmutable $now): bool
+    {
+        if (! $by->isDispatcher() || $request->first_reaction_at !== null) {
+            return false;
+        }
+        $request->first_reaction_at = $now;
+
+        return true;
+    }
+
+    private function publish(ServiceRequest $request, object $event): void
+    {
+        DB::afterCommit(function () use ($request, $event): void {
+            try {
+                event($event);
+            } catch (Throwable $e) {
+                report($e);
+                Log::error('request.event_failed', ['request_id' => $request->id, 'event' => $event::class]);
+            }
+        });
     }
 
     /** @param array<string,mixed> $payload */

@@ -7,7 +7,6 @@ namespace App\Domain\Requests\Dto;
 use App\Domain\Requests\Enums\ActorRole;
 use App\Domain\Users\Models\User;
 
-/** кто делает действие: житель, диспетчер или система */
 final readonly class Actor
 {
     public function __construct(public ActorRole $role, public ?int $userId = null) {}

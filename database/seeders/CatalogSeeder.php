@@ -9,19 +9,24 @@ use Database\Seeders\Support\CsvReader;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
-/** справочник из docs/catalog.csv, можно гонять сколько угодно, строки обновляются по slug */
 class CatalogSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->seedRows(CsvReader::rows('catalog.csv'));
+    }
+
+    /** @param iterable<array<string,string|null>> $rows */
+    public function seedRows(iterable $rows): void
+    {
         $bySlug = [];
 
-        foreach (CsvReader::rows('catalog.csv') as $row) {
+        foreach ($rows as $row) {
             $slug = trim((string) $row['slug']);
             $parentSlug = CsvReader::strOrNull($row['parent_slug']);
             $parentId = null;
             if ($parentSlug !== null) {
-                $parentId = $bySlug[$parentSlug] ?? Category::query()->where('slug', $parentSlug)->value('id');
+                $parentId = $bySlug[$parentSlug] ?? null;
                 if ($parentId === null) {
                     throw new RuntimeException("catalog.csv: родитель {$parentSlug} для {$slug} должен идти выше по файлу");
                 }
@@ -49,13 +54,19 @@ class CatalogSeeder extends Seeder
             $bySlug[$slug] = $category->id;
         }
 
+        $this->deactivateMissing(array_values($bySlug));
         $this->assertIntegrity();
     }
 
-    /** у каждой листовой неаварийной категории есть ответственный и хотя бы один срок */
+    /** @param list<int> $seenIds */
+    private function deactivateMissing(array $seenIds): void
+    {
+        Category::query()->whereNotIn('id', $seenIds)->update(['is_active' => false]);
+    }
+
     private function assertIntegrity(): void
     {
-        $broken = Category::query()->whereNotNull('parent_id')->where('is_emergency', false)->get()
+        $broken = Category::query()->active()->whereNotNull('parent_id')->where('is_emergency', false)->get()
             ->filter(fn (Category $c) => $c->responsible_type === null || (! $c->hasFixDeadline() && ! $c->hasReplyDeadline()))
             ->pluck('slug');
 

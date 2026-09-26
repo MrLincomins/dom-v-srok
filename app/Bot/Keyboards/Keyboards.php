@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Bot\Keyboards;
 
-/**
- * inline клава в махе.
- */
+use App\Bot\BotIdentity;
+
 final class Keyboards
 {
-    /** @param list<list<array{label:string,action:string}>> $rows action: callback-payload, "url:https://…", "app" (кнопка кабинета) или "tel:+7…" */
+    /** @param list<list<array{label:string,action:string}>> $rows */
     public static function fromRows(array $rows): array
     {
         $buttons = [];
@@ -39,17 +38,31 @@ final class Keyboards
             return ['type' => 'link', 'text' => $label, 'url' => substr($action, 4)];
         }
         if (str_starts_with($action, 'tel:')) {
-            // чекнуть работает ли, если что использовать просто текстом ввод.
             return ['type' => 'link', 'text' => $label, 'url' => $action];
         }
         if (str_starts_with($action, 'copy:')) {
             return ['type' => 'clipboard', 'text' => $label, 'payload' => substr($action, 5)];
         }
         if ($action === 'cab' || $action === 'app') {
-            // открыть миниапп.
-            return ['type' => 'open_app', 'text' => $label, 'web_app' => (string) config('max.miniapp_url')];
+            return self::cabinet($label);
         }
 
         return ['type' => 'callback', 'text' => $label, 'payload' => $action];
+    }
+
+    /** @return array<string,mixed> */
+    private static function cabinet(string $label): array
+    {
+        $identity = app(BotIdentity::class);
+        if ($identity->username() === '') {
+            return ['type' => 'link', 'text' => $label, 'url' => (string) config('max.miniapp_url')];
+        }
+        $button = ['type' => 'open_app', 'text' => $label, 'web_app' => $identity->username()];
+        $id = $identity->id();
+        if ($id !== null) {
+            $button['contact_id'] = $id;
+        }
+
+        return $button;
     }
 }

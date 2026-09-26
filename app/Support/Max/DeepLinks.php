@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Organizations;
+namespace App\Support\Max;
 
 use App\Domain\Organizations\Models\House;
 
-/** диплинки маха: max.ru/<бот>?start=h_<qr_token>_<подъезд>, то же самое в qr на плакате */
 final class DeepLinks
 {
     public function housePayload(House $house, ?int $entrance = null): string

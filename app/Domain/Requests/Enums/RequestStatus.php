@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Requests\Enums;
 
-/** статусы заявки и разрешённые переходы, менять только здесь */
 enum RequestStatus: string
 {
     case New = 'new';
@@ -41,12 +40,25 @@ enum RequestStatus: string
         };
     }
 
+    /** @return list<self> */
+    public function allowedTransitionsFor(ActorRole $role): array
+    {
+        return array_values(array_filter($this->allowedTransitions(), static fn (self $to): bool => $to->canBeSetBy($role)));
+    }
+
+    public function canBeSetBy(ActorRole $role): bool
+    {
+        return match ($role) {
+            ActorRole::Resident => in_array($this, [self::Confirmed, self::Returned], true),
+            ActorRole::Dispatcher, ActorRole::System => $this !== self::Returned,
+        };
+    }
+
     public function canTransitionTo(self $to): bool
     {
         return in_array($to, $this->allowedTransitions(), true);
     }
 
-    /** открытые статусы, по ним считаем просрочку */
     public function isOpen(): bool
     {
         return in_array($this, [self::New, self::Assigned, self::InProgress, self::Returned], true);

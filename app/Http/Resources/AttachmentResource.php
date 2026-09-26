@@ -18,7 +18,6 @@ final class AttachmentResource extends JsonResource
             'id' => $this->id,
             'kind' => $this->kind->value,
             'mime' => $this->mime,
-            // подписанная ссылка на 15 минут, чтобы img src работал без токена
             'url' => $this->path !== ''
                 ? URL::temporarySignedRoute('api.attachments.show', now()->addMinutes((int) config('attachments.url_ttl_minutes')), ['attachment' => $this->id])
                 : null,

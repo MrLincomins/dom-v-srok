@@ -8,16 +8,20 @@ use App\Bot\Cards\RequestCard;
 use App\Bot\Keyboards\Keyboards;
 use App\Bot\Outbox\OutboxService;
 use App\Bot\Texts\TextRepository;
+use App\Domain\Requests\Enums\AttachmentKind;
 use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Events\RequestCreated;
 use App\Domain\Requests\Events\RequestStatusChanged;
+use App\Domain\Requests\Models\Attachment;
+use App\Domain\Requests\Models\RequestEvent;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Users\Models\User;
 
-/** каждая смена статуса - сообщение жителю с тем же номером, только тем кто запускал бота. dedupe_key защищает от дублей. дому без организации ещё напоминание в срок */
 final class NotifyResidentOfRequestChange
 {
+    private const MAX_PHOTOS = 5;
+
     public function __construct(
         private readonly OutboxService $outbox,
         private readonly TextRepository $texts,
@@ -52,17 +56,36 @@ final class NotifyResidentOfRequestChange
     {
         $request = $event->request;
         $resident = $request->resident;
-        if (! $resident->canBeMessaged()) {
-            return;
+        if ($resident->canBeMessaged()) {
+            [$key, $vars] = $this->messageFor($request, $event->to, $event->event->comment);
+            $body = [
+                'text' => $this->texts->text($key, $vars),
+                'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
+            ];
+            if ($event->to === RequestStatus::Done) {
+                $photos = $this->closingPhotos($request, $event->event);
+                if ($photos !== []) {
+                    $body['photos'] = $photos;
+                }
+            }
+            $this->outbox->toUser($resident->max_user_id, 'request.status', $body, 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
         }
 
-        [$key, $vars] = $this->messageFor($request, $event->to, $event->event->comment);
-        $this->outbox->toUser($resident->max_user_id, 'request.status', [
-            'text' => $this->texts->text($key, $vars),
-            'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
-        ], 'request.status:'.$request->id.':'.$event->to->value.':'.$event->event->id, $request->id);
+        $this->notifyParticipants($request, $event->to, $resident, $event->event->id);
+    }
 
-        $this->notifyParticipants($request, $event->to, $resident);
+    /** @return list<array{disk:string,path:string}> */
+    private function closingPhotos(ServiceRequest $request, RequestEvent $event): array
+    {
+        return $request->attachments()
+            ->where('kind', AttachmentKind::Closing->value)
+            ->where('event_id', $event->id)
+            ->orderBy('id')
+            ->limit(self::MAX_PHOTOS)
+            ->get()
+            ->map(fn (Attachment $photo): array => ['disk' => $photo->disk, 'path' => $photo->path])
+            ->values()
+            ->all();
     }
 
     /** @return array{0:string,1:array<string,string|int|null>} */
@@ -75,14 +98,14 @@ final class NotifyResidentOfRequestChange
             RequestStatus::Confirmed => [$request->confirmed_by === ConfirmedBy::Auto ? 'request.auto_confirmed' : 'request.confirmed', $vars],
             RequestStatus::Returned => ['request.returned', $vars],
             RequestStatus::Redirected => ['request.redirected', $vars + [
-                'to' => $request->redirectedParty->name ?? (string) ($request->events()->latest('id')->first()?->payload['to'] ?? ''),
-                'phone' => $request->redirectedParty->phone ?? '—',
+                'to' => $request->redirectedToName() ?? '',
+                'phone' => $request->redirectedToPhone() ?? '—',
             ]],
             default => ['request.status', $vars],
         };
     }
 
-    private function notifyParticipants(ServiceRequest $request, RequestStatus $to, User $resident): void
+    private function notifyParticipants(ServiceRequest $request, RequestStatus $to, User $resident, int $eventId): void
     {
         if (! in_array($to, [RequestStatus::Done, RequestStatus::Confirmed, RequestStatus::Redirected], true)) {
             return;
@@ -93,7 +116,7 @@ final class NotifyResidentOfRequestChange
             }
             $this->outbox->toUser($participant->max_user_id, 'request.status', [
                 'text' => $this->texts->text('request.status', ['number' => $request->id, 'status' => $to->label(), 'comment' => '']),
-            ], 'request.status:'.$request->id.':'.$to->value.':p'.$participant->id, $request->id);
+            ], 'request.status:'.$request->id.':'.$to->value.':'.$eventId.':p'.$participant->id, $request->id);
         }
     }
 }

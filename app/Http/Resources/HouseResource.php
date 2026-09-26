@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
+use App\Support\Max\DeepLinks;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\URL;

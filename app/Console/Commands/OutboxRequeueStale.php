@@ -9,7 +9,6 @@ use App\Bot\Outbox\OutboxStatus;
 use App\Jobs\SendOutboxMessage;
 use Illuminate\Console\Command;
 
-/** pending старше 15 минут значит задача потерялась: самый долгий backoff у SendOutboxMessage 10 минут */
 final class OutboxRequeueStale extends Command
 {
     protected $signature = 'outbox:requeue-stale {--minutes=15 : Сколько минут сообщение может висеть в pending}';

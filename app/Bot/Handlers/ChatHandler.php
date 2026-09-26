@@ -11,18 +11,14 @@ use App\Bot\Client\MaxClient;
 use App\Bot\Keyboards\Keyboards;
 use App\Bot\Updates\Update;
 use App\Domain\Catalog\CatalogService;
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
+use App\Support\Max\DeepLinks;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
-/**
- * групповой чат дома.
- * «статус N» (карточка без личных данных), «Присоединиться», подсказка по словам если включена у дома.
- */
 final class ChatHandler
 {
     public function __construct(
@@ -59,11 +55,22 @@ final class ChatHandler
         }
     }
 
+    public function added(Update $update): void
+    {
+        $chatId = $update->chatId();
+        if ($chatId === null || ($update->raw['is_channel'] ?? false) === true) {
+            return;
+        }
+        $this->ctx->outbox()->toChat($chatId, 'chat.added', [
+            'text' => $this->ctx->texts()->text('chat.added'),
+        ], 'chat.added:'.$chatId.':'.CarbonImmutable::now()->format('Ymd'));
+    }
+
     private function bind(int $chatId, string $token, ?User $user): void
     {
         $house = House::query()->where('qr_token', $token)->first();
         if ($house === null || $user === null || ! $user->isStaff() || $user->organization_id !== $house->organization_id) {
-            $this->ctx->outbox()->toChat($chatId, 'chat.bind_denied', ['text' => 'Привязать чат может сотрудник организации дома командой «/дом <код дома>».']);
+            $this->ctx->outbox()->toChat($chatId, 'chat.bind_denied', ['text' => $this->ctx->texts()->text('chat.bind_denied')]);
 
             return;
         }
@@ -72,12 +79,11 @@ final class ChatHandler
         $house->chat_pinned_message_id = null;
         $house->save();
 
-        $rows = [[['label' => 'Сообщить о проблеме', 'action' => 'url:'.$this->links->houseStartUrl($house)]]];
+        $vars = ['address' => $house->address, 'start_url' => $this->links->houseStartUrl($house)];
         $this->ctx->outbox()->toChat($chatId, 'chat.card', [
-            'text' => $this->ctx->texts()->text('chat.card', ['address' => $house->address]),
-            'keyboard' => Keyboards::fromRows($rows),
+            'text' => $this->ctx->texts()->text('chat.card', $vars),
+            'keyboard' => Keyboards::fromRows($this->ctx->texts()->buttons('chat.card', $vars)),
         ], 'chat.card:'.$house->id.':'.$chatId);
-        // закреп сделает PinHouseCardInChat, когда мах вернёт mid карточки
         Log::info('chat.bound', ['house_id' => $house->id, 'chat_id' => $chatId]);
     }
 
@@ -86,7 +92,7 @@ final class ChatHandler
         $request = ServiceRequest::query()->with(['category', 'house.region'])->find($id);
         $house = House::query()->where('max_chat_id', $chatId)->first();
         if ($request === null || $house === null || $request->house_id !== $house->id) {
-            return; // если чужая или несуществующая заявка
+            return;
         }
 
         $this->ctx->outbox()->toChat($chatId, 'chat.status', $this->statusBody($request), null, $request->id);
@@ -162,7 +168,6 @@ final class ChatHandler
         }
     }
 
-    /** закреп карточки дома, получится только если бот админ чата */
     public function pin(House $house, string $messageId): void
     {
         try {

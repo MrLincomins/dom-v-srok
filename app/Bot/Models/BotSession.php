@@ -9,8 +9,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * состояние диалога.
- *
  * @property int $max_user_id
  * @property DialogState $state
  * @property array<string,mixed> $payload

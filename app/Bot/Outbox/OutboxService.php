@@ -10,29 +10,49 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
-/**
- * всё что выходит наружу
- */
 final class OutboxService
 {
-    private ?int $replaceUserId = null;
+    private ?int $captureUserId = null;
 
-    private ?string $replaceMessageId = null;
+    private ?string $captureMessageId = null;
 
-    public function replaceNextForUser(int $maxUserId, string $messageId): void
+    private ?OutboxMessage $captured = null;
+
+    private ?string $updateScope = null;
+
+    private int $updateSequence = 0;
+
+    public function beginUpdate(string $updateKey): void
     {
-        $this->replaceUserId = $maxUserId;
-        $this->replaceMessageId = $messageId;
+        $this->updateScope = substr(sha1($updateKey), 0, 24);
+        $this->updateSequence = 0;
     }
 
-    public function clearReplacement(): void
+    public function endUpdate(): void
     {
-        $this->replaceUserId = null;
-        $this->replaceMessageId = null;
+        $this->updateScope = null;
+        $this->updateSequence = 0;
+    }
+
+    public function captureNextForUser(int $maxUserId, ?string $messageId): void
+    {
+        $this->captureUserId = $maxUserId;
+        $this->captureMessageId = $messageId;
+        $this->captured = null;
+    }
+
+    public function takeCaptured(): ?OutboxMessage
+    {
+        $message = $this->captured;
+        $this->captureUserId = null;
+        $this->captureMessageId = null;
+        $this->captured = null;
+
+        return $message;
     }
 
     /**
-     * @param  array<string,mixed>  $body  {text, keyboard?: list<list<array>>, attachments?: list<array>, format?: string, notify?: bool}
+     * @param  array<string,mixed>  $body  {text, keyboard?: list<list<array>>, attachments?: list<array>, photos?: list<array{disk:string,path:string}>, format?: string, notify?: bool}
      */
     public function enqueue(
         OutboxTarget $target,
@@ -43,7 +63,12 @@ final class OutboxService
         ?int $requestId = null,
         ?CarbonImmutable $availableAt = null,
         ?string $editMessageId = null,
+        bool $dispatch = true,
     ): ?OutboxMessage {
+        if ($dedupeKey === null && $this->updateScope !== null) {
+            $dedupeKey = 'upd:'.$this->updateScope.':'.(++$this->updateSequence);
+        }
+
         try {
             $message = DB::transaction(fn () => OutboxMessage::query()->create([
                 'target_type' => $target,
@@ -57,33 +82,48 @@ final class OutboxService
                 'available_at' => $availableAt ?? CarbonImmutable::now(),
             ]));
         } catch (UniqueConstraintViolationException) {
-            return null; // такое сообщение уже поставлено в очередь
+            return null;
         }
 
-        $job = SendOutboxMessage::dispatch($message->id)->afterCommit();
-        if ($availableAt !== null && $availableAt->isFuture()) {
-            $job->delay($availableAt);
+        if ($dispatch) {
+            $this->dispatch($message);
         }
 
         return $message;
     }
 
+    public function dispatch(OutboxMessage $message): void
+    {
+        $job = SendOutboxMessage::dispatch($message->id)->afterCommit();
+        if ($message->available_at->isFuture()) {
+            $job->delay($message->available_at);
+        }
+    }
+
+    /** @param array<string,mixed> $body */
     public function toUser(int $maxUserId, string $kind, array $body, ?string $dedupeKey = null, ?int $requestId = null, ?CarbonImmutable $availableAt = null): ?OutboxMessage
     {
-        return $this->enqueue(OutboxTarget::User, $maxUserId, $kind, $body, $dedupeKey, $requestId, $availableAt, $this->takeReplacement($maxUserId, $availableAt));
-    }
-
-    private function takeReplacement(int $maxUserId, ?CarbonImmutable $availableAt): ?string
-    {
-        if ($this->replaceUserId !== $maxUserId || ($availableAt !== null && $availableAt->isFuture())) {
-            return null;
+        $capture = $this->captureUserId === $maxUserId && ($availableAt === null || ! $availableAt->isFuture());
+        $message = $this->enqueue(
+            OutboxTarget::User,
+            $maxUserId,
+            $kind,
+            $body,
+            $dedupeKey,
+            $requestId,
+            $availableAt,
+            $capture ? $this->captureMessageId : null,
+            ! $capture,
+        );
+        if ($capture && $message !== null) {
+            $this->captured = $message;
+            $this->captureUserId = null;
         }
-        $messageId = $this->replaceMessageId;
-        $this->clearReplacement();
 
-        return $messageId;
+        return $message;
     }
 
+    /** @param array<string,mixed> $body */
     public function toChat(int $chatId, string $kind, array $body, ?string $dedupeKey = null, ?int $requestId = null): ?OutboxMessage
     {
         return $this->enqueue(OutboxTarget::Chat, $chatId, $kind, $body, $dedupeKey, $requestId);

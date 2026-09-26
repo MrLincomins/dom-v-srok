@@ -6,7 +6,6 @@ namespace App\Bot\Handlers;
 
 use App\Domain\Users\Models\User;
 
-/** непонятное сообщение: подсказка и меню, черновик не трогаем */
 final class FallbackHandler
 {
     public function __construct(private readonly BotContext $ctx) {}

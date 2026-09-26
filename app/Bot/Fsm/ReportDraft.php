@@ -6,7 +6,6 @@ namespace App\Bot\Fsm;
 
 use App\Domain\Requests\Dto\PhotoDraft;
 
-/** черновик заявки, лежит в bot_sessions.payload */
 final class ReportDraft
 {
     private const PHOTO_LIMIT = 5;

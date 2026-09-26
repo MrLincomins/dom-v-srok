@@ -8,9 +8,10 @@ use App\Domain\Catalog\Enums\DeadlineUnit;
 use App\Domain\Catalog\Models\Category;
 use Carbon\CarbonImmutable;
 
-/** срок из справочника в дату, рабочие дни по календарю до 18:00 региона, отдаём utc */
 final class DeadlineCalculator
 {
+    public const END_OF_WORKDAY_HOUR = 18;
+
     public function __construct(private readonly WorkCalendar $calendar) {}
 
     public function fixDeadline(Category $category, CarbonImmutable $from, string $timezone): ?CarbonImmutable
@@ -30,11 +31,12 @@ final class DeadlineCalculator
         }
 
         $local = $from->setTimezone($timezone);
+        $start = $local->hour >= self::END_OF_WORKDAY_HOUR ? $local->addDay()->startOfDay() : $local;
 
         $deadline = match ($unit) {
             DeadlineUnit::Hours => $local->addHours($value),
-            DeadlineUnit::Days => $local->addDays($value),
-            DeadlineUnit::WorkingDays => $this->calendar->addWorkingDays($local, $value)->setTime(18, 0),
+            DeadlineUnit::Days => $start->addDays($value)->setTime(self::END_OF_WORKDAY_HOUR, 0),
+            DeadlineUnit::WorkingDays => $this->calendar->addWorkingDays($start, $value)->setTime(self::END_OF_WORKDAY_HOUR, 0),
         };
 
         return $deadline->utc();

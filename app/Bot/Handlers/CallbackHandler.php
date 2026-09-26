@@ -10,21 +10,19 @@ use App\Bot\Cards\RequestCard;
 use App\Bot\Client\MaxApiException;
 use App\Bot\Client\MaxClient;
 use App\Bot\Fsm\SessionStore;
+use App\Bot\Models\OutboxMessage;
+use App\Bot\Outbox\Events\OutboxMessageSent;
+use App\Bot\Outbox\OutboxStatus;
 use App\Bot\Updates\Update;
 use App\Domain\Requests\Dto\Actor;
-use App\Domain\Requests\Enums\ConfirmedBy;
 use App\Domain\Requests\Enums\RequestStatus;
 use App\Domain\Requests\Exceptions\DomainException;
 use App\Domain\Requests\Models\ServiceRequest;
 use App\Domain\Requests\RequestService;
 use App\Domain\Users\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
-/**
- * кнопки работают всегда, независимо от состояния диалога.
- * на callback сразу answerCallback, чтобы кнопки не висели.
- * сценарий заявки (report, em, cat, sub, house, addr, send, unsure, cancel, again) в ReportFlowHandler.
- */
 final class CallbackHandler
 {
     public function __construct(
@@ -35,6 +33,7 @@ final class CallbackHandler
         private readonly ReportFlowHandler $report,
         private readonly SessionStore $sessions,
         private readonly ChatHandler $chat,
+        private readonly WhoHandler $who,
     ) {}
 
     public function handle(Update $update, User $user): void
@@ -45,8 +44,13 @@ final class CallbackHandler
 
             return;
         }
-        $this->acknowledge($update);
-        $this->replacePressedMessage($update, $user);
+
+        $inDialog = $update->isPrivate() && $user->max_user_id !== null;
+        if ($inDialog) {
+            $this->ctx->outbox()->captureNextForUser((int) $user->max_user_id, $update->messageId());
+        } else {
+            $this->acknowledge($update);
+        }
 
         try {
             if ($parsed === null) {
@@ -56,19 +60,42 @@ final class CallbackHandler
             }
             $this->route($parsed, $user);
         } catch (DomainException $e) {
-            $this->ctx->replyRaw($user, $e->getMessage(), [[['label' => 'Меню', 'action' => 'menu']]]);
+            $this->ctx->reply($user, 'error.action', ['message' => $e->getMessage()]);
         } finally {
-            $this->ctx->outbox()->clearReplacement();
+            if ($inDialog) {
+                $this->answerWith($update, $this->ctx->outbox()->takeCaptured());
+            }
         }
     }
 
-    private function replacePressedMessage(Update $update, User $user): void
+    private function answerWith(Update $update, ?OutboxMessage $message): void
     {
-        $messageId = $update->messageId();
-        if ($messageId === null || $user->max_user_id === null || ! $update->isPrivate()) {
+        if ($message === null) {
+            $this->acknowledge($update);
+
             return;
         }
-        $this->ctx->outbox()->replaceNextForUser($user->max_user_id, $messageId);
+        $callbackId = $update->callbackId();
+        if ($callbackId === null || ! $this->client->isConfigured()) {
+            $this->ctx->outbox()->dispatch($message);
+
+            return;
+        }
+        try {
+            $this->client->answerCallback($callbackId, null, $message->body);
+        } catch (MaxApiException $e) {
+            Log::info('bot.answer_fallback', ['outbox_id' => $message->id, 'error' => $e->getMessage()]);
+            $this->ctx->outbox()->dispatch($message);
+
+            return;
+        }
+        $message->update([
+            'status' => OutboxStatus::Sent,
+            'sent_at' => CarbonImmutable::now(),
+            'attempts' => 1,
+            'max_message_id' => $message->edit_message_id,
+        ]);
+        event(new OutboxMessageSent($message));
     }
 
     private function route(ParsedCallback $callback, User $user): void
@@ -86,7 +113,8 @@ final class CallbackHandler
             CallbackAction::Again => $this->report->start($user, $callback->intArg(0)),
             CallbackAction::Emergency, CallbackAction::Category, CallbackAction::Subcategory, CallbackAction::House,
             CallbackAction::Address, CallbackAction::Send, CallbackAction::Unsure, CallbackAction::Cancel => $this->report->callback($callback, $user),
-            CallbackAction::Join => null, // ответил ChatHandler::join из handle(), сюда не доходит
+            CallbackAction::Join => null,
+            CallbackAction::Who => $this->who->handle($user, $callback->intArg(0)),
         };
     }
 
@@ -147,11 +175,13 @@ final class CallbackHandler
         if ($request === null) {
             return;
         }
-        $rows = $request->status === RequestStatus::Done
-            ? [[['label' => 'Да, решено', 'action' => CallbackAction::Resolved->payload($request->id)], ['label' => 'Нет, не решено', 'action' => CallbackAction::NotResolved->payload($request->id)]]]
+        $rows = $request->status === RequestStatus::Done && $request->resident_user_id === $user->id
+            ? $this->ctx->texts()->buttons('request.status_confirm', ['number' => $request->id])
             : [];
-        $rows[] = [['label' => 'Мои заявки', 'action' => 'my'], ['label' => 'Меню', 'action' => 'menu']];
-        $this->ctx->replyRaw($user, $this->card->created($request)."\nСтатус: ".$request->status->label(), $rows);
+        $this->ctx->replyWith($user, 'request.status_card', [
+            'card' => trim($this->card->created($request)),
+            'status' => $request->status->label(),
+        ], $rows);
     }
 
     private function confirm(User $user, ?int $id, bool $resolved): void
@@ -160,12 +190,21 @@ final class CallbackHandler
         if ($request === null) {
             return;
         }
+        if ($request->resident_user_id !== $user->id) {
+            $this->ctx->reply($user, 'request.author_only', ['number' => $request->id]);
+
+            return;
+        }
+        if ($request->status === RequestStatus::Confirmed) {
+            $this->ctx->reply($user, 'request.already_confirmed', ['number' => $request->id]);
+
+            return;
+        }
         if ($resolved) {
-            $this->requests->confirm($request, Actor::resident($user), ConfirmedBy::Resident);
+            $this->requests->confirm($request, Actor::resident($user));
         } else {
             $this->requests->returnToWork($request, Actor::resident($user), 'Житель: проблема не решена');
         }
-        // сообщения о новом статусе из NotifyResidentOfRequestChange.
     }
 
     private function rate(User $user, ?int $id, ?int $rating): void
@@ -176,19 +215,19 @@ final class CallbackHandler
         }
         if ($rating === null) {
             $rows = [array_map(fn (int $n) => ['label' => str_repeat('★', $n), 'action' => CallbackAction::Rate->payload($request->id, $n)], range(1, 5))];
-            $this->ctx->replyRaw($user, 'Оцените, как решили заявку № '.$request->id, $rows);
+            $this->ctx->replyWith($user, 'rate.ask', ['number' => $request->id], $rows);
 
             return;
         }
         $this->requests->rate($request, $user, $rating);
-        $this->ctx->replyRaw($user, 'Спасибо за оценку.', [[['label' => 'Меню', 'action' => 'menu']]]);
+        $this->ctx->reply($user, 'rate.thanks');
     }
 
     private function ownRequest(User $user, ?int $id): ?ServiceRequest
     {
         $request = $id === null ? null : ServiceRequest::query()->with(['category', 'house.region'])->find($id);
         if ($request === null || ($request->resident_user_id !== $user->id && ! $request->participants()->where('user_id', $user->id)->exists())) {
-            $this->ctx->replyRaw($user, 'Такой заявки у вас нет.', [[['label' => 'Мои заявки', 'action' => 'my']]]);
+            $this->ctx->reply($user, 'request.missing');
 
             return null;
         }

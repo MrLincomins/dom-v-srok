@@ -13,7 +13,6 @@ use App\Domain\Users\Models\User;
 use App\Domain\Users\UserService;
 use Illuminate\Support\Facades\Log;
 
-/** отправка обновлений в обработчики, пользователи создаются до обработчиков. */
 final class UpdateDispatcher
 {
     public function __construct(
@@ -30,9 +29,10 @@ final class UpdateDispatcher
 
         match (true) {
             $update->type === 'bot_started' => $this->start->handle($update, $this->user($maxUser, true), $update->startPayload()),
-            $update->isCallback() => $this->callbacks->handle($update, $this->user($maxUser, $update->isPrivate())),
+            $update->isCallback() => $this->callbacks->handle($update, $this->user($maxUser, $update->chatType() === 'dialog')),
             $update->isMessage() && $update->isPrivate() => $this->commands->handle($update, $this->user($maxUser, true)),
             $update->isMessage() => $this->chat->handle($update, $this->userIfKnown($maxUser)),
+            $update->type === 'bot_added' => $this->chat->added($update),
             $update->type === 'bot_stopped', $update->type === 'dialog_removed' => $this->stopped($maxUser),
             default => Log::info('bot.update_ignored', ['type' => $update->type]),
         };
@@ -48,7 +48,7 @@ final class UpdateDispatcher
         return $this->users->upsertFromMax($maxUser, $startedBot);
     }
 
-    /** в чате только ищем пользователей, без создания. @param array<string,mixed>|null $maxUser */
+    /** @param array<string,mixed>|null $maxUser */
     private function userIfKnown(?array $maxUser): ?User
     {
         $id = $maxUser['user_id'] ?? null;
@@ -61,7 +61,7 @@ final class UpdateDispatcher
     {
         $id = $maxUser['user_id'] ?? null;
         if ($id !== null) {
-            User::query()->where('max_user_id', (int) $id)->update(['bot_started_at' => null]);
+            $this->users->stopBot((int) $id);
         }
     }
 }

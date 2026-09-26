@@ -6,11 +6,10 @@ namespace App\Bot\Handlers;
 
 use App\Bot\Fsm\SessionStore;
 use App\Bot\Updates\Update;
-use App\Domain\Organizations\DeepLinks;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Users\Models\User;
+use App\Support\Max\DeepLinks;
 
-/** bot_started и /start из QR в подъезде, закрепа в чате, приветствие, меню. черновик заявки сбрасывается */
 final class StartHandler
 {
     public function __construct(

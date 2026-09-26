@@ -9,13 +9,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-/** файлы только по подписанной ссылке, см AttachmentResource */
 final class AttachmentController extends Controller
 {
     public function show(Attachment $attachment): StreamedResponse
     {
-        abort_if($attachment->path === '', 404);
+        $disk = Storage::disk($attachment->disk);
+        abort_if($attachment->path === '' || ! $disk->exists($attachment->path), 404);
 
-        return Storage::disk($attachment->disk)->response($attachment->path, null, ['Cache-Control' => 'private, max-age=300']);
+        return $disk->response($attachment->path, null, [
+            'Cache-Control' => 'private, max-age=300',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

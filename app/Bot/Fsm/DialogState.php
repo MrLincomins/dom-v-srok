@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Bot\Fsm;
 
-/** состояние после кнопки «сообщить о проблеме», черновик в bot_sessions.payload. */
 enum DialogState: string
 {
     case Idle = 'idle';

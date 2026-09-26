@@ -79,3 +79,50 @@ it('returns the profile for a bearer token', function () {
         ->assertJsonPath('data.role', 'resident')
         ->assertJsonPath('data.house.address', DemoSeeder::HOUSE_ADDRESS);
 });
+
+it('explains validation errors in Russian', function () {
+    $this->postJson('/api/v1/auth/login', ['password' => 'x'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed')
+        ->assertJsonPath('error.details.fields.login.0', 'Поле «логин» обязательно.');
+});
+
+it('answers 429 with Retry-After when the login is hammered', function () {
+    foreach (range(1, 30) as $attempt) {
+        $this->postJson('/api/v1/auth/login', ['login' => 'demo_dispatcher', 'password' => 'nope'])->assertStatus(401);
+    }
+
+    $this->postJson('/api/v1/auth/login', ['login' => 'demo_dispatcher', 'password' => 'nope'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.code', 'too_many_requests')
+        ->assertHeader('Retry-After')
+        ->assertHeader('X-RateLimit-Limit', '30')
+        ->assertHeader('X-RateLimit-Remaining', '0');
+});
+
+it('answers an unsupported method in Russian', function () {
+    $this->getJson('/api/v1/auth/login')
+        ->assertStatus(405)
+        ->assertJsonPath('error.code', 'http_error')
+        ->assertJsonPath('error.message', 'Метод не поддерживается');
+});
+
+it('rejects initData signed with auth_date from the future', function () {
+    $sign = fn (int $authDate): string => InitDataValidator::sign([
+        'auth_date' => (string) $authDate,
+        'user' => '{"id":717171,"first_name":"Олег"}',
+    ], 'test-bot-token');
+
+    $this->postJson('/api/v1/auth/max', ['init_data' => $sign(now()->addMinutes(5)->getTimestamp())])
+        ->assertStatus(401)
+        ->assertJsonPath('error.code', 'unauthenticated');
+    $this->postJson('/api/v1/auth/max', ['init_data' => $sign(now()->addSeconds(30)->getTimestamp())])
+        ->assertOk();
+});
+
+it('lets the mini app sign in again with the same initData', function () {
+    $initData = InitDataValidator::sign(['auth_date' => (string) now()->getTimestamp(), 'user' => '{"id":727272,"first_name":"Олег"}'], 'test-bot-token');
+
+    $this->postJson('/api/v1/auth/max', ['init_data' => $initData])->assertOk();
+    $this->postJson('/api/v1/auth/max', ['init_data' => $initData])->assertOk();
+});

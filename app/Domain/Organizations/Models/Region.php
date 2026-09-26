@@ -7,7 +7,6 @@ namespace App\Domain\Organizations\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** регион - то, что меняется при переносе: справочник, ссылки, зона времени */
 /**
  * @property string $code
  * @property string $name

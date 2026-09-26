@@ -19,7 +19,6 @@ final class AuthController extends Controller
 {
     public function __construct(private readonly InitDataValidator $validator, private readonly UserService $users) {}
 
-    /** вход из миниаппа: initData, проверка подписи, токен. роль из базы */
     public function max(Request $request): JsonResponse
     {
         $data = $request->validate(['init_data' => ['required', 'string', 'max:8192']]);
@@ -35,7 +34,6 @@ final class AuthController extends Controller
         return $this->issueToken($user, 'miniapp');
     }
 
-    /** тестовые учётки для проверки апи, только под флагом и только is_demo */
     public function login(Request $request): JsonResponse
     {
         if (! config('demo.accounts_enabled')) {

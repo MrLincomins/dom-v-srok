@@ -8,8 +8,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * тексты бота из docs/texts.csv.
- *
  * @property string $key
  * @property string $locale
  * @property string $text

@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domain\Users;
 
+use App\Domain\Requests\Enums\AttachmentKind;
+use App\Domain\Requests\Models\Attachment;
 use App\Domain\Users\Enums\Role;
 use App\Domain\Users\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 final class UserService
 {
-    /**
-     * пользователь из маха по max_user_id, имя обновляем, роль только из базы
-     *
-     * @param  array<string,mixed>  $maxUser  объект User из Bot API или initData (user_id/id, first_name, last_name, username)
-     */
+    private const FALLBACK_NAME = 'Житель';
+
+    private const ANONYMIZED_NAME = 'Житель (удалён)';
+
+    /** @param  array<string,mixed>  $maxUser */
     public function upsertFromMax(array $maxUser, bool $startedBot = false): User
     {
         $maxUserId = (int) ($maxUser['user_id'] ?? $maxUser['id'] ?? 0);
@@ -29,11 +33,15 @@ final class UserService
         if (! $user->exists) {
             $user->role = Role::Resident;
         }
-        if ($user->anonymized_at === null && $name !== '') {
-            $user->name = $name;
+        if ($user->anonymized_at === null) {
+            if ($name !== '') {
+                $user->name = $name;
+            }
+            $user->username = $maxUser['username'] ?? $user->username;
         }
-        $user->name = $user->name !== '' ? $user->name : 'Житель';
-        $user->username = $maxUser['username'] ?? $user->username;
+        if (($user->name ?? '') === '') {
+            $user->name = self::FALLBACK_NAME;
+        }
         if ($startedBot && $user->bot_started_at === null) {
             $user->bot_started_at = CarbonImmutable::now();
         }
@@ -42,24 +50,42 @@ final class UserService
         return $user;
     }
 
-    /** удаление по запросу - обезличиваем, заявки остаются в журнале */
+    public function stopBot(int $maxUserId): void
+    {
+        User::query()->where('max_user_id', $maxUserId)->update(['bot_started_at' => null]);
+    }
+
     public function anonymize(User $user): void
     {
-        $user->name = 'Житель (удалён)';
-        $user->username = null;
-        $user->phone = null;
-        $user->flat = null;
-        $user->entrance = null;
-        $user->anonymized_at = CarbonImmutable::now();
-        $user->save();
+        DB::transaction(function () use ($user): void {
+            $user->name = self::ANONYMIZED_NAME;
+            $user->username = null;
+            $user->phone = null;
+            $user->flat = null;
+            $user->entrance = null;
+            $user->bot_started_at = null;
+            $user->anonymized_at = CarbonImmutable::now();
+            $user->save();
 
-        foreach ($user->requests()->with('attachments')->get() as $request) {
-            foreach ($request->attachments as $attachment) {
-                if ($attachment->path !== '') {
-                    Storage::disk($attachment->disk)->delete($attachment->path);
+            $user->tokens()->delete();
+
+            $attachments = Attachment::query()
+                ->where('kind', AttachmentKind::Resident->value)
+                ->where(fn (Builder $query) => $query
+                    ->whereIn('request_id', $user->requests()->select('id'))
+                    ->orWhere('uploaded_by', $user->id))
+                ->lockForUpdate()
+                ->get();
+
+            Attachment::query()->whereKey($attachments->modelKeys())->delete();
+
+            DB::afterCommit(function () use ($attachments): void {
+                foreach ($attachments as $attachment) {
+                    if ($attachment->path !== '') {
+                        Storage::disk($attachment->disk)->delete($attachment->path);
+                    }
                 }
-                $attachment->delete();
-            }
-        }
+            });
+        });
     }
 }

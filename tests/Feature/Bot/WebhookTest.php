@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Bot\Models\OutboxMessage;
+use App\Bot\Outbox\OutboxStatus;
 use App\Jobs\ProcessMaxUpdate;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Queue\Queue as QueueBase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 it('rejects a webhook call without the secret', function () {
@@ -22,6 +24,7 @@ it('accepts an update once and ignores the duplicate', function () {
     $this->postJson('/max/webhook', messageUpdate(1, 'привет'), $headers)->assertOk()->assertJsonPath('duplicate', true);
 
     Queue::assertPushed(ProcessMaxUpdate::class, 1);
+    Queue::assertPushedOn(ProcessMaxUpdate::QUEUE, ProcessMaxUpdate::class);
     $this->assertDatabaseCount('processed_updates', 1);
 });
 
@@ -70,10 +73,48 @@ it('answers a button press to the person who pressed it, not to the bot', functi
     $fake = fakeMax();
 
     runUpdate(messageUpdate(888, '/start'));
-    runUpdate(callbackUpdate(888, 'my'));
+    runUpdate(callbackUpdate(888, 'my', 'cb.1'));
 
-    expect($fake->answered)->toContain('cb.1');
-    expect(end($fake->sent)['mid'])->toBe('mid.bot.cb.1');
-    expect(OutboxMessage::query()->latest('id')->value('target_id'))->toBe(888);
-    expect(lastText($fake))->toContain(botText('my.empty'));
+    $row = OutboxMessage::query()->latest('id')->firstOrFail();
+    expect($fake->answered)->toContain('cb.1')
+        ->and(lastAnswer($fake)['message']['text'] ?? '')->toContain(botText('my.empty'))
+        ->and($row->target_id)->toBe(888)
+        ->and($row->status)->toBe(OutboxStatus::Sent)
+        ->and($row->max_message_id)->toBe('mid.bot.cb.1');
+});
+
+it('does not repeat replies when the same update is processed twice', function () {
+    $this->seed(DatabaseSeeder::class);
+    $fake = fakeMax();
+
+    runUpdate(startUpdate(999));
+    $count = OutboxMessage::query()->count();
+    runUpdate(startUpdate(999));
+
+    expect(OutboxMessage::query()->count())->toBe($count)
+        ->and(count($fake->sent))->toBe($count);
+});
+
+it('does not treat a button press on a deleted message as a started dialog', function () {
+    $this->seed(DatabaseSeeder::class);
+    fakeMax();
+    $update = callbackUpdate(444, 'menu', 'cb.gone');
+    $update['message'] = null;
+
+    runUpdate($update);
+
+    $this->assertDatabaseHas('users', ['max_user_id' => 444, 'bot_started_at' => null]);
+});
+
+it('logs how long an update travelled and how long it was handled', function () {
+    $this->seed(DatabaseSeeder::class);
+    fakeMax();
+    Log::spy();
+
+    runUpdate(startUpdate(1001));
+
+    Log::shouldHaveReceived('info')->withArgs(fn (string $event, array $context = []) => $event === 'bot.latency'
+        && array_key_exists('delivery_ms', $context)
+        && array_key_exists('queue_ms', $context)
+        && $context['handling_ms'] >= 0)->once();
 });
