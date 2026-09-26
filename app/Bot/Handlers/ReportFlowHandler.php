@@ -44,6 +44,11 @@ final class ReportFlowHandler
 
     public function start(User $user, ?int $repeatOfId = null): void
     {
+        if ($user->isStaff()) {
+            $this->ctx->reply($user, 'menu.cabinet');
+
+            return;
+        }
         $draft = new ReportDraft;
         $repeat = $repeatOfId === null ? null : ServiceRequest::query()->where('resident_user_id', $user->id)->find($repeatOfId);
         if ($repeat !== null) {

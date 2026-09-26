@@ -32,14 +32,22 @@ it('returns to the menu by command or by the word and drops the draft', function
     expect(lastText($this->max))->toBe(botText('menu.main'));
 });
 
-it('shows the cabinet menu to staff', function () {
+it('greets staff with the cabinet only and keeps them out of the report flow', function () {
     $organizationId = Organization::query()->where('name', DemoSeeder::ORGANIZATION_NAME)->value('id');
     User::query()->where('max_user_id', 555)->update(['role' => Role::Dispatcher->value, 'organization_id' => $organizationId]);
 
-    runUpdate(callbackUpdate(555, 'menu'));
+    runUpdate([...startUpdate(555, 'h_'.DemoSeeder::HOUSE_QR_TOKEN.'_1'), 'timestamp' => 1758100001000]);
+    expect($this->max->sent)->toHaveCount(1)
+        ->and(lastText($this->max))->toBe(botText('start.staff', ['name' => DemoSeeder::ORGANIZATION_NAME]))
+        ->and(lastButtons($this->max))->toContain((string) config('max.bot_username'));
 
+    runUpdate(callbackUpdate(555, 'menu'));
     expect(lastText($this->max))->toBe(botText('menu.cabinet'))
         ->and(lastButtons($this->max))->toContain((string) config('max.bot_username'));
+
+    runUpdate(callbackUpdate(555, 'report'));
+    expect(lastText($this->max))->toBe(botText('menu.cabinet'))
+        ->and(BotSession::query()->find(555)?->state)->not->toBe(DialogState::AskEmergency);
 });
 
 it('rejects a wrong dispatcher code and refuses the demo reset to residents', function () {

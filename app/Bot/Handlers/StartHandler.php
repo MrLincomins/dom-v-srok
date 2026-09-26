@@ -23,13 +23,27 @@ final class StartHandler
         $this->sessions->reset((int) $user->max_user_id);
         $house = $this->bindHouse($user, $payload);
 
+        if ($user->isStaff()) {
+            $this->greetStaff($user);
+
+            return;
+        }
+
         $this->ctx->reply($user, 'start.greeting');
         if ($house !== null) {
             $this->ctx->reply($user, 'start.house_known', ['address' => $house->address]);
         }
-        if ($user->isStaff()) {
+    }
+
+    private function greetStaff(User $user): void
+    {
+        $organization = $user->organization_id === null ? null : $user->organization;
+        if ($organization === null) {
             $this->ctx->reply($user, 'menu.cabinet');
+
+            return;
         }
+        $this->ctx->reply($user, 'start.staff', ['name' => $organization->name]);
     }
 
     private function bindHouse(User $user, ?string $payload): ?House
