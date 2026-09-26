@@ -33,6 +33,7 @@
         <env name="MAX_BOT_TOKEN" value="test-bot-token"/>
         <env name="MAX_WEBHOOK_SECRET" value="test-webhook-secret"/>
         <env name="MAX_MODE" value="polling"/>
+        <env name="MAX_BOT_USERNAME" value="test_bot"/>
         <env name="DEMO_SEED" value="true"/>
         <env name="SPEC_PATH" value="docs"/>
         <env name="DEMO_ACCOUNTS_ENABLED" value="true"/>
