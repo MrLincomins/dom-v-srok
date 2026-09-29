@@ -28,3 +28,9 @@ it('shows the organisation card to any signed-in user by id', function () {
     app('auth')->forgetGuards();
     $this->withoutToken()->getJson("/api/v1/organizations/{$organization->id}")->assertStatus(401);
 });
+
+it('answers 404 when the organisation number is too long', function () {
+    asToken($this->resident)->getJson('/api/v1/organizations/99999999999999999999')
+        ->assertStatus(404)
+        ->assertJsonPath('error.code', 'not_found');
+});

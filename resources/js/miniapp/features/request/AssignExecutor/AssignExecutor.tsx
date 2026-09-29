@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { CellSimple, Typography } from '@maxhub/max-ui';
 import { listExecutors } from '@/api/organization';
 import { texts } from '@/app/texts';
+import { ErrorState } from '@/components/ErrorState';
+import { InlineLoader } from '@/components/LineLoader';
 import { RequestSection } from '@/components/RequestSection';
 import { MutationError } from '@/features/request/MutationError';
 import type { StaffRequestActionMutations } from '@/features/request/useRequest';
@@ -32,6 +34,14 @@ export function AssignExecutor({
                         subtitle={currentName}
                     />
                 ) : null}
+                {!executors.data && executors.isPending ? <InlineLoader /> : null}
+                {!executors.data && executors.isError ? (
+                    <ErrorState
+                        error={executors.error}
+                        failureCount={executors.failureCount}
+                        onRetry={() => void executors.refetch()}
+                    />
+                ) : null}
                 {(executors.data ?? []).map((executor) => (
                     <CellSimple
                         key={executor.id}
@@ -49,7 +59,7 @@ export function AssignExecutor({
                     {texts.request.assignEmpty}
                 </Typography.Body>
             )}
-            <MutationError error={action.error ?? executors.error} />
+            <MutationError error={action.error} />
         </div>
     );
 }

@@ -11,4 +11,5 @@ return [
     'access_code' => env('DEMO_ACCESS_CODE'),
     'dispatcher_password' => env('DEMO_DISPATCHER_PASSWORD'),
     'resident_password' => env('DEMO_RESIDENT_PASSWORD'),
+    'reset_per_minute' => 10,
 ];

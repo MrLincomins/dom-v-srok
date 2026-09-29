@@ -19,7 +19,7 @@ export function ErrorState({ error, message, failureCount, onRetry, fullscreen =
         >
             <Typography.Title variant="small-strong">{text}</Typography.Title>
             {onRetry && (
-                <Button variant="secondary" size="large" onClick={onRetry}>
+                <Button type="button" variant="secondary" size="large" onClick={onRetry}>
                     {texts.queue.retry}
                 </Button>
             )}

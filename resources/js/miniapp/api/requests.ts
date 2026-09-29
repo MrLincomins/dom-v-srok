@@ -53,39 +53,6 @@ export async function confirmRequest(id: number, resolved: boolean, comment?: st
         .data;
 }
 
-export async function createRequest(body: {
-    category_id: number;
-    description: string;
-    entrance?: number | null;
-    flat?: string | null;
-    unsure?: boolean;
-    photos?: File[];
-}): Promise<RequestCard> {
-    const photos = body.photos ?? [];
-    if (photos.length > 0) {
-        const formData = new FormData();
-        formData.set('category_id', String(body.category_id));
-        formData.set('description', body.description);
-        if (body.entrance != null) formData.set('entrance', String(body.entrance));
-        if (body.flat) formData.set('flat', body.flat);
-        if (body.unsure) formData.set('unsure', '1');
-        photos.forEach((photo) => formData.append('photos[]', photo));
-        return (await api<{ data: RequestCard }>('/requests', { formData })).data;
-    }
-
-    return (
-        await api<{ data: RequestCard }>('/requests', {
-            body: {
-                category_id: body.category_id,
-                description: body.description,
-                entrance: body.entrance,
-                flat: body.flat,
-                unsure: body.unsure,
-            },
-        })
-    ).data;
-}
-
 export function myRequests(page: number, signal?: AbortSignal): Promise<Paginated<RequestListItem>> {
     return api<Paginated<RequestListItem>>('/my/requests', {
         query: { page },

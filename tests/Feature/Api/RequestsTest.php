@@ -46,6 +46,31 @@ it('shows only overdue requests when asked', function () {
         ->assertJsonPath('data.0.is_overdue', true);
 });
 
+it('accepts true and false for the overdue filter as the contract says', function () {
+    asToken($this->dispatcher)->getJson('/api/v1/requests?overdue=true')
+        ->assertValidRequest()->assertValidResponse(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.is_overdue', true);
+
+    asToken($this->dispatcher)->getJson('/api/v1/requests?overdue=false')
+        ->assertValidRequest()->assertValidResponse(200)
+        ->assertJsonCount(8, 'data');
+
+    asToken($this->dispatcher)->getJson('/api/v1/requests?overdue=maybe')
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'validation_failed');
+});
+
+it('answers 404 when the request number is not a number or is too long', function (string $id) {
+    asToken($this->dispatcher)->getJson("/api/v1/requests/{$id}")
+        ->assertStatus(404)
+        ->assertJsonPath('error.code', 'not_found');
+
+    asToken($this->dispatcher)->patchJson("/api/v1/requests/{$id}/status", ['status' => 'in_progress'])
+        ->assertStatus(404)
+        ->assertJsonPath('error.code', 'not_found');
+})->with(['abc', '99999999999999999999', '1.5']);
+
 it('forbids the queue for a resident', function () {
     asToken($this->resident)->getJson('/api/v1/requests')
         ->assertStatus(403)
@@ -311,6 +336,36 @@ it('treats percent and underscore in the search as plain characters', function (
         ->assertJsonCount(0, 'data');
 });
 
+it('searches the queue by category, executor and word forms regardless of case', function () {
+    $light = demoRequestId('entrance.light');
+    $roof = demoRequestId('roof.leak');
+    $intercom = demoRequestId('intercom.broken');
+
+    expect(queueSearchIds($this->dispatcher, 'подъезд'))->toContain($light)
+        ->and(queueSearchIds($this->dispatcher, 'иванов'))->toEqualCanonicalizing([demoRequestId('water.leak'), demoRequestId('entrance.door')])
+        ->and(queueSearchIds($this->dispatcher, 'кровля'))->toBe([$roof])
+        ->and(queueSearchIds($this->dispatcher, 'ДОМОФОН'))->toContain($intercom)
+        ->and(queueSearchIds($this->dispatcher, 'Мира'))->toBe([]);
+});
+
+it('treats a lone number as a request number or a flat', function () {
+    $roof = demoRequestId('roof.leak');
+    $flat = uniqueFlat($roof);
+
+    expect(queueSearchIds($this->dispatcher, "№{$roof}")[0])->toBe($roof)
+        ->and(queueSearchIds($this->dispatcher, "кв {$flat}"))->toBe([$roof])
+        ->and(queueSearchIds($this->dispatcher, 'кв. 45'))->toContain(demoRequestId('entrance.light'));
+});
+
+it('requires every word of the query to match', function () {
+    $roof = demoRequestId('roof.leak');
+    $flat = uniqueFlat($roof);
+
+    expect(queueSearchIds($this->dispatcher, 'Демонстрационная 1'))->toHaveCount(8)
+        ->and(queueSearchIds($this->dispatcher, "Демонстрационная, д. 1, кв. {$flat}"))->toBe([$roof])
+        ->and(queueSearchIds($this->dispatcher, 'кровля домофон'))->toBe([]);
+});
+
 it('lets the author rate a confirmed request', function () {
     $confirmed = ServiceRequest::query()->where('status', 'confirmed')->whereHas('resident', fn ($q) => $q->where('login', 'demo_resident'))->firstOrFail();
 
@@ -369,3 +424,25 @@ it('offers each viewer only the transitions they may make', function () {
     asToken($this->dispatcher)->getJson("/api/v1/requests/{$new->id}")
         ->assertJsonPath('data.allowed_transitions', ['assigned', 'in_progress', 'done', 'redirected']);
 });
+
+function demoRequestId(string $categorySlug): int
+{
+    return (int) ServiceRequest::query()->whereHas('category', fn ($q) => $q->where('slug', $categorySlug))->value('id');
+}
+
+function uniqueFlat(int $requestId): string
+{
+    $flat = (string) ((int) ServiceRequest::query()->max('id') + 1000);
+    ServiceRequest::query()->whereKey($requestId)->update(['flat' => $flat]);
+
+    return $flat;
+}
+
+/** @return list<int> */
+function queueSearchIds(string $token, string $query): array
+{
+    return array_map('intval', array_column(
+        asToken($token)->getJson('/api/v1/requests?per_page=100&q='.urlencode($query))->assertValidResponse(200)->json('data'),
+        'id',
+    ));
+}

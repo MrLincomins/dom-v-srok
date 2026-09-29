@@ -96,7 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Кто отвечает и в какой срок по закону, без создания заявки; сроки от текущего момента в зоне региона */
+        /** Кто отвечает и в какой срок по нормативу, без создания заявки; сроки от текущего момента в зоне региона */
         get: operations["lookupResponsible"];
         put?: never;
         post?: never;
@@ -534,7 +534,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сброс демо-данных (только сотрудник демо-организации) */
+        /**
+         * Сброс демо-данных (только сотрудник демо-организации)
+         * @description Возвращает демо-организацию к исходным восьми заявкам. Не чаще десяти раз в минуту на пользователя, иначе 429.
+         */
         post: operations["demoReset"];
         delete?: never;
         options?: never;
@@ -627,7 +630,7 @@ export interface components {
             deadline_reply?: components["schemas"]["Deadline"] | null;
             basis?: string | null;
             advice?: string | null;
-            /** @description строка справочника помечена «сверить с первоисточником» */
+            /** @description служебный флаг сверки строки справочника; после сверки 26.09.2026 у всех строк false */
             verify: boolean;
             children?: components["schemas"]["Category"][];
         };
@@ -1220,6 +1223,7 @@ export interface operations {
                 status?: "open" | "active" | "closed" | "new" | "assigned" | "in_progress" | "done" | "confirmed" | "returned" | "redirected";
                 overdue?: boolean;
                 house_id?: number;
+                /** @description Поиск по словам, каждое слово должно совпасть. Одно число — номер заявки (она первой) или квартира; «№», «кв», «д», «ул» отбрасываются. Слово ищется без учёта регистра и окончания в описании, категории, адресе, мастере, ответственном и переадресации; число среди других слов — ещё и подъезд и номер дома */
                 q?: string;
                 page?: number;
                 per_page?: number;

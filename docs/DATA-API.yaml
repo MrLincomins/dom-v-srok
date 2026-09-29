@@ -1,155 +1,439 @@
 # Проверки API для платформы оценки
 schema_version: "1.0"
 solution: "Дом в срок"
-team: "<идентификатор команды>"
-base_url: "https://<домен>/api/v1"
+base_url: "https://chistoskaefom.ru/api/v1"
 openapi: docs/openapi.yaml
+
+execution:
+  order: sequential
+  setup_check: demo-reset
+  content_type_match: media_type
+  templates:
+    syntax: "{{путь}}"
+    resolve_from: document_root
+    runtime:
+      token: "data.token из ответа auth.token_request для роли проверки"
+      account: "auth.accounts.<роль проверки>"
+  rate_limits_per_minute:
+    demo_reset_per_user: 10
+    auth_login_per_ip: 30
+    api_per_user: 120
 
 auth:
   type: bearer
-  login:
+  header: Authorization
+  value: "Bearer {{token}}"
+  token_request:
     method: POST
     path: /auth/login
+    headers: { Accept: application/json, Content-Type: application/json }
     body: { login: "{{account.login}}", password: "{{account.password}}" }
     token_path: data.token
+    token_ttl_minutes: 720
   accounts:
-    dispatcher: { login: demo_dispatcher, password: "<DEMO_DISPATCHER_PASSWORD со служебного слайда>" }
-    resident: { login: demo_resident, password: "<DEMO_RESIDENT_PASSWORD со служебного слайда>" }
+    dispatcher:
+      login: demo_dispatcher
+      password: "<DEMO_DISPATCHER_PASSWORD со служебного слайда>"
+      description: "Диспетчер демо-организации «ТСЖ «Демо»»: очередь, карточка заявки, организация, журнал"
+    resident:
+      login: demo_resident
+      password: "<DEMO_RESIDENT_PASSWORD со служебного слайда>"
+      description: "Житель демо-дома, автор заявок 1–8"
+  admin_required: false
 
 test_data:
-  reset: { method: POST, path: /demo/reset, role: dispatcher }
-  request_new_id: 1          # заявка в статусе «Принято»
-  request_done_id: 6         # заявка «Выполнено», ждёт подтверждения
-  request_confirmed_id: 7    # терминальный статус для проверки 409
-  organization_id: 1         # демо-организация «ТСЖ «Демо»»
+  format: seeder
+  source: database/seeders/DemoSeeder.php
+  reset: { method: POST, path: /demo/reset, role: dispatcher, also: "каждую ночь в 04:00 UTC" }
+  organization_id: 1
+  house: { qr_token: demohouse001, entrances: 3, address: "Казань, ул. Демонстрационная, д. 1" }
+  executors: ["Сантехник Иванов", "Электрик Петров"]
+  contractors:
+    - { type: intercom, name: "ООО «Домофон-Сервис»" }
+  request_new_id: 1
+  request_card_id: 3
+  request_done_id: 6
+  request_confirmed_id: 7
+  requests:
+    - { id: 1, category: "Не горит свет в подъезде", status: new }
+    - { id: 2, category: "Не работает домофон", status: new, responsible: "ТСЖ «Демо» → ООО «Домофон-Сервис»" }
+    - { id: 3, category: "Капает труба или стояк в подвале (не авария)", status: assigned, executor: "Сантехник Иванов" }
+    - { id: 4, category: "Нет света на этаже, в подвале, у лифта", status: in_progress, executor: "Электрик Петров" }
+    - { id: 5, category: "Протечка кровли", status: new, is_overdue: true }
+    - { id: 6, category: "Входная дверь, доводчик, разбитое стекло", status: done }
+    - { id: 7, category: "Капает батарея или труба отопления (не авария)", status: confirmed }
+    - { id: 8, category: "Не вывезли мусор с площадки", status: redirected }
+  counters_after_reset: { new: 3, in_progress: 3, overdue: 1, closed: 2 }
+  journal_summary_after_reset: { total: 8, overdue: 1, redirected: 1 }
+
+required_checks:
+  - demo-reset
+  - auth-login
+  - unauthenticated
+  - me
+  - catalog
+  - queue-open
+  - queue-overdue
+  - queue-forbidden-for-resident
+  - request-card
+  - request-validation-error
+  - request-take-in-progress
+  - request-invalid-transition
+  - resident-confirm
+  - my-requests
+  - journal
+  - journal-csv
 
 checks:
   - id: demo-reset
+    required: true
+    title: Сброс демо-данных к восьми исходным заявкам
+    openapi_operation: demoReset
     method: POST
     path: /demo/reset
     role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.ok] }
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/paths/~1demo~1reset/post/responses/200/content/application~1json/schema"
+      required: [data.ok]
+      equals: { data.ok: true }
 
   - id: auth-login
+    required: true
+    title: Вход тестовой учётной записи диспетчера
+    openapi_operation: authLogin
     method: POST
     path: /auth/login
     role: none
-    body: { login: "{{accounts.dispatcher.login}}", password: "{{accounts.dispatcher.password}}" }
-    expect: { status: [200], content_type: application/json, required: [data.token, data.user.role] }
+    params:
+      headers: { Accept: application/json, Content-Type: application/json }
+      body: { login: "{{auth.accounts.dispatcher.login}}", password: "{{auth.accounts.dispatcher.password}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/paths/~1auth~1login/post/responses/200/content/application~1json/schema"
+      required: [data.token, data.expires_at, data.user.id, data.user.role]
+      equals: { data.user.role: dispatcher }
+
+  - id: unauthenticated
+    required: true
+    title: Запрос без токена отклоняется
+    openapi_operation: me
+    method: GET
+    path: /me
+    role: none
+    params:
+      headers: { Accept: application/json }
+    expect:
+      status: [401]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ErrorResponse"
+      required: [error.code, error.message]
+      equals: { error.code: unauthenticated }
 
   - id: me
+    required: true
+    title: Профиль диспетчера с организацией
+    openapi_operation: me
     method: GET
     path: /me
     role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.id, data.role, data.organization.name] }
-
-  - id: organization
-    method: GET
-    path: /organization
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.name, data.phone_ads, data.direct_contracts] }
-
-  - id: executors
-    method: GET
-    path: /organization/executors
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.0.id, data.0.name] }
-
-  - id: contractors
-    method: GET
-    path: /organization/contractors
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.0.type, data.0.name] }
-
-  - id: houses
-    method: GET
-    path: /organization/houses
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.0.qr_token, data.0.start_url, data.0.qr_url] }
-
-  - id: organization-card
-    method: GET
-    path: /organizations/{{test_data.organization_id}}
-    role: resident
-    expect: { status: [200], content_type: application/json, required: [data.name, data.phone_ads] }
-
-  - id: journal
-    method: GET
-    path: /journal
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data, meta.period.from, meta.summary.total, meta.summary.overdue] }
-
-  - id: journal-csv
-    method: GET
-    path: /journal.csv
-    role: dispatcher
-    expect: { status: [200], content_type: text/csv }
-
-  - id: journal-csv-link
-    method: GET
-    path: /journal/csv-link
-    role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.url, data.expires_at] }
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/paths/~1me/get/responses/200/content/application~1json/schema"
+      required: [data.id, data.role, data.organization.name]
+      equals: { data.role: dispatcher }
 
   - id: catalog
+    required: true
+    title: Справочник категорий заявок со сроками и основаниями
+    openapi_operation: listCategories
     method: GET
     path: /catalog/categories
     role: none
-    expect: { status: [200], content_type: application/json, required: [data] }
+    params:
+      headers: { Accept: application/json }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/paths/~1catalog~1categories/get/responses/200/content/application~1json/schema"
+      required: [data.0.id, data.0.name, data.0.children]
 
   - id: queue-open
+    required: true
+    title: Очередь открытых заявок со счётчиками вкладок
+    openapi_operation: listRequests
     method: GET
-    path: /requests?status=open
+    path: /requests
     role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data, meta.total, meta.counters.overdue] }
+    params:
+      query: { status: open }
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestListResponse"
+      required: [data.0.id, data.0.status, data.0.deadline_fix_at, meta.total, meta.counters.new, meta.counters.overdue]
 
   - id: queue-overdue
+    required: true
+    title: Фильтр просроченных заявок
+    openapi_operation: listRequests
     method: GET
-    path: /requests?overdue=1
+    path: /requests
     role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.0.is_overdue] }
+    params:
+      query: { overdue: "1" }
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestListResponse"
+      required: [data.0.id, data.0.is_overdue]
+      equals: { data.0.is_overdue: true }
 
   - id: queue-forbidden-for-resident
+    required: true
+    title: Житель не видит очередь организации
+    openapi_operation: listRequests
     method: GET
     path: /requests
     role: resident
-    expect: { status: [403], content_type: application/json, required: [error.code] }
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [403]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ErrorResponse"
+      required: [error.code, error.message]
+      equals: { error.code: forbidden }
 
   - id: request-card
+    required: true
+    title: Карточка заявки с ответственным, сроком, основанием и лентой событий
+    openapi_operation: getRequest
     method: GET
-    path: /requests/{{test_data.request_new_id}}
+    path: /requests/{id}
     role: dispatcher
-    expect: { status: [200], content_type: application/json, required: [data.id, data.status, data.responsible.name, data.basis, data.events] }
+    params:
+      path: { id: "{{test_data.request_card_id}}" }
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestCardResponse"
+      required: [data.id, data.status, data.responsible.name, data.deadline_fix_at, data.basis, data.events]
+      equals: { data.status: assigned }
+
+  - id: request-validation-error
+    required: true
+    title: Неизвестный статус отклоняется с описанием поля
+    openapi_operation: changeStatus
+    method: PATCH
+    path: /requests/{id}/status
+    role: dispatcher
+    params:
+      path: { id: "{{test_data.request_new_id}}" }
+      headers: { Accept: application/json, Content-Type: application/json, Authorization: "Bearer {{token}}" }
+      body: { status: unknown }
+    expect:
+      status: [422]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ErrorResponse"
+      required: [error.code, error.details.fields.status]
+      equals: { error.code: validation_failed }
 
   - id: request-take-in-progress
+    required: true
+    title: Диспетчер берёт новую заявку в работу
+    openapi_operation: changeStatus
     method: PATCH
-    path: /requests/{{test_data.request_new_id}}/status
+    path: /requests/{id}/status
     role: dispatcher
-    body: { status: in_progress, comment: "Проверка" }
-    expect: { status: [200], content_type: application/json, required: [data.status] }
+    params:
+      path: { id: "{{test_data.request_new_id}}" }
+      headers: { Accept: application/json, Content-Type: application/json, Authorization: "Bearer {{token}}" }
+      body: { status: in_progress, comment: "Проверка" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestCardResponse"
+      required: [data.id, data.status, data.events]
+      equals: { data.status: in_progress }
 
   - id: request-invalid-transition
+    required: true
+    title: Подтверждённую заявку нельзя вернуть в работу
+    openapi_operation: changeStatus
     method: PATCH
-    path: /requests/{{test_data.request_confirmed_id}}/status
+    path: /requests/{id}/status
     role: dispatcher
-    body: { status: in_progress }
-    expect: { status: [409], content_type: application/json, required: [error.code] }
+    params:
+      path: { id: "{{test_data.request_confirmed_id}}" }
+      headers: { Accept: application/json, Content-Type: application/json, Authorization: "Bearer {{token}}" }
+      body: { status: in_progress }
+    expect:
+      status: [409]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ErrorResponse"
+      required: [error.code, error.message]
+      equals: { error.code: invalid_transition }
 
   - id: resident-confirm
+    required: true
+    title: Житель подтверждает выполненную заявку
+    openapi_operation: confirmRequest
     method: POST
-    path: /requests/{{test_data.request_done_id}}/confirm
+    path: /requests/{id}/confirm
     role: resident
-    body: { resolved: true }
-    expect: { status: [200], content_type: application/json, required: [data.status, data.confirmed_by] }
+    params:
+      path: { id: "{{test_data.request_done_id}}" }
+      headers: { Accept: application/json, Content-Type: application/json, Authorization: "Bearer {{token}}" }
+      body: { resolved: true }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestCardResponse"
+      required: [data.status, data.confirmed_by]
+      equals: { data.status: confirmed }
 
   - id: my-requests
+    required: true
+    title: Заявки жителя
+    openapi_operation: myRequests
     method: GET
     path: /my/requests
     role: resident
-    expect: { status: [200], content_type: application/json, required: [data] }
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/RequestListResponse"
+      required: [data.0.id, data.0.status, meta.total]
 
-  - id: unauthenticated
+  - id: journal
+    required: true
+    title: Журнал учёта заявок за текущий месяц со сводкой
+    openapi_operation: journal
     method: GET
-    path: /me
-    role: none
-    expect: { status: [401], content_type: application/json, required: [error.code] }
+    path: /journal
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/JournalResponse"
+      required: [data, meta.period.from, meta.period.to, meta.summary.total, meta.summary.overdue]
+
+  - id: journal-csv
+    required: true
+    title: Выгрузка журнала в CSV
+    openapi_operation: journalCsv
+    method: GET
+    path: /journal.csv
+    role: dispatcher
+    params:
+      headers: { Accept: text/csv, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: text/csv
+      header_contains: { Content-Disposition: "zhurnal-zayavok-" }
+
+  - id: journal-csv-link
+    required: false
+    title: Подписанная ссылка на CSV журнала на 3 минуты
+    openapi_operation: journalCsvLink
+    method: GET
+    path: /journal/csv-link
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/paths/~1journal~1csv-link/get/responses/200/content/application~1json/schema"
+      required: [data.url, data.expires_at]
+
+  - id: organization
+    required: false
+    title: Организация диспетчера с контактами и прямыми договорами
+    openapi_operation: getOrganization
+    method: GET
+    path: /organization
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/OrganizationResponse"
+      required: [data.id, data.name, data.phone_ads, data.direct_contracts]
+
+  - id: executors
+    required: false
+    title: Мастера организации
+    openapi_operation: listExecutors
+    method: GET
+    path: /organization/executors
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ExecutorListResponse"
+      required: [data.0.id, data.0.name]
+
+  - id: contractors
+    required: false
+    title: Подрядчики организации
+    openapi_operation: listContractors
+    method: GET
+    path: /organization/contractors
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/ContractorListResponse"
+      required: [data.0.type, data.0.name]
+
+  - id: houses
+    required: false
+    title: Дома организации со ссылкой и QR для жителей
+    openapi_operation: listHouses
+    method: GET
+    path: /organization/houses
+    role: dispatcher
+    params:
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/HouseListResponse"
+      required: [data.0.qr_token, data.0.start_url, data.0.qr_url]
+
+  - id: organization-card
+    required: false
+    title: Контакты организации для жителя
+    openapi_operation: getOrganizationCard
+    method: GET
+    path: /organizations/{id}
+    role: resident
+    params:
+      path: { id: "{{test_data.organization_id}}" }
+      headers: { Accept: application/json, Authorization: "Bearer {{token}}" }
+    expect:
+      status: [200]
+      content_type: application/json
+      schema: "docs/openapi.yaml#/components/schemas/OrganizationResponse"
+      required: [data.name, data.phone_ads]

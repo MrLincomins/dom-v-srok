@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@maxhub/max-ui';
 import { useAuth } from '@/app/authContext';
@@ -10,7 +10,13 @@ import { RequestRow } from '@/components/RequestRow';
 import { Screen } from '@/components/Screen';
 import { QueueSearch } from '@/features/queue/QueueSearch';
 import { QueueTabs } from '@/features/queue/QueueTabs';
-import { countersForSearch, useQueue, useQueueSearchTotals, type QueueTab } from '@/features/queue/useQueue';
+import {
+    QUEUE_TABS,
+    countersForSearch,
+    useQueue,
+    useQueueSearchTotals,
+    type QueueTab,
+} from '@/features/queue/useQueue';
 
 export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const navigate = useNavigate();
@@ -18,13 +24,26 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const tab = isQueueTab(requestedTab) ? requestedTab : 'new';
-    const [search, setSearch] = useState('');
+    const search = searchParams.get('q')?.trim() ?? '';
     const setTab = useCallback(
         (nextTab: QueueTab) => {
             setSearchParams(
                 (current) => {
                     if (nextTab === 'new') current.delete('tab');
                     else current.set('tab', nextTab);
+                    return current;
+                },
+                { replace: true },
+            );
+        },
+        [setSearchParams],
+    );
+    const setSearch = useCallback(
+        (value: string) => {
+            setSearchParams(
+                (current) => {
+                    if (value === '') current.delete('q');
+                    else current.set('q', value);
                     return current;
                 },
                 { replace: true },
@@ -39,6 +58,8 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
     const searchTotals = useQueueSearchTotals(search, tab, pages?.[0]?.meta.total);
     const counters = countersForSearch(pages?.[0]?.meta.counters, search, searchTotals);
     const ready = Boolean(queue.data) && !queue.isPlaceholderData;
+    const foundElsewhere =
+        search === '' ? undefined : QUEUE_TABS.find((other) => other !== tab && (counters?.[other] ?? 0) > 0);
 
     if (queue.isPending && !queue.data) {
         return <FullscreenSpinner />;
@@ -63,7 +84,7 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
             }
         >
             <QueueTabs tab={tab} counters={counters} onChange={setTab} />
-            <QueueSearch onSearch={setSearch} />
+            <QueueSearch value={search} onSearch={setSearch} />
 
             <div
                 id="queue-panel"
@@ -78,8 +99,20 @@ export function QueuePage({ backTo }: { backTo?: string } = {}) {
                         onRetry={() => void queue.refetch()}
                     />
                 )}
-                {ready && items.length === 0 && !queue.isError && (
+                {ready && items.length === 0 && !queue.isError && search === '' && (
                     <EmptyState text={texts.queue.empty[tab]} />
+                )}
+                {ready && items.length === 0 && !queue.isError && search !== '' && (
+                    <EmptyState
+                        text={texts.queue.searchEmpty(search)}
+                        action={
+                            foundElsewhere ? (
+                                <Button variant="secondary" size="medium" onClick={() => setTab(foundElsewhere)}>
+                                    {texts.queue.searchElsewhere(texts.queue.tabs[foundElsewhere])}
+                                </Button>
+                            ) : undefined
+                        }
+                    />
                 )}
                 <div className={`request-list${queue.isPlaceholderData ? ' is-updating' : ''}`}>
                     {items.map((item) => (

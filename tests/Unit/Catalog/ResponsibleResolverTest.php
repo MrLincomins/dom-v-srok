@@ -36,22 +36,28 @@ it('sends house categories to the organization', function () {
 });
 
 it('keeps a resource category with the organization when there is no direct contract', function () {
+    $this->house->organization->update(['direct_cold_water' => false]);
+
     $r = $this->resolver->resolve(resolverCategory('water.cold_none'), $this->house);
 
     expect($r->kind)->toBe(ResponsibleKind::Organization)
         ->and($r->isSure)->toBeFalse()
-        ->and($r->hint)->toContain('Водоканал');
+        ->and($r->hint)->toContain('Водоканал')
+        ->and($r->hint)->toContain('+7 843 231-62-60');
 });
 
-it('sends a resource category to the supplier when the organization has a direct contract', function () {
-    $this->house->organization->update(['direct_cold_water' => true]);
+it('sends cold water in the demo house to the water utility under the seeded direct contract', function () {
+    expect($this->house->organization->direct_cold_water)->toBeTrue();
 
     $r = $this->resolver->resolve(resolverCategory('water.cold_none'), $this->house);
 
     expect($r->kind)->toBe(ResponsibleKind::Party)
-        ->and($r->name)->toContain('Водоканал')
+        ->and($r->name)->toBe('МУП «Водоканал» г. Казани')
+        ->and($r->phone)->toBe('+7 843 231-62-60')
         ->and($r->isSure)->toBeFalse()
-        ->and($r->partyId)->not->toBeNull();
+        ->and($r->partyId)->not->toBeNull()
+        ->and($r->hint)->toContain('прямой договор')
+        ->and($r->hint)->not->toContain('Телефон уточните');
 });
 
 it('prefers the organization contractor for the intercom', function () {
@@ -80,9 +86,9 @@ it('sends waste removal to the regional operator under a direct contract', funct
 
     expect($r->kind)->toBe(ResponsibleKind::Party)
         ->and($r->name)->toContain('ПЖКХ')
-        ->and($r->phone)->toBeNull()
+        ->and($r->phone)->toBe('+7 843 260-02-40')
         ->and($r->isSure)->toBeTrue()
-        ->and($r->hint)->toContain('Телефон уточните в организации дома: +7 843 000-00-01');
+        ->and($r->hint)->not->toContain('Телефон уточните');
 });
 
 it('prefers the organization waste contractor without a direct contract', function () {
@@ -100,6 +106,7 @@ it('prefers the organization waste contractor without a direct contract', functi
 
 it('shows the party type instead of a name that still needs checking', function () {
     $this->house->organization->update(['direct_hot_water' => true]);
+    ResponsibleParty::query()->where('type', ResponsibleType::RsoHot->value)->update(['name' => 'Поставщик горячей воды — уточнить']);
 
     $r = $this->resolver->resolve(resolverCategory('water.hot_none'), $this->house);
 
@@ -107,6 +114,16 @@ it('shows the party type instead of a name that still needs checking', function 
         ->and($r->name)->toBe(ResponsibleType::RsoHot->label())
         ->and($r->phone)->toBeNull()
         ->and($r->hint)->toContain('Телефон уточните в организации дома: +7 843 000-00-01');
+});
+
+it('shows the heat supplier name from the regional package as is', function () {
+    $this->house->organization->update(['direct_hot_water' => true]);
+
+    $r = $this->resolver->resolve(resolverCategory('water.hot_none'), $this->house);
+
+    expect($r->kind)->toBe(ResponsibleKind::Party)
+        ->and($r->name)->toBe('Теплоснабжающая организация по дому (Татэнерго или Казэнерго)')
+        ->and($r->phone)->toBeNull();
 });
 
 it('keeps a direct contract request with the organization when the package has no supplier', function () {
@@ -134,9 +151,9 @@ it('sends yard problems to the municipal party', function () {
 
     expect($r->kind)->toBe(ResponsibleKind::Party)
         ->and($r->name)->toContain('Открытая Казань')
-        ->and($r->phone)->toBeNull()
+        ->and($r->phone)->toBe('+7 843 236-41-23')
         ->and($r->isSure)->toBeTrue()
-        ->and($r->hint)->toContain('Телефон уточните в организации дома: +7 843 000-00-01');
+        ->and($r->hint)->not->toContain('Телефон уточните');
 });
 
 it('answers an emergency with the organization emergency phone', function () {

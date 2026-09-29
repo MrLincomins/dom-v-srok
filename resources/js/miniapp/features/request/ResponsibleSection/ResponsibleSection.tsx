@@ -3,15 +3,12 @@ import { CellList, CellSimple } from '@maxhub/max-ui';
 import type { RequestCard } from '@/api/types';
 import { texts } from '@/app/texts';
 import { formatDateTime } from '@/lib/dates';
+import { describeRedirect } from './ResponsibleSection.model';
 
 export function ResponsibleSection({ card }: { card: RequestCard }) {
     const [open, setOpen] = useState(false);
     const responsible = `${card.responsible.name}${card.responsible.phone ? ` · ${card.responsible.phone}` : ''}`;
-    const redirected = card.redirected_to
-        ? [card.redirected_to.party?.name, card.redirected_to.party?.phone, card.redirected_to.note]
-              .filter(Boolean)
-              .join(' · ')
-        : null;
+    const redirected = describeRedirect(card.redirected_to);
     const preview = [card.responsible.name, formatDateTime(card.deadline_fix_at)].filter(Boolean).join(' · ');
 
     return (

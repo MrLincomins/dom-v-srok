@@ -29,7 +29,7 @@ class ResponsiblePartiesSeeder extends Seeder
                     'url' => CsvReader::strOrNull($row['url'] ?? null),
                     'note' => CsvReader::strOrNull($row['note'] ?? null),
                     'source' => 'manual',
-                    'source_date' => '2026-09-17',
+                    'source_date' => '2026-09-26',
                 ],
             );
         }

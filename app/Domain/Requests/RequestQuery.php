@@ -37,17 +37,11 @@ final class RequestQuery
         if ($houseId !== null) {
             $q->where('house_id', $houseId);
         }
-        if ($search !== null && trim($search) !== '') {
-            $term = trim($search);
-            $like = '%'.addcslashes($term, '%_\\').'%';
-            $q->where(function (Builder $w) use ($term, $like): void {
-                if (ctype_digit($term)) {
-                    $w->orWhere('id', (int) $term);
-                }
-                $w->orWhere('flat', $term)
-                    ->orWhere('description', 'ilike', $like)
-                    ->orWhereHas('house', fn (Builder $h) => $h->where('address', 'ilike', $like));
-            });
+        $queueSearch = new QueueSearch($search ?? '');
+        $queueSearch->apply($q);
+        $number = $queueSearch->requestNumber();
+        if ($number !== null) {
+            $q->orderByRaw('(id = ?) DESC', [$number]);
         }
 
         return $q->orderByRaw('deadline_fix_at ASC NULLS LAST')->orderBy('created_at');

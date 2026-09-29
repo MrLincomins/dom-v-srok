@@ -37,7 +37,7 @@ describe('очистка полей', () => {
 
     it('показывает крестик в PhoneField, когда есть цифры', () => {
         const onChange = vi.fn();
-        render(<PhoneField label="Телефон" value="9172472389" onChange={onChange} />);
+        render(<PhoneField label="Телефон" value="9000000013" onChange={onChange} />);
         fireEvent.focus(screen.getByLabelText('Телефон'));
         fireEvent.click(screen.getByRole('button', { name: 'Очистить' }));
         expect(onChange).toHaveBeenCalledWith('');

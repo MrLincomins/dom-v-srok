@@ -23,3 +23,8 @@ export function describeLoginError(error: unknown): string {
     }
     return describeError(error);
 }
+
+export function describeSessionError(error: unknown): string {
+    if (error instanceof ApiError && error.isNetwork) return texts.errors.network;
+    return texts.auth.failed;
+}

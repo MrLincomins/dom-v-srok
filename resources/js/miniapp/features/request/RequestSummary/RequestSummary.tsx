@@ -3,9 +3,16 @@ import type { RequestCard, RequestEvent } from '@/api/types';
 import { texts } from '@/app/texts';
 import { RequestSection } from '@/components/RequestSection';
 import { eventComment } from '@/features/request/EventTimeline/EventTimeline.model';
+import { describeRedirect } from '@/features/request/ResponsibleSection/ResponsibleSection.model';
 import { withoutMarks } from '@/lib/address';
 import { describeDeadline } from '@/lib/deadline';
-import { statusExplain, statusTone, type StatusAudience, type StatusTone } from '@/lib/status';
+import {
+    deadlineRuns,
+    statusExplain,
+    statusTone,
+    type StatusAudience,
+    type StatusTone,
+} from '@/lib/status';
 
 const TONE_TEXT: Record<StatusTone, string> = {
     accepted: 'text-accepted-blue',
@@ -17,9 +24,9 @@ const TONE_TEXT: Record<StatusTone, string> = {
 };
 
 export function RequestSummary({ card, audience }: { card: RequestCard; audience: StatusAudience }) {
-    const closed = card.status === 'confirmed' || card.status === 'redirected';
-    const deadline = closed ? null : describeDeadline(card.deadline_fix_at);
+    const deadline = deadlineRuns(card.status) ? describeDeadline(card.deadline_fix_at) : null;
     const tone = statusTone(card.status, card.is_overdue);
+    const redirected = card.status === 'redirected' ? describeRedirect(card.redirected_to) : null;
     const place = [
         withoutMarks(card.house.address),
         card.entrance ? `подъезд ${card.entrance}` : null,
@@ -47,6 +54,7 @@ export function RequestSummary({ card, audience }: { card: RequestCard; audience
                 subtitle={[card.category.name, card.description].filter(Boolean).join('. ')}
             />
             <CellSimple title={texts.request.where} subtitle={place} />
+            {redirected && <CellSimple title={texts.request.redirected} subtitle={redirected} />}
             {card.returned_count > 0 && (
                 <CellSimple
                     title={texts.request.returnedBadge}

@@ -70,7 +70,7 @@ it('files a request in four steps: emergency question, category, details, addres
     expect(lastText($this->max))->toContain('Проверьте заявку:')
         ->toContain('Что: Не горит свет в подъезде: На третьем этаже не горит свет, подъезд 2')
         ->toContain('Кто отвечает: '.DemoSeeder::ORGANIZATION_NAME)
-        ->toContain('Срок: до ')
+        ->toContain('Срок: ')->toContain(', до ')
         ->and(flowState())->toBe(DialogState::Preview);
 
     runUpdate(callbackUpdate(555, 'send'));

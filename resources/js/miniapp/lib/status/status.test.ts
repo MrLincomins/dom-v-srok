@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { staffPrimaryAction, statusExplain, statusTone } from './status';
+import { deadlineRuns, staffPrimaryAction, statusExplain, statusTone } from './status';
 
 describe('status helpers', () => {
     it('просрочка не красит заявку, которую вернули в работу', () => {
@@ -19,6 +19,14 @@ describe('status helpers', () => {
     it('зелёный только после подтверждения, серый после передачи', () => {
         expect(statusTone('confirmed', false)).toBe('done');
         expect(statusTone('redirected', true)).toBe('muted');
+    });
+
+    it('останавливает срок, когда работу сделали', () => {
+        expect(deadlineRuns('in_progress')).toBe(true);
+        expect(deadlineRuns('returned')).toBe(true);
+        expect(deadlineRuns('done')).toBe(false);
+        expect(deadlineRuns('confirmed')).toBe(false);
+        expect(deadlineRuns('redirected')).toBe(false);
     });
 
     it('пишет сводку по роли', () => {

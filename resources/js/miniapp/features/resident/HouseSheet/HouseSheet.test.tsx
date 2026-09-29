@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthState } from '@/app/authContext';
 import type { User } from '@/api/types';
-import { HousePage } from '@/features/resident/HousePage';
+import { HouseSheet } from './HouseSheet';
 
 const user: User = {
     id: 2,
@@ -44,11 +44,12 @@ const user: User = {
     },
 };
 
-describe('дом жителя', () => {
+describe('карточка «Вы» у жителя', () => {
     it('показывает адрес, телефоны и организацию', () => {
         renderHouse();
 
-        expect(screen.getByRole('heading', { name: 'Дом' })).toBeInTheDocument();
+        expect(screen.getByRole('dialog', { name: 'Вы' })).toBeInTheDocument();
+        expect(screen.getByText('Житель Демо')).toBeInTheDocument();
         expect(screen.getByText('Демонстрационная, 1')).toBeInTheDocument();
         expect(screen.getByText('Подъезд')).toBeInTheDocument();
         expect(screen.getByText('2')).toBeInTheDocument();
@@ -82,7 +83,7 @@ function renderHouse() {
         <MaxUI platform="android" colorScheme="light">
             <MemoryRouter>
                 <AuthContext.Provider value={auth}>
-                    <HousePage />
+                    <HouseSheet open onClose={vi.fn()} />
                 </AuthContext.Provider>
             </MemoryRouter>
         </MaxUI>,

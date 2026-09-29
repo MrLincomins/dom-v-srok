@@ -2,6 +2,8 @@ import { Button, CellSimple } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { InlineLoader } from '@/components/LineLoader';
 import { Notice } from '@/components/Notice';
 import { PhoneField } from '@/components/PhoneField';
 import { Section } from '@/components/Section';
@@ -14,38 +16,48 @@ export function ExecutorsCard() {
 
     return (
         <form className="flex min-w-0 flex-col gap-16" noValidate onSubmit={card.submit}>
-            <Section title={texts.organization.executors} className="settings-card">
-                {(card.executors.data ?? []).map((executor) => (
-                    <CellSimple
-                        key={executor.id}
-                        separator
-                        title={executor.name}
-                        subtitle={
-                            <span className="cell-lines">
-                                {executor.specialty ? <span>{executor.specialty}</span> : null}
-                                {executor.phone ? <span>{executor.phone}</span> : null}
-                            </span>
-                        }
-                        onClick={() => card.fill(executor)}
-                        after={
-                            <Button
-                                type="button"
-                                size="small"
-                                variant="secondary"
-                                className="btn-remove"
-                                disabled={card.busy}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    card.setPendingArchiveId(executor.id);
-                                }}
-                            >
-                                {texts.organization.archiveExecutor}
-                            </Button>
-                        }
-                    />
-                ))}
-            </Section>
+            {!card.executors.data && card.executors.isPending ? (
+                <InlineLoader />
+            ) : !card.executors.data && card.executors.isError ? (
+                <ErrorState
+                    error={card.executors.error}
+                    failureCount={card.executors.failureCount}
+                    onRetry={() => void card.executors.refetch()}
+                />
+            ) : (
+                <Section title={texts.organization.executors} className="settings-card">
+                    {(card.executors.data ?? []).map((executor) => (
+                        <CellSimple
+                            key={executor.id}
+                            separator
+                            title={executor.name}
+                            subtitle={
+                                <span className="cell-lines">
+                                    {executor.specialty ? <span>{executor.specialty}</span> : null}
+                                    {executor.phone ? <span>{executor.phone}</span> : null}
+                                </span>
+                            }
+                            onClick={() => card.fill(executor)}
+                            after={
+                                <Button
+                                    type="button"
+                                    size="small"
+                                    variant="secondary"
+                                    className="btn-remove"
+                                    disabled={card.busy}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        card.setPendingArchiveId(executor.id);
+                                    }}
+                                >
+                                    {texts.organization.archiveExecutor}
+                                </Button>
+                            }
+                        />
+                    ))}
+                </Section>
+            )}
             <SettingsField
                 label={texts.organization.executorName}
                 value={card.name}

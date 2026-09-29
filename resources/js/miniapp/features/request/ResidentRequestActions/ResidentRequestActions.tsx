@@ -6,7 +6,15 @@ import { Notice, useNoticeState } from '@/components/Notice';
 import { describeError } from '@/lib/describeError';
 import { useResidentRequestActions } from './ResidentRequestActions.model';
 
-export function ResidentRequestActions({ requestId }: { requestId: number }) {
+export function ResidentRequestActions({
+    requestId,
+    canConfirm,
+    canReturn,
+}: {
+    requestId: number;
+    canConfirm: boolean;
+    canReturn: boolean;
+}) {
     const actions = useResidentRequestActions(requestId);
     const notice = useNoticeState();
     const showNotice = notice.show;
@@ -29,51 +37,55 @@ export function ResidentRequestActions({ requestId }: { requestId: number }) {
                 onChange={(event) => setComment(event.target.value)}
             />
             <div className="request-action-row">
-                <Button
-                    size="medium"
-                    variant="primary"
-                    stretched
-                    className="btn-done"
-                    loading={busy && choice === 'yes'}
-                    disabled={busy}
-                    onClick={() => {
-                        setChoice('yes');
-                        actions.confirm.mutate(
-                            {
-                                resolved: true,
-                                comment: comment.trim() || undefined,
-                            },
-                            {
-                                onSuccess: () => notice.show(texts.request.confirmedDone, 'success'),
-                                onSettled: () => setChoice(null),
-                            },
-                        );
-                    }}
-                >
-                    {texts.request.confirmYes}
-                </Button>
-                <Button
-                    size="medium"
-                    variant="secondary"
-                    stretched
-                    loading={busy && choice === 'no'}
-                    disabled={busy}
-                    onClick={() => {
-                        setChoice('no');
-                        actions.confirm.mutate(
-                            {
-                                resolved: false,
-                                comment: comment.trim() || undefined,
-                            },
-                            {
-                                onSuccess: () => notice.show(texts.request.returnedToWork, 'success'),
-                                onSettled: () => setChoice(null),
-                            },
-                        );
-                    }}
-                >
-                    {texts.request.confirmNo}
-                </Button>
+                {canConfirm && (
+                    <Button
+                        size="medium"
+                        variant="primary"
+                        stretched
+                        className="btn-done"
+                        loading={busy && choice === 'yes'}
+                        disabled={busy}
+                        onClick={() => {
+                            setChoice('yes');
+                            actions.confirm.mutate(
+                                {
+                                    resolved: true,
+                                    comment: comment.trim() || undefined,
+                                },
+                                {
+                                    onSuccess: () => notice.show(texts.request.confirmedDone, 'success'),
+                                    onSettled: () => setChoice(null),
+                                },
+                            );
+                        }}
+                    >
+                        {texts.request.confirmYes}
+                    </Button>
+                )}
+                {canReturn && (
+                    <Button
+                        size="medium"
+                        variant="secondary"
+                        stretched
+                        loading={busy && choice === 'no'}
+                        disabled={busy}
+                        onClick={() => {
+                            setChoice('no');
+                            actions.confirm.mutate(
+                                {
+                                    resolved: false,
+                                    comment: comment.trim() || undefined,
+                                },
+                                {
+                                    onSuccess: () => notice.show(texts.request.returnedToWork, 'success'),
+                                    onSettled: () => setChoice(null),
+                                },
+                            );
+                        }}
+                    >
+                        {texts.request.confirmNo}
+                    </Button>
+                )}
             </div>
             <Notice
                 text={notice.text}

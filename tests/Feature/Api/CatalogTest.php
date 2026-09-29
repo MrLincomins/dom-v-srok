@@ -61,6 +61,30 @@ it('gives no deadlines for an emergency and sends to the emergency line', functi
         ->assertJsonPath('data.responsible.phone', '+7 843 000-00-01');
 });
 
+it('serves the catalog with checked bases and corrected deadlines', function () {
+    Spectator::reset();
+    $response = asToken($this->resident)->getJson('/api/v1/catalog/categories')->assertOk();
+
+    $leaves = collect($response->json('data'))->flatMap(fn (array $root) => [$root, ...($root['children'] ?? [])])->keyBy('slug');
+    $body = mb_strtolower((string) $response->getContent());
+
+    expect($body)->not->toContain('сверить')
+        ->and($body)->not->toContain('уточнить')
+        ->and($body)->not->toContain('проверить')
+        ->and($leaves->every(fn (array $c) => $c['verify'] === false))->toBeTrue()
+        ->and($leaves['water.cold_none']['deadline_fix'])->toBe(['value' => 4, 'unit' => 'hours'])
+        ->and($leaves['water.hot_none']['deadline_fix'])->toBe(['value' => 4, 'unit' => 'hours'])
+        ->and($leaves['lift.broken']['deadline_fix'])->toBe(['value' => 24, 'unit' => 'hours'])
+        ->and($leaves['waste.not_removed']['deadline_fix'])->toBe(['value' => 1, 'unit' => 'days'])
+        ->and($leaves['waste.site']['deadline_fix'])->toBeNull()
+        ->and($leaves['waste.site']['deadline_reply'])->toBe(['value' => 10, 'unit' => 'working_days'])
+        ->and($leaves['other.yard']['deadline_reply'])->toBe(['value' => 30, 'unit' => 'days'])
+        ->and($leaves['other.capital']['responsible_type'])->toBe('uk')
+        ->and($leaves['water.leak']['is_emergency'])->toBeFalse()
+        ->and($leaves['lift.broken']['basis'])->toContain('№ 1744')
+        ->and($leaves['lift.broken']['basis'])->not->toContain('743');
+});
+
 it('rejects a resident without a house, a missing category and a guest', function () {
     User::query()->where('login', 'demo_resident')->update(['house_id' => null]);
 

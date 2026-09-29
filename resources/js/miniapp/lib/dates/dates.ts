@@ -26,8 +26,8 @@ export function formatDateInput(date: Date = new Date()): string {
     return dateInput.format(date);
 }
 
-export function startOfMonthInput(date: Date = new Date()): string {
-    return `${formatDateInput(date).slice(0, 8)}01`;
+export function daysAgoInput(days: number, date: Date = new Date()): string {
+    return formatDateInput(new Date(date.getTime() - days * MS_DAY));
 }
 
 export function daysBetween(from: string, to: string): number | null {

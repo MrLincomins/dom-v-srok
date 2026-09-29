@@ -16,7 +16,7 @@ describe('подтверждение жителем', () => {
                 <QueryClientProvider
                     client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
                 >
-                    <ResidentRequestActions requestId={7} />
+                    <ResidentRequestActions requestId={7} canConfirm canReturn />
                 </QueryClientProvider>
             </MaxUI>,
         );

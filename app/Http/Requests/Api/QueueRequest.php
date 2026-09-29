@@ -10,6 +10,21 @@ use Illuminate\Validation\Rule;
 
 final class QueueRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $overdue = $this->query('overdue');
+
+        if (! is_string($overdue)) {
+            return;
+        }
+
+        $flag = filter_var($overdue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        if ($flag !== null) {
+            $this->merge(['overdue' => $flag]);
+        }
+    }
+
     public function rules(): array
     {
         return [

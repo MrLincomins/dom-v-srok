@@ -45,4 +45,51 @@ describe('кто и когда сделает', () => {
         expect(screen.getByText('ТСЖ «Демо»')).toBeInTheDocument();
         expect(screen.getByText('СанПиН')).toBeInTheDocument();
     });
+
+    it('показывает, кому передали заявку, по снимку имени и телефона', () => {
+        render(
+            <MaxUI platform="android" colorScheme="dark">
+                <ResponsibleSection
+                    card={{
+                        ...card,
+                        status: 'redirected',
+                        redirected_to: {
+                            name: 'Водоканал',
+                            phone: '+78432000000',
+                            party: null,
+                            note: 'Звоните с 8 до 20',
+                        },
+                    }}
+                />
+            </MaxUI>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Кто и когда сделает' }));
+
+        expect(screen.getByText('Кому передали')).toBeInTheDocument();
+        expect(screen.getByText('Водоканал · +78432000000 · Звоните с 8 до 20')).toBeInTheDocument();
+    });
+
+    it('берёт службу из справочника, если имени в снимке нет', () => {
+        render(
+            <MaxUI platform="android" colorScheme="dark">
+                <ResponsibleSection
+                    card={{
+                        ...card,
+                        status: 'redirected',
+                        redirected_to: {
+                            name: null,
+                            phone: null,
+                            party: { id: 3, name: 'Теплосеть', phone: '+78432111111' },
+                            note: null,
+                        },
+                    }}
+                />
+            </MaxUI>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Кто и когда сделает' }));
+
+        expect(screen.getByText('Теплосеть · +78432111111')).toBeInTheDocument();
+    });
 });

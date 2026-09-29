@@ -53,7 +53,7 @@ class DemoSeeder extends Seeder
             'email' => 'demo@example.ru',
             'reception_hours' => 'пн–пт 9:00–18:00',
             'reception_address' => self::HOUSE_ADDRESS.', офис ТСЖ',
-            'direct_cold_water' => false,
+            'direct_cold_water' => true,
             'direct_hot_water' => false,
             'direct_heat' => false,
             'direct_power' => false,

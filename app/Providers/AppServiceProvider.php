@@ -37,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(30)->by((string) $request->ip()));
 
-        RateLimiter::for('demo', fn (Request $request) => Limit::perMinute(2)
+        RateLimiter::for('demo', fn (Request $request) => Limit::perMinute((int) config('demo.reset_per_minute'))
             ->by($request->user()?->getAuthIdentifier() ?: (string) $request->ip()));
 
         RateLimiter::for('max-target', fn (object $job) => Limit::perSecond((int) config('max.rate_per_target'))

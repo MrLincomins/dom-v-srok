@@ -4,6 +4,7 @@ import { loginWithInitData, loginWithPassword, logout as apiLogout, me } from '@
 import { ApiError, hasToken, setToken, UNAUTHORIZED_EVENT } from '@/api/client';
 import type { User } from '@/api/types';
 import { getInitData, isInsideMax } from '@/bridge/maxWebApp';
+import { describeSessionError } from '@/lib/describeError';
 import { AuthContext, type AuthState } from './authContext';
 const SESSION_KEY = ['session'] as const;
 
@@ -80,11 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               : session.data
                 ? 'ready'
                 : 'anonymous';
-        const error = session.isError
-            ? session.error instanceof Error
-                ? session.error.message
-                : 'Не получилось войти'
-            : null;
+        const error = session.isError ? describeSessionError(session.error) : null;
         return { status, user: session.data ?? null, error, loginDemo, logout, refresh };
     }, [session.isPending, session.isError, session.data, session.error, loginDemo, logout, refresh]);
 

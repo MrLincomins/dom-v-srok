@@ -54,10 +54,7 @@ export function RequestRow({
             </span>
             <span className="request-tile-foot">
                 <StatusChip status={item.status} overdue={item.is_overdue} />
-                <DeadlineChip
-                    deadline={item.deadline_fix_at}
-                    closed={item.status === 'confirmed' || item.status === 'redirected'}
-                />
+                <DeadlineChip deadline={item.deadline_fix_at} status={item.status} />
             </span>
             <span className="request-tile-chevron" aria-hidden>
                 <Chevron />

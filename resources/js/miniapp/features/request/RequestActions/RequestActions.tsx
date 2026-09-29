@@ -4,6 +4,8 @@ import { StaffRequestActions } from '@/features/request/StaffRequestActions';
 
 export function RequestActions({ card, isStaff }: { card: RequestCard; isStaff: boolean }) {
     if (isStaff) return <StaffRequestActions card={card} />;
-    if (card.status === 'done') return <ResidentRequestActions requestId={card.id} />;
-    return null;
+    const canConfirm = card.allowed_transitions.includes('confirmed');
+    const canReturn = card.allowed_transitions.includes('returned');
+    if (!canConfirm && !canReturn) return null;
+    return <ResidentRequestActions requestId={card.id} canConfirm={canConfirm} canReturn={canReturn} />;
 }

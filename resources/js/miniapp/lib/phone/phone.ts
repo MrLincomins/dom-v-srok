@@ -12,7 +12,7 @@ export function isCompletePhone(raw: string): boolean {
     return localPhoneDigits(raw).length === 10;
 }
 
-/** Как показываем номер: (917) 247-23-89 */
+/** Как показываем номер: (900) 000-00-13 */
 export function formatLocalPhone(raw: string): string {
     const digits = localPhoneDigits(raw);
     if (digits.length === 0) return '';

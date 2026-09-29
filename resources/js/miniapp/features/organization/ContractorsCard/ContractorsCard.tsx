@@ -2,6 +2,8 @@ import { Button, CellSimple, Typography } from '@maxhub/max-ui';
 import { texts } from '@/app/texts';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { InlineLoader } from '@/components/LineLoader';
 import { Notice } from '@/components/Notice';
 import { PhoneField } from '@/components/PhoneField';
 import { Section } from '@/components/Section';
@@ -15,37 +17,47 @@ export function ContractorsCard() {
 
     return (
         <form className="flex min-w-0 flex-col gap-16" noValidate onSubmit={card.submit}>
-            <Section title={texts.organization.contractors} className="settings-card">
-                {(card.contractors.data ?? []).map((contractor) => (
-                    <CellSimple
-                        key={contractor.id}
-                        separator
-                        title={contractor.name}
-                        subtitle={
-                            <span className="cell-lines">
-                                {contractor.type_label ? <span>{contractor.type_label}</span> : null}
-                                {contractor.phone ? <span>{contractor.phone}</span> : null}
-                            </span>
-                        }
-                        after={
-                            <Button
-                                type="button"
-                                size="small"
-                                variant="secondary"
-                                className="btn-remove"
-                                disabled={card.busy}
-                                onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    card.setPendingId(contractor.id);
-                                }}
-                            >
-                                {texts.organization.removeContractor}
-                            </Button>
-                        }
-                    />
-                ))}
-            </Section>
+            {!card.contractors.data && card.contractors.isPending ? (
+                <InlineLoader />
+            ) : !card.contractors.data && card.contractors.isError ? (
+                <ErrorState
+                    error={card.contractors.error}
+                    failureCount={card.contractors.failureCount}
+                    onRetry={() => void card.contractors.refetch()}
+                />
+            ) : (
+                <Section title={texts.organization.contractors} className="settings-card">
+                    {(card.contractors.data ?? []).map((contractor) => (
+                        <CellSimple
+                            key={contractor.id}
+                            separator
+                            title={contractor.name}
+                            subtitle={
+                                <span className="cell-lines">
+                                    {contractor.type_label ? <span>{contractor.type_label}</span> : null}
+                                    {contractor.phone ? <span>{contractor.phone}</span> : null}
+                                </span>
+                            }
+                            after={
+                                <Button
+                                    type="button"
+                                    size="small"
+                                    variant="secondary"
+                                    className="btn-remove"
+                                    disabled={card.busy}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        card.setPendingId(contractor.id);
+                                    }}
+                                >
+                                    {texts.organization.removeContractor}
+                                </Button>
+                            }
+                        />
+                    ))}
+                </Section>
+            )}
             <div className="ios-tabs" role="group" aria-label={texts.organization.contractorType}>
                 {CONTRACTOR_TYPES.map((item) => (
                     <button

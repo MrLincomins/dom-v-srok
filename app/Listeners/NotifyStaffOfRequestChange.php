@@ -37,7 +37,7 @@ final class NotifyStaffOfRequestChange
 
     private function notify(ServiceRequest $request, string $key, string $dedupe, bool $withDeadline): void
     {
-        if ($request->organization_id === null) {
+        if ($request->organization_id === null || $this->createdByTestAccount($request)) {
             return;
         }
         $staff = $this->staffOf($request);
@@ -61,6 +61,13 @@ final class NotifyStaffOfRequestChange
                 'keyboard' => Keyboards::fromRows($this->texts->buttons($key, $vars)),
             ], $dedupe.':'.$user->id, $request->id);
         }
+    }
+
+    private function createdByTestAccount(ServiceRequest $request): bool
+    {
+        $author = $request->resident;
+
+        return $author !== null && $author->is_demo && $author->max_user_id === null;
     }
 
     /** @return list<User> */

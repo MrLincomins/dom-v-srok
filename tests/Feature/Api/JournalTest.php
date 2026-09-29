@@ -72,7 +72,7 @@ it('exports the journal as CSV with a BOM, semicolons and one line per request',
     expect(substr($body, 0, 3))->toBe("\xEF\xBB\xBF")
         ->and($lines)->toHaveCount(9)
         ->and($lines[0])->toStartWith('"№ заявки";"Дата и время приёма";Адрес;')
-        ->and($lines[0])->toContain('"Срок по закону"')
+        ->and($lines[0])->toContain('"Срок по нормативу"')
         ->and($lines[1])->toStartWith($firstId.';')
         ->and($lines[1])->toContain('"Казань, ул. Демонстрационная, д. 1"')
         ->and($lines[1])->toContain(';Принято;')

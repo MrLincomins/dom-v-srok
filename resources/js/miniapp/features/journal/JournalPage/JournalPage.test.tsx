@@ -67,6 +67,7 @@ beforeEach(() => {
 
 afterEach(() => {
     delete window.WebApp;
+    vi.useRealTimers();
 });
 
 describe('журнал заявок', () => {
@@ -100,6 +101,22 @@ describe('журнал заявок', () => {
         ).toBe(true);
         expect(await screen.findByRole('status')).toHaveTextContent('Файл откроется в браузере');
     });
+
+    it('по умолчанию берёт последние 30 дней, а не начало месяца', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-01T09:00:00+03:00'));
+        renderPage('/journal');
+
+        await waitFor(() => {
+            expect(
+                vi
+                    .mocked(fetch)
+                    .mock.calls.some((call) =>
+                        String(call[0]).includes('/journal?from=2026-09-01&to=2026-10-01'),
+                    ),
+            ).toBe(true);
+        });
+    });
 });
 
 function json(body: unknown, status = 200) {
@@ -109,11 +126,11 @@ function json(body: unknown, status = 200) {
     });
 }
 
-function renderPage() {
+function renderPage(path = '/journal?from=2026-09-01&to=2026-09-21') {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <MaxUI platform="android" colorScheme="light">
-            <MemoryRouter initialEntries={['/journal?from=2026-09-01&to=2026-09-21']}>
+            <MemoryRouter initialEntries={[path]}>
                 <QueryClientProvider client={client}>
                     <JournalPage />
                 </QueryClientProvider>

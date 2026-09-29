@@ -48,7 +48,7 @@ beforeEach(() => {
             }
             if (url.endsWith('/organization/houses')) return json({ data: [house] });
             if (url.endsWith('/organization/executors') && method === 'POST') {
-                return json({ data: { id: 6, name: 'Пётр', specialty: null, phone: '+79172472389' } });
+                return json({ data: { id: 6, name: 'Пётр', specialty: null, phone: '+79000000013' } });
             }
             if (url.endsWith('/organization/executors'))
                 return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
@@ -63,7 +63,7 @@ beforeEach(() => {
                             type: 'lift',
                             type_label: 'Лифтовая организация',
                             name: 'Лифт-Сервис',
-                            phone: '+79172472389',
+                            phone: '+79000000013',
                         },
                     },
                     201,
@@ -120,10 +120,10 @@ describe('организация', () => {
         });
     });
 
-    it('просит подтверждение, прежде чем убрать исполнителя', async () => {
+    it('просит подтверждение, прежде чем убрать мастера', async () => {
         renderPage('/organization/executors');
         fireEvent.click(await screen.findByRole('button', { name: 'Убрать' }));
-        expect(screen.getByRole('dialog', { name: 'Убрать этого исполнителя?' })).toBeInTheDocument();
+        expect(screen.getByRole('dialog', { name: 'Убрать этого мастера?' })).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Да, убрать' }));
         await waitFor(() => {
             expect(
@@ -136,7 +136,7 @@ describe('организация', () => {
                     ),
             ).toBe(true);
         });
-        expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель убран');
+        expect(await screen.findByRole('status')).toHaveTextContent('Мастер убран');
     });
 
     it('ставит фокус на первое поле с ошибкой', async () => {
@@ -190,17 +190,17 @@ describe('организация', () => {
         expect(await screen.findByRole('status')).toHaveTextContent('Сохранено');
     });
 
-    it('не даёт добавить исполнителя из пустой формы', async () => {
+    it('не даёт добавить мастера из пустой формы', async () => {
         renderPage('/organization/executors');
-        expect(await screen.findByRole('button', { name: 'Добавить исполнителя' })).toBeDisabled();
+        expect(await screen.findByRole('button', { name: 'Добавить мастера' })).toBeDisabled();
     });
 
-    it('не добавляет исполнителя без телефона', async () => {
+    it('не добавляет мастера без телефона', async () => {
         renderPage('/organization/executors');
-        const form = (await screen.findByRole('button', { name: 'Добавить исполнителя' })).closest('form');
+        const form = (await screen.findByRole('button', { name: 'Добавить мастера' })).closest('form');
         expect(form).toBeTruthy();
         fireEvent.change(within(form as HTMLElement).getByLabelText('Имя'), { target: { value: 'Пётр' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Добавить исполнителя' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Добавить мастера' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('Укажите номер телефона');
         expect(screen.getByRole('status')).toHaveTextContent('Укажите номер телефона');
         expect(
@@ -213,15 +213,15 @@ describe('организация', () => {
         ).toBe(false);
     });
 
-    it('принимает телефон исполнителя без +7', async () => {
+    it('принимает телефон мастера без +7', async () => {
         renderPage('/organization/executors');
-        const form = (await screen.findByRole('button', { name: 'Добавить исполнителя' })).closest('form');
+        const form = (await screen.findByRole('button', { name: 'Добавить мастера' })).closest('form');
         expect(form).toBeTruthy();
         const name = within(form as HTMLElement).getByLabelText('Имя');
         const phone = within(form as HTMLElement).getByLabelText('Телефон');
         fireEvent.change(name, { target: { value: 'Пётр' } });
-        fireEvent.change(phone, { target: { value: '9172472389' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Добавить исполнителя' }));
+        fireEvent.change(phone, { target: { value: '9000000013' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Добавить мастера' }));
         await waitFor(() => {
             const call = vi
                 .mocked(fetch)
@@ -229,9 +229,9 @@ describe('организация', () => {
                     ([url, init]) =>
                         String(url).endsWith('/organization/executors') && String(init?.method) === 'POST',
                 );
-            expect(call?.[1]?.body).toContain('+79172472389');
+            expect(call?.[1]?.body).toContain('+79000000013');
         });
-        expect(await screen.findByRole('status')).toHaveTextContent('Исполнитель добавлен');
+        expect(await screen.findByRole('status')).toHaveTextContent('Мастер добавлен');
     });
 
     it('копирует ссылку для жителя из списка домов', async () => {
@@ -292,7 +292,7 @@ describe('организация', () => {
             target: { value: 'Лифт-Сервис' },
         });
         fireEvent.change(within(form as HTMLElement).getByLabelText('Телефон'), {
-            target: { value: '9172472389' },
+            target: { value: '9000000013' },
         });
         fireEvent.click(screen.getByRole('button', { name: 'Добавить подрядчика' }));
         await waitFor(() => {
@@ -304,7 +304,7 @@ describe('организация', () => {
                 );
             expect(call?.[1]?.body).toContain('"type":"lift"');
             expect(call?.[1]?.body).toContain('Лифт-Сервис');
-            expect(call?.[1]?.body).toContain('+79172472389');
+            expect(call?.[1]?.body).toContain('+79000000013');
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Подрядчик добавлен');
     });
@@ -372,6 +372,77 @@ describe('организация', () => {
             ).toBe(true);
         });
         expect(await screen.findByRole('status')).toHaveTextContent('Подрядчик убран');
+    });
+
+    it('объясняет ошибку загрузки мастеров и загружает список снова', async () => {
+        let failed = false;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/organization/executors')) {
+                    if (!failed) {
+                        failed = true;
+                        return json({ error: { code: 'server_error', message: 'boom', details: {} } }, 500);
+                    }
+                    return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
+                }
+                return json({ data: {} }, 404);
+            }),
+        );
+        renderPage('/organization/executors');
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Сервер не ответил. Попробуйте ещё раз.');
+        expect(screen.queryByText('Мастеров пока нет.')).not.toBeInTheDocument();
+        const retry = screen.getByRole('button', { name: 'Повторить' });
+        expect(retry).toHaveAttribute('type', 'button');
+        fireEvent.click(retry);
+
+        expect(await screen.findByText('Иван')).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('показывает загрузку, пока список подрядчиков не пришёл', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise<Response>(() => undefined)),
+        );
+        renderPage('/organization/contractors');
+
+        expect(await screen.findByRole('status', { name: 'Загрузка…' })).toBeInTheDocument();
+        expect(screen.queryByText('Подрядчиков пока нет.')).not.toBeInTheDocument();
+    });
+
+    it('объясняет ошибку загрузки подрядчиков и загружает список снова', async () => {
+        let failed = false;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/organization/contractors')) {
+                    if (!failed) {
+                        failed = true;
+                        return json({ error: { code: 'server_error', message: 'boom', details: {} } }, 500);
+                    }
+                    return json({
+                        data: [
+                            {
+                                id: 4,
+                                type: 'intercom',
+                                type_label: 'Домофонная компания',
+                                name: 'Домофон-Сервис',
+                                phone: null,
+                            },
+                        ],
+                    });
+                }
+                return json({ data: {} }, 404);
+            }),
+        );
+        renderPage('/organization/contractors');
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Сервер не ответил. Попробуйте ещё раз.');
+        fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+
+        expect(await screen.findByText('Домофон-Сервис')).toBeInTheDocument();
     });
 });
 

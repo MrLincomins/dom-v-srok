@@ -265,7 +265,7 @@ function CloseRequestForm({
                 onChange={selectPhotos}
             />
             {previews.length > 0 && (
-                <PhotoGrid label="Выбранные фотографии">
+                <PhotoGrid label={texts.request.selectedPhotosLabel}>
                     {previews.map((preview, index) => (
                         <div key={preview.url} className="relative">
                             <img

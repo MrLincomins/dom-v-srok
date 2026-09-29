@@ -18,15 +18,18 @@
     --color-negative: #ce4257;
     --color-positive: #2bc644;
     --color-divider: var(--divider);
+    --color-fresh: #9500ff;
+    --font-sans: var(--family-base, -apple-system, system-ui, 'Helvetica Neue', Roboto, sans-serif);
+    --radius-card: 10px;
+}
+
+@theme static {
     --color-accepted-blue: #4cb3ff;
     --color-progress-blue: #007aff;
     --color-ready-blue: #1a73e8;
     --color-work: #007aff;
     --color-late: #ce4257;
     --color-done: #2bc644;
-    --color-fresh: #9500ff;
-    --font-sans: var(--family-base, -apple-system, system-ui, 'Helvetica Neue', Roboto, sans-serif);
-    --radius-card: 10px;
 }
 
 :root {
@@ -65,6 +68,7 @@
     --info: #007aff;
     --info-muted: rgb(0 122 255 / 16%);
     --info-hover: rgb(0 122 255 / 22%);
+    --accent-text: #a293ff;
     --invalid: #ff453a;
     --divider: rgb(255 255 255 / 12%);
     --max-blue: var(--accent);
@@ -105,6 +109,13 @@ html[data-color-scheme='light'] {
     --positive-muted: rgb(43 198 68 / 12%);
     --negative-muted: rgb(206 66 87 / 12%);
     --info-muted: rgb(0 122 255 / 12%);
+    --color-accepted-blue: #0969b7;
+    --color-progress-blue: #0063cf;
+    --color-ready-blue: #1463cb;
+    --color-work: #0063cf;
+    --color-late: #bb3045;
+    --color-done: #1a772d;
+    --accent-text: #471aff;
 }
 
 /* Экран и прокрутка */
@@ -820,6 +831,10 @@ body {
     display: flex;
 }
 
+.queue-search .field-clear {
+    display: flex;
+}
+
 .queue-search [class*='Input_size_'] {
     height: 64px;
     border-radius: 12px;
@@ -946,7 +961,7 @@ body {
 }
 
 .notice.is-success {
-    background: var(--positive);
+    background: var(--positive-strong);
     color: var(--fg-on-strong);
 }
 
@@ -961,7 +976,7 @@ body {
 
 .cell-copied {
     flex-shrink: 0;
-    color: var(--positive);
+    color: var(--color-done);
     font-size: 15px;
     font-weight: 590;
     letter-spacing: -0.2px;
@@ -971,7 +986,7 @@ body {
 
 .assign-pick {
     flex-shrink: 0;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 15px;
     font-weight: 590;
     letter-spacing: -0.2px;
@@ -1104,23 +1119,23 @@ body {
 }
 
 .history-title.is-accepted {
-    color: #4cb3ff;
+    color: var(--color-accepted-blue);
 }
 
 .history-title.is-progress {
-    color: var(--info);
+    color: var(--color-progress-blue);
 }
 
 .history-title.is-ready {
-    color: #1a73e8;
+    color: var(--color-ready-blue);
 }
 
 .history-title.is-done {
-    color: var(--positive);
+    color: var(--color-done);
 }
 
 .history-title.is-late {
-    color: var(--negative);
+    color: var(--color-late);
 }
 
 .history-title.is-muted {
@@ -1936,11 +1951,11 @@ body {
 }
 
 .ios-tab.is-done {
-    color: var(--positive);
+    color: var(--color-done);
 }
 
 .ios-tab.is-done::before {
-    background: var(--positive);
+    background: var(--positive-strong);
 }
 
 .ios-tab.is-done.is-active {
@@ -2216,7 +2231,7 @@ body {
     }
 
     .profile-row.is-link:hover .profile-value {
-        color: var(--accent);
+        color: var(--accent-text);
     }
 
     .queue-icon-btn.is-on:hover {

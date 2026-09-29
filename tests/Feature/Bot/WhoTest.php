@@ -35,7 +35,7 @@ it('tells who is responsible and the deadline without filing a request', functio
     runUpdate(callbackUpdate(555, 'who:'.whoCategory('entrance.light')));
     expect(lastText($this->max))->toStartWith('Не горит свет в подъезде')
         ->toContain('Кто отвечает: '.DemoSeeder::ORGANIZATION_NAME)
-        ->toContain('Срок: до ')
+        ->toContain('Срок: ')->toContain(', до ')
         ->and(lastButtons($this->max))->toContain('report')
         ->and(BotSession::query()->find(555)?->state ?? DialogState::Idle)->toBe(DialogState::Idle);
     expect(User::query()->where('max_user_id', 555)->firstOrFail()->requests()->count())->toBe(0);

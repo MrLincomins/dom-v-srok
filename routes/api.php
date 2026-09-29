@@ -16,13 +16,20 @@ use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\RequestController;
 use Illuminate\Support\Facades\Route;
 
+Route::pattern('serviceRequest', '[0-9]{1,18}');
+Route::pattern('organization', '[0-9]{1,18}');
+Route::pattern('attachment', '[0-9]{1,18}');
+Route::pattern('house', '[0-9]{1,18}');
+Route::pattern('executor', '[0-9]{1,18}');
+Route::pattern('contractor', '[0-9]{1,18}');
+
 Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function (): void {
     Route::post('auth/max', [AuthController::class, 'max'])->middleware('throttle:auth')->name('auth.max');
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth')->name('auth.login');
 
     Route::get('catalog/categories', [CatalogController::class, 'categories'])->name('catalog.categories');
     Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('signed')->name('attachments.show');
-    Route::get('organization/houses/{house}/qr.png', [HouseQrController::class, 'show'])->middleware('signed')->whereNumber('house')->name('organization.houses.qr');
+    Route::get('organization/houses/{house}/qr.png', [HouseQrController::class, 'show'])->middleware('signed')->name('organization.houses.qr');
     Route::get('journal/export.csv', [JournalController::class, 'export'])->middleware('signed')->name('journal.export');
 
     Route::middleware('auth:sanctum')->group(function (): void {
@@ -34,7 +41,7 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
         Route::post('requests/{serviceRequest}/confirm', [RequestController::class, 'confirm'])->name('requests.confirm');
         Route::post('requests/{serviceRequest}/rate', [RequestController::class, 'rate'])->name('requests.rate');
         Route::get('my/requests', [RequestController::class, 'my'])->name('my.requests');
-        Route::get('organizations/{organization}', [OrganizationCardController::class, 'show'])->whereNumber('organization')->name('organizations.show');
+        Route::get('organizations/{organization}', [OrganizationCardController::class, 'show'])->name('organizations.show');
 
         Route::middleware('role:dispatcher,admin')->group(function (): void {
             Route::get('requests', [RequestController::class, 'index'])->name('requests.index');
@@ -49,14 +56,14 @@ Route::prefix('v1')->name('api.')->middleware('throttle:api')->group(function ()
             Route::patch('organization', [OrganizationController::class, 'update'])->name('organization.update');
             Route::get('organization/houses', [OrganizationController::class, 'houses'])->name('organization.houses');
             Route::post('organization/houses', [OrganizationController::class, 'storeHouse'])->name('organization.houses.store');
-            Route::patch('organization/houses/{house}', [OrganizationController::class, 'updateHouse'])->whereNumber('house')->name('organization.houses.update');
+            Route::patch('organization/houses/{house}', [OrganizationController::class, 'updateHouse'])->name('organization.houses.update');
             Route::get('organization/executors', [ExecutorController::class, 'index'])->name('organization.executors');
             Route::post('organization/executors', [ExecutorController::class, 'store'])->name('organization.executors.store');
-            Route::patch('organization/executors/{executor}', [ExecutorController::class, 'update'])->whereNumber('executor')->name('organization.executors.update');
-            Route::delete('organization/executors/{executor}', [ExecutorController::class, 'destroy'])->whereNumber('executor')->name('organization.executors.destroy');
+            Route::patch('organization/executors/{executor}', [ExecutorController::class, 'update'])->name('organization.executors.update');
+            Route::delete('organization/executors/{executor}', [ExecutorController::class, 'destroy'])->name('organization.executors.destroy');
             Route::get('organization/contractors', [ContractorController::class, 'index'])->name('organization.contractors');
             Route::post('organization/contractors', [ContractorController::class, 'store'])->name('organization.contractors.store');
-            Route::delete('organization/contractors/{contractor}', [ContractorController::class, 'destroy'])->whereNumber('contractor')->name('organization.contractors.destroy');
+            Route::delete('organization/contractors/{contractor}', [ContractorController::class, 'destroy'])->name('organization.contractors.destroy');
 
             Route::get('journal', [JournalController::class, 'index'])->name('journal.index');
             Route::get('journal.csv', [JournalController::class, 'csv'])->name('journal.csv');

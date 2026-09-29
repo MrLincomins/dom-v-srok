@@ -6,7 +6,6 @@ import { FullscreenSpinner } from './components/FullscreenSpinner';
 import { ErrorState } from './components/ErrorState';
 import { RouteError } from './components/RouteError';
 import { HomePage } from './features/home/HomePage';
-import { HousePage } from './features/resident/HousePage';
 
 const OpenInMaxPage = lazy(() =>
     import('./features/auth/OpenInMaxPage').then((module) => ({ default: module.OpenInMaxPage })),
@@ -17,11 +16,6 @@ function ToHome() {
 }
 const RequestPage = lazy(() =>
     import('./features/request/RequestPage').then((module) => ({ default: module.RequestPage })),
-);
-const CreateRequestPage = lazy(() =>
-    import('./features/resident/CreateRequestPage').then((module) => ({
-        default: module.CreateRequestPage,
-    })),
 );
 const OrganizationPage = lazy(() =>
     import('./features/organization/OrganizationPage').then((module) => ({
@@ -89,11 +83,7 @@ export const router = createBrowserRouter(
                 },
                 {
                     element: <ResidentOnly />,
-                    children: [
-                        { path: 'my', element: <ToHome /> },
-                        { path: 'create', element: <CreateRequestPage /> },
-                        { path: 'house', element: <HousePage /> },
-                    ],
+                    children: [{ path: 'my', element: <ToHome /> }],
                 },
                 { path: '*', element: <Navigate to="/" replace /> },
             ],

@@ -5,7 +5,7 @@ import type { Attachment, RequestEvent } from '@/api/types';
 import { EventTimeline } from './EventTimeline';
 
 describe('лента событий', () => {
-    it('прячет дубль «Назначено», если уже есть исполнитель', () => {
+    it('прячет дубль «Назначено», если уже назначен мастер', () => {
         renderTimeline([
             event({ id: 1, type: 'created' }),
             event({ id: 2, type: 'assigned', payload: { executor: 'Сантехник Иванов' } }),
@@ -13,7 +13,7 @@ describe('лента событий', () => {
             event({ id: 4, type: 'status_changed', to_status: 'in_progress' }),
         ]);
 
-        expect(screen.getByText('Назначен исполнитель: Сантехник Иванов')).toBeInTheDocument();
+        expect(screen.getByText('Назначен мастер: Сантехник Иванов')).toBeInTheDocument();
         expect(screen.queryByText('Назначено')).not.toBeInTheDocument();
         expect(screen.getByText('В работе')).toBeInTheDocument();
     });

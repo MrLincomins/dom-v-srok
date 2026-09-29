@@ -26,7 +26,7 @@ beforeEach(function () {
 
 it('returns everything the reviewer could change to the seeded state', function () {
     $initial = $this->organization->only(['direct_cold_water', 'direct_hot_water', 'direct_heat', 'direct_power', 'direct_tko']);
-    $this->organization->update(['direct_cold_water' => true, 'direct_hot_water' => true, 'direct_heat' => true, 'direct_power' => true, 'direct_tko' => ! $initial['direct_tko']]);
+    $this->organization->update(array_map(fn (bool $flag) => ! $flag, $initial));
     $this->organization->contractors()->create(['type' => ContractorType::Lift, 'name' => 'ООО «Лифт-Сервис»']);
     $this->organization->executors()->create(['name' => 'Новый мастер', 'is_active' => true]);
     $this->organization->executors()->where('name', DemoSeeder::EXECUTORS[0]['name'])->update(['is_active' => false]);
@@ -40,6 +40,7 @@ it('returns everything the reviewer could change to the seeded state', function 
     $this->organization->refresh();
     $this->house->refresh();
     expect($this->organization->only(array_keys($initial)))->toBe($initial)
+        ->and($initial)->toBe(['direct_cold_water' => true, 'direct_hot_water' => false, 'direct_heat' => false, 'direct_power' => false, 'direct_tko' => false])
         ->and($this->organization->contractors()->pluck('name')->all())->toBe(array_column(DemoSeeder::CONTRACTORS, 'name'))
         ->and($this->organization->executors()->orderBy('id')->get()->map->only(['name', 'is_active'])->all())
         ->toBe(array_map(fn (array $e) => ['name' => $e['name'], 'is_active' => true], DemoSeeder::EXECUTORS))

@@ -25,7 +25,7 @@ it('shows the organisation card to staff only', function () {
         ->assertValidRequest()->assertValidResponse(200)
         ->assertJsonPath('data.name', DemoSeeder::ORGANIZATION_NAME)
         ->assertJsonPath('data.direct_contracts.tko', false)
-        ->assertJsonPath('data.direct_contracts.cold_water', false);
+        ->assertJsonPath('data.direct_contracts.cold_water', true);
 
     asToken($this->resident)->getJson('/api/v1/organization')
         ->assertStatus(403)
@@ -35,11 +35,11 @@ it('shows the organisation card to staff only', function () {
 it('updates contacts and direct contract flags, and new requests follow the flag', function () {
     asToken($this->dispatcher)->patchJson('/api/v1/organization', [
         'phone_dispatch' => '+7 843 000-00-09',
-        'direct_contracts' => ['cold_water' => true],
+        'direct_contracts' => ['cold_water' => false],
     ])
         ->assertValidRequest()->assertValidResponse(200)
         ->assertJsonPath('data.phone_dispatch', '+7 843 000-00-09')
-        ->assertJsonPath('data.direct_contracts.cold_water', true)
+        ->assertJsonPath('data.direct_contracts.cold_water', false)
         ->assertJsonPath('data.direct_contracts.tko', false)
         ->assertJsonPath('data.name', DemoSeeder::ORGANIZATION_NAME);
 
@@ -55,8 +55,9 @@ it('updates contacts and direct contract flags, and new requests follow the flag
         origin: RequestOrigin::Direct,
     ));
 
-    expect($request->responsible_kind)->toBe(ResponsibleKind::Party)
-        ->and($request->responsible_name)->toContain('Водоканал');
+    expect($request->responsible_kind)->toBe(ResponsibleKind::Organization)
+        ->and($request->responsible_name)->toBe(DemoSeeder::ORGANIZATION_NAME)
+        ->and($request->responsible_phone)->toBe('+7 843 000-00-09');
 });
 
 it('rejects an empty emergency phone and unknown contract keys', function () {

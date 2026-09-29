@@ -5,8 +5,10 @@ import { getJournal, getJournalCsvLink } from '@/api/journal';
 import { texts } from '@/app/texts';
 import { isInsideMax, openFileLink } from '@/bridge/maxWebApp';
 import { useNoticeState } from '@/components/Notice';
-import { daysBetween, formatDateInput, startOfMonthInput } from '@/lib/dates';
+import { daysAgoInput, daysBetween, formatDateInput } from '@/lib/dates';
 import type { JournalStat } from './JournalPage.types';
+
+const JOURNAL_DEFAULT_DAYS = 30;
 
 export const JOURNAL_STATS: JournalStat[] = [
     { key: 'total', label: texts.journal.summary.total },
@@ -30,7 +32,7 @@ export function useJournalPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const notice = useNoticeState();
     const showNotice = notice.show;
-    const from = searchParams.get('from') || startOfMonthInput();
+    const from = searchParams.get('from') || daysAgoInput(JOURNAL_DEFAULT_DAYS);
     const to = searchParams.get('to') || formatDateInput();
     const periodError = describePeriod(from, to);
 

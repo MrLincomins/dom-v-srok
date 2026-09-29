@@ -35,7 +35,7 @@ const card = {
 } as RequestCard;
 
 describe('действия диспетчера', () => {
-    it('назначает исполнителя по нажатию на ячейку', async () => {
+    it('назначает мастера по нажатию на ячейку', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(async (input: RequestInfo | URL) => {
@@ -74,6 +74,30 @@ describe('действия диспетчера', () => {
                 ),
             ).toBe(true);
         });
+    });
+
+    it('объясняет, что мастеров не удалось загрузить, и даёт повторить', async () => {
+        let failed = false;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                if (String(input).endsWith('/organization/executors')) {
+                    if (!failed) {
+                        failed = true;
+                        return json({ error: { code: 'server_error', message: 'boom', details: {} } }, 500);
+                    }
+                    return json({ data: [{ id: 5, name: 'Иван', specialty: null, phone: null }] });
+                }
+                return json({ data: card });
+            }),
+        );
+
+        renderActions(card);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Сервер не ответил. Попробуйте ещё раз.');
+        fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+        expect(await screen.findByText('Иван')).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('показывает полные подписи полей переадресации', async () => {

@@ -45,6 +45,10 @@ export function statusExplain(
     return `Срок вышел. ${text}`;
 }
 
+export function deadlineRuns(status: RequestStatus): boolean {
+    return status !== 'done' && status !== 'confirmed' && status !== 'redirected';
+}
+
 export function staffPrimaryAction(
     status: RequestStatus,
     hasExecutor = false,

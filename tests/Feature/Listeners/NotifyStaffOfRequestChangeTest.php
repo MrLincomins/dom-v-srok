@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Bot\Cards\RequestCard;
 use App\Bot\Models\OutboxMessage;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Demo\DemoResetService;
 use App\Domain\Organizations\Models\House;
 use App\Domain\Requests\Dto\Actor;
 use App\Domain\Requests\Dto\CreateRequestData;
@@ -93,4 +94,14 @@ it('stays silent for a house without an organization', function () {
     createLightRequest($house, $this->resident);
 
     expect(OutboxMessage::query()->where('kind', 'request.new_staff')->count())->toBe(0);
+});
+
+it('does not tell staff about requests created by test accounts without MAX, such as the demo seed', function () {
+    $this->resident->forceFill(['max_user_id' => null, 'bot_started_at' => null])->save();
+    OutboxMessage::query()->delete();
+
+    app(DemoResetService::class)->reset();
+
+    expect(staffMessages('request.new_staff', 7101))->toBeEmpty()
+        ->and(ServiceRequest::query()->where('organization_id', $this->house->organization_id)->count())->toBe(8);
 });

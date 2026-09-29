@@ -93,7 +93,7 @@ describe('очередь заявок', () => {
             ),
         );
         renderQueue();
-        const search = await screen.findByLabelText('Найти: номер, квартира или улица');
+        const search = await screen.findByLabelText('Поиск заявок');
         expect(screen.queryByRole('button', { name: 'Очистить' })).not.toBeInTheDocument();
         fireEvent.focus(search);
         fireEvent.change(search, { target: { value: 'мира' } });
@@ -122,7 +122,7 @@ describe('очередь заявок', () => {
         );
         renderQueue();
         expect(await screen.findByRole('tab', { name: /Новые/ })).toHaveTextContent('3');
-        fireEvent.change(screen.getByLabelText('Найти: номер, квартира или улица'), {
+        fireEvent.change(screen.getByLabelText('Поиск заявок'), {
             target: { value: 'проф' },
         });
         await waitFor(() => {
@@ -131,6 +131,34 @@ describe('очередь заявок', () => {
         expect(screen.getByRole('tab', { name: /В работе/ })).toHaveTextContent('1');
         expect(screen.getByRole('tab', { name: /Просрочено/ })).not.toHaveTextContent(/\d/);
         expect(screen.getByRole('tab', { name: /Закрытые/ })).not.toHaveTextContent(/\d/);
+    });
+
+    it('берёт поиск из адреса, чтобы он пережил переход в заявку и обратно', async () => {
+        const fetchMock = vi.fn(async () => queuePage(0));
+        vi.stubGlobal('fetch', fetchMock);
+        renderQueue('/?tab=in_progress&q=кв%2045');
+        expect(await screen.findByLabelText('Поиск заявок')).toHaveValue('кв 45');
+        await waitFor(() => {
+            const urls = fetchMock.mock.calls.map((call: unknown[]) => new URL(String(call[0]), 'http://localhost'));
+            expect(urls.some((url) => url.searchParams.get('status') === 'active' && url.searchParams.get('q') === 'кв 45')).toBe(true);
+        });
+    });
+
+    it('когда в вкладке ничего не нашлось, предлагает вкладку с найденным', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = new URL(String(input), 'http://localhost');
+                if (url.searchParams.get('status') === 'active') return queuePage(2);
+                return queuePage(0);
+            }),
+        );
+        renderQueue('/?q=Иванов');
+        expect(await screen.findByText('По запросу «Иванов» здесь ничего нет.')).toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: 'Открыть вкладку «В работе»' }));
+        await waitFor(() => {
+            expect(screen.getByRole('tab', { name: /В работе/ })).toHaveAttribute('aria-selected', 'true');
+        });
     });
 });
 
@@ -154,11 +182,11 @@ function json(body: unknown) {
     });
 }
 
-function renderQueue() {
+function renderQueue(url = '/') {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <MaxUI platform="android" colorScheme="light">
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[url]}>
                 <QueryClientProvider client={client}>
                     <AuthContext.Provider value={auth}>
                         <QueuePage />

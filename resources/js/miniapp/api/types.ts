@@ -11,7 +11,6 @@ export type AuthToken = components['schemas']['AuthToken'];
 export type Organization = components['schemas']['Organization'];
 export type OrganizationUpdate = components['schemas']['OrganizationUpdate'];
 export type House = components['schemas']['House'];
-export type Category = components['schemas']['Category'];
 export type Executor = components['schemas']['Executor'];
 export type ExecutorUpdate = components['schemas']['ExecutorUpdate'];
 export type Contractor = components['schemas']['Contractor'];

@@ -1,23 +1,33 @@
 openapi: 3.1.0
 info:
   title: Дом в срок — API мини-приложения
-  version: 0.1.0
+  version: 1.0.0
   description: |
     REST API кабинета диспетчера и карточки жителя. Контракт пишется первым: из него генерируются типы
     фронта (openapi-typescript) и им проверяются ответы в тестах (Spectator).
     Все ответы — объекты `{ data }` или `{ data, meta }`. Ошибки — `{ error: { code, message, details } }`.
 servers:
+  - url: https://chistoskaefom.ru/api/v1
+    description: сервер для проверки
   - url: /api/v1
     description: тот же домен, что и мини-приложение
 tags:
   - name: auth
+    description: Вход по initData из MAX и по тестовым учётным записям, выход
   - name: me
+    description: Текущий пользователь, его роль, организация и дом
   - name: catalog
+    description: Справочник категорий и «кто отвечает» до подачи заявки
   - name: requests
+    description: Очередь диспетчера, карточка заявки, смена статуса, назначение, закрытие, подтверждение жителем
   - name: organization
+    description: Организация диспетчера, дома с QR, мастера, подрядчики, карточка организации для жителя
   - name: journal
+    description: Журнал учёта заявок и выгрузка в CSV
   - name: attachments
+    description: Фото заявки и результата по подписанной ссылке
   - name: demo
+    description: Сброс демо-данных для проверки
 security:
   - bearer: []
 components:
@@ -170,7 +180,7 @@ components:
             - type: 'null'
         basis: { type: [string, 'null'] }
         advice: { type: [string, 'null'] }
-        verify: { type: boolean, description: 'строка справочника помечена «сверить с первоисточником»' }
+        verify: { type: boolean, description: 'служебный флаг сверки строки справочника; после сверки 26.09.2026 у всех строк false' }
         children:
           type: array
           items: { $ref: '#/components/schemas/Category' }
@@ -663,7 +673,7 @@ paths:
     get:
       tags: [catalog]
       operationId: lookupResponsible
-      summary: Кто отвечает и в какой срок по закону, без создания заявки; сроки от текущего момента в зоне региона
+      summary: Кто отвечает и в какой срок по нормативу, без создания заявки; сроки от текущего момента в зоне региона
       parameters:
         - { in: query, name: category_id, required: true, schema: { type: integer, minimum: 1 }, description: 'листовая категория' }
         - { in: query, name: house_id, schema: { type: integer, minimum: 1 }, description: 'по умолчанию дом пользователя; житель — только свой дом, диспетчер — дом своей организации' }
@@ -703,6 +713,7 @@ paths:
         - in: query
           name: q
           schema: { type: string, maxLength: 100 }
+          description: 'Поиск по словам, каждое слово должно совпасть. Одно число — номер заявки (она первой) или квартира; «№», «кв», «д», «ул» отбрасываются. Слово ищется без учёта регистра и окончания в описании, категории, адресе, мастере, ответственном и переадресации; число среди других слов — ещё и подъезд и номер дома'
         - in: query
           name: page
           schema: { type: integer, minimum: 1 }
@@ -1343,6 +1354,7 @@ paths:
       tags: [demo]
       operationId: demoReset
       summary: Сброс демо-данных (только сотрудник демо-организации)
+      description: Возвращает демо-организацию к исходным восьми заявкам. Не чаще десяти раз в минуту на пользователя, иначе 429.
       responses:
         '200':
           description: Готово

@@ -126,6 +126,6 @@ final class RequestCard
     {
         $local = $at->setTimezone($timezone)->locale('ru');
 
-        return $local->isoFormat('dddd, D MMMM, HH:mm');
+        return $local->isoFormat('dddd, D MMMM, [до] HH:mm');
     }
 }

@@ -97,7 +97,9 @@ describe('главный экран по роли', () => {
         expect(screen.queryByRole('button', { name: /Прошлые заявки/ })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Сообщить о проблеме/ }));
         expect(open).toHaveBeenCalledWith('https://max.ru/start', '_blank', 'noopener,noreferrer');
-        expect(screen.getByRole('status')).toHaveTextContent('О проблеме пишут в чате дома');
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Заявку подают через бота: откроется диалог с ним',
+        );
         expect(screen.queryByText('Тестовый пользователь')).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Вы/ }));
         const sheet = screen.getByRole('dialog', { name: 'Вы' });

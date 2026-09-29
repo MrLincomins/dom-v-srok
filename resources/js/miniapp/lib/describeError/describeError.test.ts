@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/api/client';
-import { describeError, describeLoginError } from './describeError';
+import { describeError, describeLoginError, describeSessionError } from './describeError';
 
 describe('describeError', () => {
     it('разбирает 403 и 404 без текста сервера', () => {
@@ -33,6 +33,21 @@ describe('describeError', () => {
     it('не отдаёт сырое сообщение сервера', () => {
         expect(describeError(new ApiError('oops', 'undefined is not a function', 418))).toBe(
             'Что-то пошло не так. Попробуйте ещё раз.',
+        );
+    });
+
+    it('при входе из MAX не показывает технический текст сервера', () => {
+        expect(
+            describeSessionError(new ApiError('unauthenticated', 'initData: подпись не совпала', 401)),
+        ).toBe('Не получилось войти. Закройте кабинет и откройте его из бота заново.');
+        expect(describeSessionError(new ApiError('server_error', 'SQLSTATE boom', 500))).toBe(
+            'Не получилось войти. Закройте кабинет и откройте его из бота заново.',
+        );
+        expect(describeSessionError(new Error('initData пустая'))).toBe(
+            'Не получилось войти. Закройте кабинет и откройте его из бота заново.',
+        );
+        expect(describeSessionError(new ApiError('network', 'Failed to fetch', 0))).toBe(
+            'Нет связи. Проверьте интернет и повторите.',
         );
     });
 });

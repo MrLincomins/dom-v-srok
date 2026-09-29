@@ -1,14 +1,22 @@
+import type { RequestStatus } from '@/api/types';
+import { texts } from '@/app/texts';
 import { describeDeadline } from '@/lib/deadline';
+import { deadlineRuns } from '@/lib/status';
 
 export function DeadlineChip({
     deadline,
-    closed = false,
+    status,
 }: {
     deadline: string | null | undefined;
-    closed?: boolean;
+    status: RequestStatus;
 }) {
+    if (status === 'done') {
+        return (
+            <span className="chip bg-page-secondary text-muted">{texts.request.awaitingConfirmation}</span>
+        );
+    }
+    if (!deadlineRuns(status)) return null;
     const view = describeDeadline(deadline);
-    if (closed) return null;
     const tone = view.overdue
         ? 'bg-late/15 text-late'
         : view.urgent
