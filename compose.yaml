@@ -14,7 +14,7 @@ services:
     build: { context: ., dockerfile: docker/Dockerfile, target: caddy }
     environment:
       SERVER_NAME: "${SERVER_NAME:-:80}"
-    ports: ["80:80", "443:443", "443:443/udp"]
+    ports: ["80:80", "443:443"]
     volumes: [caddy_data:/data, caddy_config:/config]
     depends_on:
       app: { condition: service_healthy }

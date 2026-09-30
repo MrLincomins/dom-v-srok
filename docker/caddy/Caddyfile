@@ -1,3 +1,9 @@
+{
+    servers {
+        protocols h1 h2
+    }
+}
+
 {$SERVER_NAME}, http://localhost {
     root * /app/public
     encode zstd gzip
